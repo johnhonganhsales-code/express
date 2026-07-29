@@ -12,42 +12,67 @@ res = requests.get(url, headers=headers, timeout=15)
 res.raise_for_status()
 soup = BeautifulSoup(res.text, "html.parser")
 
-# Debug: in toàn bộ text để kiểm tra
-full_text = soup.get_text()
-print("=== PAGE TEXT (500 chars) ===")
-print(full_text[:2000])
-print("=== END ===")
+today = datetime.today().date()
+
+def parse_date(s):
+    """Parse dd/mm/yyyy hoặc yyyy/mm/dd"""
+    s = s.strip()
+    for fmt in ("%d/%m/%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except:
+            continue
+    return None
 
 def get_latest_fsc(carrier_keyword):
-    # Tìm tất cả text chứa keyword, lấy % gần nhất
-    text = soup.get_text("\n")
-    lines = text.split("\n")
-    found_carrier = False
-    for line in lines:
-        line = line.strip()
-        if carrier_keyword.lower() in line.lower() and "surcharge" in line.lower():
-            found_carrier = True
+    """
+    Tìm bảng đúng hãng, lấy dòng mới nhất có ngày hiệu lực <= hôm nay
+    """
+    tables = soup.find_all("table")
+    for table in tables:
+        header_text = " ".join(
+            cell.get_text(strip=True)
+            for cell in table.find_all(["th", "td"])[:5]
+        )
+        if carrier_keyword.lower() not in header_text.lower():
             continue
-        if found_carrier and "%" in line:
-            # Lấy dòng đầu tiên có ngày và %
-            parts = line.split()
-            for part in parts:
-                pct_str = part.replace("%","").replace(",",".").strip()
-                try:
-                    pct = float(pct_str)
-                    if 10 < pct < 100:
-                        return pct, ""
-                except:
-                    continue
+
+        rows = table.find_all("tr")
+        best_pct  = None
+        best_date = None
+
+        for row in rows:
+            cols = [td.get_text(strip=True) for td in row.find_all("td")]
+            if len(cols) < 2:
+                continue
+            eff_date = parse_date(cols[0])
+            if eff_date is None:
+                continue
+            pct_str = cols[1].replace("%", "").replace(",", ".").strip()
+            try:
+                pct = float(pct_str)
+            except:
+                continue
+            if not (5 < pct < 100):
+                continue
+            # Chỉ lấy ngày <= hôm nay, ưu tiên ngày gần nhất
+            if eff_date <= today:
+                if best_date is None or eff_date > best_date:
+                    best_date = eff_date
+                    best_pct  = pct
+
+        if best_pct is not None:
+            return best_pct, best_date.strftime("%d/%m/%Y")
+
     return None, None
 
 dhl_pct,   dhl_date   = get_latest_fsc("DHL")
 fedex_pct, fedex_date = get_latest_fsc("FedEx")
 ups_pct,   ups_date   = get_latest_fsc("UPS")
 
-print(f"DHL:   {dhl_pct}%")
-print(f"FedEx: {fedex_pct}%")
-print(f"UPS:   {ups_pct}%")
+print(f"DHL:   {dhl_pct}%  ({dhl_date})")
+print(f"FedEx: {fedex_pct}%  ({fedex_date})")
+print(f"UPS:   {ups_pct}%  ({ups_date})")
 
 if None in [dhl_pct, fedex_pct, ups_pct]:
     raise ValueError(f"Thiếu dữ liệu: DHL={dhl_pct}, FedEx={fedex_pct}, UPS={ups_pct}")
@@ -67,5 +92,9 @@ ws = sh.worksheet("Settings")
 ws.update("B6", [[dhl_pct / 100]])
 ws.update("B7", [[ups_pct / 100]])
 ws.update("B8", [[fedex_pct / 100]])
+
+ws.update("E6", [[dhl_date]])
+ws.update("E7", [[ups_date]])
+ws.update("E8", [[fedex_date]])
 
 print(f"✅ Cập nhật thành công lúc {datetime.now().strftime('%d/%m/%Y %H:%M')}")
