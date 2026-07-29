@@ -64,9 +64,9 @@ sh = gc.open_by_key(SHEET_ID)
 ws = sh.worksheet("Settings")
 
 # Ghi số thực (vd 38.25) — sheet tự format thành %
-ws.update("B6", [[dhl_pct]])
-ws.update("B7", [[ups_pct]])
-ws.update("B8", [[fedex_pct]])
+ws.update("B6", [[dhl_pct / 100]])
+ws.update("B7", [[ups_pct / 100]])
+ws.update("B8", [[fedex_pct / 100]])
 
 # Ghi ngày hiệu lực cột E
 ws.update("E6", [[dhl_date]])
