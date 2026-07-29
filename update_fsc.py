@@ -2,10 +2,9 @@ import requests
 from bs4 import BeautifulSoup
 import gspread
 from google.oauth2.service_account import Credentials
-import json, os
+import json, os, re
 from datetime import datetime
 
-# ── 1. Crawl FSC ──────────────────────────────────────────
 url = "https://www.thepostalconnect.com/rw/fuel-surcharge.asp"
 headers = {"User-Agent": "Mozilla/5.0"}
 res = requests.get(url, headers=headers, timeout=15)
@@ -13,63 +12,73 @@ res.raise_for_status()
 soup = BeautifulSoup(res.text, "html.parser")
 
 today = datetime.today().date()
+print(f"Hôm nay: {today}")
 
 def parse_date(s):
-    """Parse dd/mm/yyyy hoặc yyyy/mm/dd"""
     s = s.strip()
-    for fmt in ("%d/%m/%Y", "%Y/%m/%d"):
+    for fmt in ("%d/%m/%Y", "%Y/%m/%d", "%d/%m/%y"):
         try:
             return datetime.strptime(s, fmt).date()
         except:
             continue
     return None
 
-def get_latest_fsc(carrier_keyword):
+def get_fsc_from_text(full_text, carrier_keyword):
     """
-    Tìm bảng đúng hãng, lấy dòng mới nhất có ngày hiệu lực <= hôm nay
+    Tìm section của hãng trong text, quét từng dòng có ngày + %,
+    lấy dòng mới nhất có ngày <= hôm nay
     """
-    tables = soup.find_all("table")
-    for table in tables:
-        header_text = " ".join(
-            cell.get_text(strip=True)
-            for cell in table.find_all(["th", "td"])[:5]
-        )
-        if carrier_keyword.lower() not in header_text.lower():
+    lines = full_text.split("\n")
+    in_section = False
+    best_pct = None
+    best_date = None
+
+    for line in lines:
+        line = line.strip()
+        if not line:
             continue
 
-        rows = table.find_all("tr")
-        best_pct  = None
-        best_date = None
+        # Phát hiện bắt đầu section hãng
+        if carrier_keyword.lower() in line.lower() and ("surcharge" in line.lower() or "fuel" in line.lower()):
+            in_section = True
+            print(f">>> Tìm thấy section: {line}")
+            continue
 
-        for row in rows:
-            cols = [td.get_text(strip=True) for td in row.find_all("td")]
-            if len(cols) < 2:
-                continue
-            eff_date = parse_date(cols[0])
-            if eff_date is None:
-                continue
-            pct_str = cols[1].replace("%", "").replace(",", ".").strip()
+        # Kết thúc section khi gặp hãng khác
+        if in_section:
+            other = [k for k in ["DHL","FedEx","UPS"] if k.lower() != carrier_keyword.lower()]
+            if any(k.lower() in line.lower() and "surcharge" in line.lower() for k in other):
+                break
+
+        if not in_section:
+            continue
+
+        # Tìm dòng có ngày
+        date_match = re.search(r'(\d{2}/\d{2}/\d{4}|\d{4}/\d{2}/\d{2})', line)
+        pct_match  = re.search(r'(\d{1,3}[.,]\d{1,2})%', line)
+
+        if date_match and pct_match:
+            eff_date = parse_date(date_match.group(1))
+            pct_str  = pct_match.group(1).replace(",",".")
             try:
                 pct = float(pct_str)
             except:
                 continue
-            if not (5 < pct < 100):
-                continue
-            # Chỉ lấy ngày <= hôm nay, ưu tiên ngày gần nhất
-            if eff_date <= today:
+            print(f"  Dòng: {line} -> date={eff_date}, pct={pct}%")
+            if eff_date and eff_date <= today:
                 if best_date is None or eff_date > best_date:
                     best_date = eff_date
                     best_pct  = pct
 
-        if best_pct is not None:
-            return best_pct, best_date.strftime("%d/%m/%Y")
+    return best_pct, best_date.strftime("%d/%m/%Y") if best_date else None
 
-    return None, None
+full_text = soup.get_text("\n")
 
-dhl_pct,   dhl_date   = get_latest_fsc("DHL")
-fedex_pct, fedex_date = get_latest_fsc("FedEx")
-ups_pct,   ups_date   = get_latest_fsc("UPS")
+dhl_pct,   dhl_date   = get_fsc_from_text(full_text, "DHL")
+fedex_pct, fedex_date = get_fsc_from_text(full_text, "FedEx")
+ups_pct,   ups_date   = get_fsc_from_text(full_text, "UPS")
 
+print(f"\nKết quả:")
 print(f"DHL:   {dhl_pct}%  ({dhl_date})")
 print(f"FedEx: {fedex_pct}%  ({fedex_date})")
 print(f"UPS:   {ups_pct}%  ({ups_date})")
@@ -77,7 +86,7 @@ print(f"UPS:   {ups_pct}%  ({ups_date})")
 if None in [dhl_pct, fedex_pct, ups_pct]:
     raise ValueError(f"Thiếu dữ liệu: DHL={dhl_pct}, FedEx={fedex_pct}, UPS={ups_pct}")
 
-# ── 2. Ghi vào Google Sheet ───────────────────────────────
+# ── Ghi vào Google Sheet ──────────────────────────────────
 creds_json = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 creds = Credentials.from_service_account_info(
     creds_json,
@@ -89,12 +98,11 @@ SHEET_ID = os.environ["SHEET_ID"]
 sh = gc.open_by_key(SHEET_ID)
 ws = sh.worksheet("Settings")
 
-ws.update("B6", [[dhl_pct / 100]])
-ws.update("B7", [[ups_pct / 100]])
-ws.update("B8", [[fedex_pct / 100]])
+ws.update(range_name="B6", values=[[dhl_pct / 100]])
+ws.update(range_name="B7", values=[[ups_pct / 100]])
+ws.update(range_name="B8", values=[[fedex_pct / 100]])
+ws.update(range_name="E6", values=[[dhl_date]])
+ws.update(range_name="E7", values=[[ups_date]])
+ws.update(range_name="E8", values=[[fedex_date]])
 
-ws.update("E6", [[dhl_date]])
-ws.update("E7", [[ups_date]])
-ws.update("E8", [[fedex_date]])
-
-print(f"✅ Cập nhật thành công lúc {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+print(f"✅ Xong lúc {datetime.now().strftime('%d/%m/%Y %H:%M')}")
