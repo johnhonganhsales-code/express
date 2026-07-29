@@ -160,32 +160,18 @@
     <div style="font-size:12px;color:var(--gray);">💡 Cân tính cước = max(thực, thể tích). Thể tích = L×W×H ÷ 5000</div>
   </div>
 
-  <div class="card">
-    <div class="card-title">Phụ phí áp dụng</div>
-    <div class="status-bar">
+  <div class="card" style="padding:12px 16px">
+    <div class="status-bar" style="margin-bottom:0">
       <div class="status-dot loading" id="status-dot"></div>
       <span id="status-text">Đang tải...</span>
       <span class="status-refresh" onclick="localStorage.removeItem(CACHE_KEY); loadData(true)">↺ Cập nhật</span>
     </div>
-    <div class="surcharge-row">
-      <label>Fuel DHL</label>
-      <div style="display:flex;align-items:center"><input type="number" id="fuel-dhl" value="23.5" min="0" max="100" step="0.1" style="width:80px"><span class="pct">%</span></div>
-    </div>
-    <div class="surcharge-row">
-      <label>Fuel FedEx</label>
-      <div style="display:flex;align-items:center"><input type="number" id="fuel-fedex" value="22.0" min="0" max="100" step="0.1" style="width:80px"><span class="pct">%</span></div>
-    </div>
-    <div class="surcharge-row">
-      <label>Fuel UPS</label>
-      <div style="display:flex;align-items:center"><input type="number" id="fuel-ups" value="21.0" min="0" max="100" step="0.1" style="width:80px"><span class="pct">%</span></div>
-    </div>
-    <div class="surcharge-row">
-      <label>VAT (áp dụng chung)</label>
-      <div style="display:flex;align-items:center"><input type="number" id="vat" value="8" min="0" max="100" step="0.1" style="width:80px"><span class="pct">%</span></div>
-    </div>
-    <div class="surcharge-row">
-      <label>Demand Surcharge</label>
-      <div style="display:flex;align-items:center"><input type="number" id="demand" value="0" min="0" max="100" step="0.1" style="width:80px"><span class="pct">%</span></div>
+    <div style="display:none">
+      <input type="number" id="fuel-dhl" value="23.5" min="0" max="100" step="0.01">
+      <input type="number" id="fuel-fedex" value="22.0" min="0" max="100" step="0.01">
+      <input type="number" id="fuel-ups" value="21.0" min="0" max="100" step="0.01">
+      <input type="number" id="vat" value="8" min="0" max="100" step="0.01">
+      <input type="number" id="demand" value="0" min="0" max="100" step="0.01">
     </div>
   </div>
 
@@ -362,9 +348,10 @@ const GIDS = {
 let countryData   = {};
 let countryAliases = {}; // normalized-name -> canonical
 let dhlDocRates   = {}, dhlNonDocRates = {}, dhlMultRates = {};
-let upsSaverDoc   = {}, upsSaverNonDoc = {}, upsSaverSpecialDoc={}, upsSaverSpecialNonDoc={}, upsSaverZoneNumMap={};
-let upsExpDoc     = {}, upsExpNonDoc   = {}, upsExpSpecialDoc={}, upsExpSpecialNonDoc={}, upsExpZoneNumMap={};
+let upsSaverDoc   = {}, upsSaverNonDoc = {}, upsSaverSpecialDoc={}, upsSaverSpecialNonDoc={}, upsSaverZoneNumMap={}, upsSaverPerKgKeys=[];
+let upsExpDoc     = {}, upsExpNonDoc   = {}, upsExpSpecialDoc={}, upsExpSpecialNonDoc={}, upsExpZoneNumMap={}, upsExpPerKgKeys=[];
 let fedexIPRates  = {}, fedexIERates   = {};
+let fedexIPPerKgKeys = [], fedexIEPerKgKeys = [];
 // FedEx zone letter → col index in rate array
 const FEDEX_ZONES = ['A','B','C','D','E','F','G','H','K','M','P','O','Q','R','S','T','U','V','W','X','Y','Z'];
 let currentType = 'document';
@@ -522,6 +509,8 @@ function parseCostUPS(rows) {
   // zoneNumMap: zoneNum (integer) -> specialKey
   // e.g. 5 -> "united states"  (from header "05-United States")
   const zoneNumMap={};
+  // perKgKeys: set of weight keys that represent per-kg ranges (21-44, 45-70, etc.)
+  const perKgKeys=[];
   let section=null;
   let specialCols=[]; // [{idx, key, zoneNum}] for cols beyond 10
   for (let i=0;i<rows.length;i++) {
@@ -545,7 +534,10 @@ function parseCostUPS(rows) {
       continue;
     }
     if (c0===''||c0l.startsWith('💰')||c0l.startsWith('ups')) continue;
-    const wt=parseFloat(c0.replace(/[^0-9.]/g,''));
+    // Detect range rows like "21 – 44 kg", "21.0 - 44.0" etc → use upper bound as key
+    const rangeMatch = c0.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
+    const wt = rangeMatch ? parseFloat(rangeMatch[2]) : parseFloat(c0.replace(/[^0-9.]/g,''));
+    if (rangeMatch && parseFloat(rangeMatch[1]) >= 21) perKgKeys.push(wt);
     if (isNaN(wt)||wt<=0) continue;
     // cols 1-10 = Zone 01-10
     const prices=row.slice(1,11).map(v=>num(v));
@@ -562,7 +554,7 @@ function parseCostUPS(rows) {
       }
     }
   }
-  return {doc, nonDoc, specialDoc, specialNonDoc, zoneNumMap};
+  return {doc, nonDoc, specialDoc, specialNonDoc, zoneNumMap, perKgKeys};
 }
 
 // ============================================================
@@ -572,6 +564,7 @@ function parseCostUPS(rows) {
 // ============================================================
 function parseCostFedEx(rows) {
   const doc={}, nonDoc={};
+  const perKgKeys=[];
   let headerCount=0;
   let zoneOrder=[];
   for (let i=0;i<rows.length;i++) {
@@ -588,7 +581,10 @@ function parseCostFedEx(rows) {
     }
     if (headerCount===0) continue;
     if (c0===''||c0l.startsWith('\u{1f4b0}')||c0l.startsWith('fedex')||c0l.startsWith('tr\xEAn')) continue;
-    const wt=parseFloat(c0.replace(/[^0-9.]/g,''));
+    // Detect range rows like "21 – 44 kg", "21.0 - 44.0" etc → use upper bound as key
+    const rangeMatch = c0.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
+    const wt = rangeMatch ? parseFloat(rangeMatch[2]) : parseFloat(c0.replace(/[^0-9.]/g,''));
+    if (rangeMatch && parseFloat(rangeMatch[1]) >= 21) perKgKeys.push(wt);
     if (isNaN(wt)||wt<=0) continue;
     const vals=row.slice(1).map(v=>num(v));
     if (!vals.some(v=>v>0)) continue;
@@ -602,7 +598,7 @@ function parseCostFedEx(rows) {
       else nonDoc[wt]=entry;
     }
   }
-  return {doc, nonDoc};
+  return {doc, nonDoc, perKgKeys};
 }
 
 // ============================================================
@@ -674,70 +670,69 @@ function getDHLRate(weight, zone) {
   return base30+extra*mult;
 }
 
-function getUPSRate(weight, zoneNum, docTable, nonDocTable, specialDoc, specialNonDoc, countryName, zoneNumMap) {
+function getUPSRate(weight, zoneNum, docTable, nonDocTable, specialDoc, specialNonDoc, countryName, zoneNumMap, perKgKeys) {
   if (!zoneNum) return 0;
   const spTable = currentType==='document' ? specialDoc : specialNonDoc;
+  const applyWeight = (unitPrice, key) => (perKgKeys && perKgKeys.includes(key) ? unitPrice * weight : unitPrice);
 
-  // 1) Ưu tiên: tìm special col theo zoneNum (vd zone 5 -> "05-United States")
+  // Lookup trong một sub-table {wt->price}
+  // Nếu weight>=21 nhưng key không thuộc per-kg range → trả null để fallback
+  const lookupSub = (matched) => {
+    if (!matched) return null;
+    const keys = Object.keys(matched).map(Number).sort((a,b)=>a-b);
+    if (!keys.length) return null;
+    const k = keys.find(k => k >= weight) || keys[keys.length-1];
+    const price = matched[k] || 0;
+    if (!price) return null;
+    if (weight >= 21 && !(perKgKeys && perKgKeys.includes(k))) return null;
+    return applyWeight(price, k);
+  };
+
+  // 1) Ưu tiên: tìm special col theo zoneNum
   if (zoneNumMap && zoneNumMap[zoneNum] && spTable) {
-    const spKey = zoneNumMap[zoneNum];
-    const matched = spTable[spKey];
-    if (matched) {
-      const keys=Object.keys(matched).map(Number).sort((a,b)=>a-b);
-      if (keys.length) {
-        const k=keys.find(k=>k>=weight)||keys[keys.length-1];
-        const price = matched[k]||0;
-        if (price > 0) return price;
-      }
-    }
+    const result = lookupSub(spTable[zoneNumMap[zoneNum]]);
+    if (result !== null) return result;
   }
 
-  // 2) Fallback: tìm special col theo tên nước (cho các nước không có zone riêng nhưng có cột tên)
+  // 2) Fallback: tìm special col theo tên nước
   if (countryName && spTable) {
     const variants = countryVariants(countryName);
-    let matched = null;
-    outer: for (const variant of variants) {
+    for (const variant of variants) {
       for (const [k, v] of Object.entries(spTable)) {
-        // Match chính xác hoặc tên nước nằm trong key (vd "france" trong "france,germany,italy...")
         if (variant === k || k.split(',').some(part => part.trim() === variant.trim())) {
-          matched = v; break outer;
+          const result = lookupSub(v);
+          if (result !== null) return result;
         }
-      }
-    }
-    if (matched) {
-      const keys=Object.keys(matched).map(Number).sort((a,b)=>a-b);
-      if (keys.length) {
-        const k=keys.find(k=>k>=weight)||keys[keys.length-1];
-        const price = matched[k]||0;
-        if (price > 0) return price;
       }
     }
   }
 
   // 3) Fallback cuối: zone number array (Zone 01-10)
-  const zIdx=zoneNum-1;
-  const table=currentType==='document'?docTable:nonDocTable;
-  const keys=Object.keys(table).map(Number).sort((a,b)=>a-b);
+  const zIdx = zoneNum - 1;
+  const table = currentType==='document' ? docTable : nonDocTable;
+  const keys = Object.keys(table).map(Number).sort((a,b)=>a-b);
   if (!keys.length) return 0;
-  const k=keys.find(k=>k>=weight)||keys[keys.length-1];
-  return (table[k]||[])[zIdx]||0;
+  const k = keys.find(k => k >= weight) || keys[keys.length-1];
+  const unitPrice = (table[k]||[])[zIdx] || 0;
+  return applyWeight(unitPrice, k);
 }
 
-function getFedExRate(weight, zoneLetter, ratesObj) {
+function getFedExRate(weight, zoneLetter, ratesObj, perKgKeys) {
   if (!zoneLetter) return 0;
-  // ratesObj is {doc, nonDoc}; pick by currentType
   let table;
   if (ratesObj && ratesObj.doc !== undefined) {
     table = currentType === 'document' ? ratesObj.doc : ratesObj.nonDoc;
   } else {
-    // legacy flat object (old cache) -> treat as nonDoc
     table = ratesObj;
   }
   if (!table) return 0;
   const keys=Object.keys(table).map(Number).sort((a,b)=>a-b);
   if (!keys.length) return 0;
   const k=keys.find(k=>k>=weight)||keys[keys.length-1];
-  return (table[k]||{})[zoneLetter]||0;
+  const unitPrice=(table[k]||{})[zoneLetter]||0;
+  const isPerKg = perKgKeys && perKgKeys.includes(k);
+  console.log(`[FedEx] zone=${zoneLetter} weight=${weight} key=${k} unitPrice=${unitPrice} isPerKg=${isPerKg} result=${isPerKg ? unitPrice*weight : unitPrice}`);
+  return isPerKg ? unitPrice * weight : unitPrice;
 }
 
 // ============================================================
@@ -798,7 +793,15 @@ function calculate() {
   const zones=countryData[country]||{};
   const chargeWeight=Math.max(wt,vwt);
   const roundedWeight=Math.ceil(chargeWeight*2)/2;
-  const typeLabel=currentType==='document'?'Document':'Non-Document';
+
+  // Document giới hạn 2kg — nếu vượt quá, tính theo giá hàng hóa (Non-Document)
+  const effectiveType = (currentType==='document' && chargeWeight > 2) ? 'non-document' : currentType;
+  const savedType = currentType;
+  currentType = effectiveType;
+
+  const typeLabel = currentType==='document' ? 'Document' : 'Non-Document';
+  const typeLabelDisplay = (savedType==='document' && effectiveType==='non-document')
+    ? 'Document → tính giá Non-Document (>2kg)' : typeLabel;
   const countryShort=country.replace(/ \(.*\)/,'');
 
   // Update service labels
@@ -816,41 +819,40 @@ function calculate() {
     {zone:`DHL Vùng ${zones.dhl||'N/A'}`,weight:`${roundedWeight} kg`,type:typeLabel});
 
   // FedEx IP
-  const fipBase=zones.fedexIP?getFedExRate(roundedWeight,zones.fedexIP,fedexIPRates):0;
+  const fipBase=zones.fedexIP?getFedExRate(roundedWeight,zones.fedexIP,fedexIPRates,fedexIPPerKgKeys):0;
   const fipFuel=fipBase*fuelFedEx/100;
   const fipDemand=fipBase*demandPct/100;
   renderCarrier('fedex-ip',fipBase,fipFuel,fuelFedEx,fipDemand,demandPct,0,vatPct,
     {zone:`FedEx Zone ${zones.fedexIP||'N/A'}`,weight:`${roundedWeight} kg`,type:typeLabel});
 
   // FedEx IE
-  const fieBase=zones.fedexIE?getFedExRate(roundedWeight,zones.fedexIE,fedexIERates):0;
+  const fieBase=zones.fedexIE?getFedExRate(roundedWeight,zones.fedexIE,fedexIERates,fedexIEPerKgKeys):0;
   const fieFuel=fieBase*fuelFedEx/100;
   const fieDemand=fieBase*demandPct/100;
   renderCarrier('fedex-ie',fieBase,fieFuel,fuelFedEx,fieDemand,demandPct,0,vatPct,
     {zone:`FedEx Zone ${zones.fedexIE||'N/A'}`,weight:`${roundedWeight} kg`,type:typeLabel});
 
   // UPS Saver
-  const usBase=zones.upsSaver?getUPSRate(roundedWeight,zones.upsSaver,upsSaverDoc,upsSaverNonDoc,upsSaverSpecialDoc,upsSaverSpecialNonDoc,country,upsSaverZoneNumMap):0;
+  const usBase=zones.upsSaver?getUPSRate(roundedWeight,zones.upsSaver,upsSaverDoc,upsSaverNonDoc,upsSaverSpecialDoc,upsSaverSpecialNonDoc,country,upsSaverZoneNumMap,upsSaverPerKgKeys):0;
   const usFuel=usBase*fuelUPS/100;
   const usDemand=usBase*demandPct/100;
   renderCarrier('ups-saver',usBase,usFuel,fuelUPS,usDemand,demandPct,0,vatPct,
     {zone:`UPS Zone ${String(zones.upsSaver||'N/A').padStart(2,'0')}`,weight:`${roundedWeight} kg`,type:typeLabel});
 
   // UPS Expedited
-  const ueBase=zones.upsExp?getUPSRate(roundedWeight,zones.upsExp,upsExpDoc,upsExpNonDoc,upsExpSpecialDoc,upsExpSpecialNonDoc,country,upsExpZoneNumMap):0;
+  const ueBase=zones.upsExp?getUPSRate(roundedWeight,zones.upsExp,upsExpDoc,upsExpNonDoc,upsExpSpecialDoc,upsExpSpecialNonDoc,country,upsExpZoneNumMap,upsExpPerKgKeys):0;
   const ueFuel=ueBase*fuelUPS/100;
   const ueDemand=ueBase*demandPct/100;
   renderCarrier('ups-exp',ueBase,ueFuel,fuelUPS,ueDemand,demandPct,0,vatPct,
     {zone:`UPS Zone ${String(zones.upsExp||'N/A').padStart(2,'0')}`,weight:`${roundedWeight} kg`,type:typeLabel});
 
+  // Restore currentType
+  currentType = savedType;
+
   // Show + header
   document.getElementById('results-section').classList.add('show');
   document.getElementById('results-meta').textContent=
-    `Kết quả cho ${countryShort} · ${roundedWeight} kg · ${typeLabel}`;
-
-  // Auto-open DHL card
-  const dhlCard=document.getElementById('card-dhl');
-  if (!dhlCard.classList.contains('open')) dhlCard.classList.add('open');
+    `Kết quả cho ${countryShort} · ${roundedWeight} kg · ${typeLabelDisplay}`;
 
   document.getElementById('results-section').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -858,23 +860,26 @@ function calculate() {
 // ============================================================
 // CACHE
 // ============================================================
-const CACHE_KEY='multicarrier_cache_v7';
-function getCacheTTL() {
-  const now = new Date();
-  const nextMonday = new Date(now);
-  const day = now.getDay();
-  const daysUntilMonday = day === 1 ? 7 : (8 - day) % 7;
-  nextMonday.setDate(now.getDate() + daysUntilMonday);
-  nextMonday.setHours(0, 0, 0, 0);
-  return nextMonday - now;
+const CACHE_KEY='multicarrier_cache_v11';
+const CACHE_TTL=60*60*1000;
+
+function serializeForCache(p) {
+  // Convert Set objects to arrays for JSON serialization
+  return JSON.parse(JSON.stringify(p, (key, value) =>
+    value instanceof Set ? {__type:'Set', values:[...value]} : value
+  ));
 }
-const CACHE_TTL = getCacheTTL();
-function saveCache(p){try{localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),...p}));}catch(e){}}
+function deserializeFromCache(p) {
+  return JSON.parse(JSON.stringify(p), (key, value) =>
+    (value && value.__type==='Set') ? new Set(value.values) : value
+  );
+}
+function saveCache(p){try{localStorage.setItem(CACHE_KEY,JSON.stringify(serializeForCache({ts:Date.now(),...p})));}catch(e){}}
 function loadCache(){
   try{
     const raw=localStorage.getItem(CACHE_KEY);
     if(!raw)return null;
-    const c=JSON.parse(raw);
+    const c=deserializeFromCache(JSON.parse(raw));
     if(Date.now()-c.ts>CACHE_TTL){localStorage.removeItem(CACHE_KEY);return null;}
     return c;
   }catch(e){return null;}
@@ -894,19 +899,23 @@ function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE) {
   upsSaverSpecialDoc = upsSav.specialDoc||{};
   upsSaverSpecialNonDoc = upsSav.specialNonDoc||{};
   upsSaverZoneNumMap = upsSav.zoneNumMap||{};
+  upsSaverPerKgKeys = upsSav.perKgKeys||[];
   upsExpDoc      = upsExp.doc;
   upsExpNonDoc   = upsExp.nonDoc;
   upsExpSpecialDoc = upsExp.specialDoc||{};
   upsExpSpecialNonDoc = upsExp.specialNonDoc||{};
   upsExpZoneNumMap = upsExp.zoneNumMap||{};
+  upsExpPerKgKeys = upsExp.perKgKeys||[];
   fedexIPRates   = fedexIP;
   fedexIERates   = fedexIE;
+  fedexIPPerKgKeys = fedexIP.perKgKeys||[];
+  fedexIEPerKgKeys = fedexIE.perKgKeys||[];
 
-  if (setting.dhlFuel!==undefined)   document.getElementById('fuel-dhl').value   = setting.dhlFuel.toFixed(1);
-  if (setting.fedexFuel!==undefined) document.getElementById('fuel-fedex').value = setting.fedexFuel.toFixed(1);
-  if (setting.upsFuel!==undefined)   document.getElementById('fuel-ups').value   = setting.upsFuel.toFixed(1);
-  if (setting.vat!==undefined)       document.getElementById('vat').value        = setting.vat.toFixed(1);
-  if (setting.demand!==undefined)    document.getElementById('demand').value     = setting.demand.toFixed(1);
+  if (setting.dhlFuel!==undefined)   document.getElementById('fuel-dhl').value   = setting.dhlFuel.toFixed(2);
+  if (setting.fedexFuel!==undefined) document.getElementById('fuel-fedex').value = setting.fedexFuel.toFixed(2);
+  if (setting.upsFuel!==undefined)   document.getElementById('fuel-ups').value   = setting.upsFuel.toFixed(2);
+  if (setting.vat!==undefined)       document.getElementById('vat').value        = setting.vat.toFixed(2);
+  if (setting.demand!==undefined)    document.getElementById('demand').value     = setting.demand.toFixed(2);
   if (setting.effectiveDate)
     document.getElementById('footer-text').textContent='Express Shipping · From Vietnam · '+setting.effectiveDate;
 
