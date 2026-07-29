@@ -1,0 +1,29 @@
+name: Auto Update Fuel Surcharge
+
+on:
+  schedule:
+    # Chạy 7h sáng thứ 2 giờ VN (UTC+7) = 0h00 UTC thứ 2
+    - cron: '0 0 * * 1'
+  workflow_dispatch:   # Cho phép bấm chạy tay bất cứ lúc nào
+
+jobs:
+  update-fsc:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 gspread google-auth
+
+      - name: Run FSC updater
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: python update_fsc.py
