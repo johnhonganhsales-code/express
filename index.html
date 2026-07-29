@@ -410,6 +410,43 @@ async function fetchSheet(gid) {
   return data;
 }
 
+// Mapping tên khoá dùng để parse (KHÔNG trùng hoàn toàn với tên khoá trong GIDS,
+// vd: GIDS.Cost_UPS_Saver nhưng phần parse cần fetched.UPS_Saver)
+const DATA_KEYS = [
+  ['Setting',   GIDS.Setting],
+  ['Countries', GIDS.Countries],
+  ['Cost_DHL',  GIDS.Cost_DHL],
+  ['UPS_Saver', GIDS.Cost_UPS_Saver],
+  ['UPS_Exp',   GIDS.Cost_UPS_Exp],
+  ['FedEx_IP',  GIDS.Cost_FedEx_IP],
+  ['FedEx_IE',  GIDS.Cost_FedEx_IE],
+];
+
+// Tải toàn bộ dữ liệu nhanh nhất có thể:
+// 1) Ưu tiên gộp 1 request (?all=1) nếu Apps Script đã hỗ trợ -> nhanh nhất
+// 2) Nếu chưa hỗ trợ (lỗi/không đúng định dạng) -> fallback tải song song 7 sheet bằng Promise.all()
+async function fetchAllData(onProgress) {
+  try {
+    if (onProgress) onProgress('Đang tải toàn bộ dữ liệu...', 'gộp 1 request');
+    const res = await fetch(`${PROXY}?all=1`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && !data.error && DATA_KEYS.every(([k]) => data[k] !== undefined)) {
+        return data; // Apps Script đã hỗ trợ chế độ gộp -> dùng luôn (nhanh nhất)
+      }
+    }
+  } catch (e) {
+    // im lặng, rơi xuống fallback bên dưới
+  }
+
+  // Fallback: tải song song 7 sheet (Promise.all) thay vì tuần tự
+  if (onProgress) onProgress('Đang tải dữ liệu (song song)...', '7 sheet cùng lúc');
+  const results = await Promise.all(DATA_KEYS.map(([, gid]) => fetchSheet(gid)));
+  const fetched = {};
+  DATA_KEYS.forEach(([k], i) => fetched[k] = results[i]);
+  return fetched;
+}
+
 // ============================================================
 // PARSE COUNTRIES
 // Cols: 0=name,1=ISO,2=DHL,3=UPS Saver,4=UPS Exp,5=UPS Freight,
@@ -964,21 +1001,10 @@ async function loadData(forceRefresh=false) {
   dot.className='status-dot loading';
 
   try {
-    const steps=[
-      ['Settings','Setting',GIDS.Setting],
-      ['Countries','Countries',GIDS.Countries],
-      ['Cost DHL','Cost_DHL',GIDS.Cost_DHL],
-      ['Cost UPS Saver','UPS_Saver',GIDS.Cost_UPS_Saver],
-      ['Cost UPS Expedited','UPS_Exp',GIDS.Cost_UPS_Exp],
-      ['Cost FedEx IP','FedEx_IP',GIDS.Cost_FedEx_IP],
-      ['Cost FedEx IE','FedEx_IE',GIDS.Cost_FedEx_IE],
-    ];
-    const fetched={};
-    for (const [label,key,gid] of steps) {
-      loadText.textContent=`Đang tải ${label}...`;
-      loadSub.textContent='gid='+gid;
-      fetched[key]=await fetchSheet(gid);
-    }
+    const fetched = await fetchAllData((text, sub) => {
+      loadText.textContent = text;
+      loadSub.textContent = sub;
+    });
 
     const setting  = parseSetting(fetched.Setting);
     const cd       = parseCountries(fetched.Countries);
