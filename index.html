@@ -859,7 +859,16 @@ function calculate() {
 // CACHE
 // ============================================================
 const CACHE_KEY='multicarrier_cache_v7';
-const CACHE_TTL=60*60*1000;
+function getCacheTTL() {
+  const now = new Date();
+  const nextMonday = new Date(now);
+  const day = now.getDay();
+  const daysUntilMonday = day === 1 ? 7 : (8 - day) % 7;
+  nextMonday.setDate(now.getDate() + daysUntilMonday);
+  nextMonday.setHours(0, 0, 0, 0);
+  return nextMonday - now;
+}
+const CACHE_TTL = getCacheTTL();
 function saveCache(p){try{localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),...p}));}catch(e){}}
 function loadCache(){
   try{
