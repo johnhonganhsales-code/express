@@ -164,7 +164,7 @@
     <div class="status-bar" style="margin-bottom:0">
       <div class="status-dot loading" id="status-dot"></div>
       <span id="status-text">Đang tải...</span>
-      <span class="status-refresh" onclick="localStorage.removeItem(CACHE_KEY); loadData(true)">↺ Cập nhật</span>
+      <span class="status-refresh" onclick="loadData(true)">↺ Cập nhật</span>
     </div>
     <div style="display:none">
       <input type="number" id="fuel-dhl" value="23.5" min="0" max="100" step="0.01">
@@ -340,6 +340,14 @@ const GIDS = {
   Cost_FedEx_IP:    310077437,
   Cost_FedEx_IE:    127919396,
 };
+
+// ============================================================
+// VERSION-BASED CACHE (chỉ tải lại khi Sheet thay đổi)
+// ============================================================
+// Apps Script trả về ?version=1 → giá trị nhỏ, cực nhanh.
+// Nếu version khớp cache → dùng cache ngay, không tải Sheet.
+// Nếu khác → xoá cache cũ, tải toàn bộ, lưu version mới.
+// ============================================================
 
 // ============================================================
 // RUNTIME DATA
@@ -895,13 +903,12 @@ function calculate() {
 }
 
 // ============================================================
-// CACHE
+// CACHE (version-based – không dùng TTL nữa)
 // ============================================================
-const CACHE_KEY='multicarrier_cache_v11';
-const CACHE_TTL=60*60*1000;
+const CACHE_KEY     = 'multicarrier_cache_v12';
+const CACHE_VER_KEY = 'multicarrier_version_v12'; // lưu version đang có trong cache
 
 function serializeForCache(p) {
-  // Convert Set objects to arrays for JSON serialization
   return JSON.parse(JSON.stringify(p, (key, value) =>
     value instanceof Set ? {__type:'Set', values:[...value]} : value
   ));
@@ -911,15 +918,39 @@ function deserializeFromCache(p) {
     (value && value.__type==='Set') ? new Set(value.values) : value
   );
 }
-function saveCache(p){try{localStorage.setItem(CACHE_KEY,JSON.stringify(serializeForCache({ts:Date.now(),...p})));}catch(e){}}
-function loadCache(){
-  try{
-    const raw=localStorage.getItem(CACHE_KEY);
-    if(!raw)return null;
-    const c=deserializeFromCache(JSON.parse(raw));
-    if(Date.now()-c.ts>CACHE_TTL){localStorage.removeItem(CACHE_KEY);return null;}
-    return c;
-  }catch(e){return null;}
+
+function saveCache(p, version) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(serializeForCache({ ts: Date.now(), ...p })));
+    if (version !== undefined) localStorage.setItem(CACHE_VER_KEY, String(version));
+  } catch(e) {}
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return deserializeFromCache(JSON.parse(raw));
+  } catch(e) { return null; }
+}
+
+function getCachedVersion() {
+  return localStorage.getItem(CACHE_VER_KEY) || null;
+}
+
+function clearCache() {
+  localStorage.removeItem(CACHE_KEY);
+  localStorage.removeItem(CACHE_VER_KEY);
+}
+
+// Gọi ?version=1 – chỉ lấy giá trị version, rất nhẹ
+async function fetchVersion() {
+  const res = await fetch(`${PROXY}?version=1&t=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data && data.error) throw new Error(data.error);
+  // Apps Script trả về { version: "202607291015" } hoặc { version: 202607291015 }
+  return String(data.version || '');
 }
 
 // ============================================================
@@ -973,61 +1004,100 @@ function populateCountries() {
 // LOAD DATA
 // ============================================================
 async function loadData(forceRefresh=false) {
-  const overlay=document.getElementById('loading-overlay');
-  const calcBtn=document.getElementById('calc-btn');
-  const dot=document.getElementById('status-dot');
-  const statusTxt=document.getElementById('status-text');
-  const errBanner=document.getElementById('error-banner');
-  const loadText=document.getElementById('loading-text');
-  const loadSub=document.getElementById('loading-sub');
+  const overlay   = document.getElementById('loading-overlay');
+  const calcBtn   = document.getElementById('calc-btn');
+  const dot       = document.getElementById('status-dot');
+  const statusTxt = document.getElementById('status-text');
+  const errBanner = document.getElementById('error-banner');
+  const loadText  = document.getElementById('loading-text');
+  const loadSub   = document.getElementById('loading-sub');
 
   errBanner.classList.remove('show');
 
-  if (!forceRefresh) {
-    const cached=loadCache();
+  // ── BƯỚC 1: Nếu forceRefresh → xoá cache ngay ──────────────
+  if (forceRefresh) clearCache();
+
+  // ── BƯỚC 2: Kiểm tra version (API nhỏ, ~50ms) ──────────────
+  dot.className = 'status-dot loading';
+  statusTxt.textContent = 'Đang kiểm tra phiên bản...';
+
+  let remoteVersion = null;
+  try {
+    loadText.textContent = 'Kiểm tra cập nhật...';
+    loadSub.textContent  = 'Gọi API version';
+    // Chỉ hiện overlay nếu chưa có cache
+    if (!loadCache()) overlay.classList.remove('hidden');
+
+    remoteVersion = await fetchVersion();
+  } catch(e) {
+    // Không lấy được version → thử dùng cache cũ (nếu có), nếu không → báo lỗi
+    const cached = loadCache();
     if (cached) {
       applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE);
-      calcBtn.disabled=false;
-      dot.className='status-dot ok';
-      const ago=Math.round((Date.now()-cached.ts)/60000);
-      statusTxt.textContent=`✅ Cache (${ago} phút trước) · ${Object.keys(cached.cd).length} quốc gia`;
+      calcBtn.disabled = false;
+      dot.className    = 'status-dot ok';
+      const ago = Math.round((Date.now()-cached.ts)/60000);
+      statusTxt.textContent = `⚠️ Offline – dùng cache (${ago} phút trước) · ${Object.keys(cached.cd).length} quốc gia`;
       overlay.classList.add('hidden');
       return;
     }
+    // Không có cache, không có mạng → báo lỗi
+    overlay.classList.add('hidden');
+    dot.className = 'status-dot err';
+    statusTxt.textContent = '❌ Không kết nối được';
+    errBanner.textContent = '⚠️ Không lấy được phiên bản dữ liệu: ' + e.message;
+    errBanner.classList.add('show');
+    return;
   }
 
+  // ── BƯỚC 3: So sánh version với cache ──────────────────────
+  const cachedVersion = getCachedVersion();
+  const cached = loadCache();
+
+  if (!forceRefresh && cached && cachedVersion && cachedVersion === remoteVersion) {
+    // Version giống → dùng cache, không tải Sheet
+    applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE);
+    calcBtn.disabled = false;
+    dot.className    = 'status-dot ok';
+    const ago = Math.round((Date.now()-cached.ts)/60000);
+    statusTxt.textContent = `✅ Cache v${remoteVersion} (${ago} phút trước) · ${Object.keys(cached.cd).length} quốc gia`;
+    overlay.classList.add('hidden');
+    return;
+  }
+
+  // ── BƯỚC 4: Version mới → tải toàn bộ Sheet ───────────────
   overlay.classList.remove('hidden');
-  calcBtn.disabled=true;
-  dot.className='status-dot loading';
+  calcBtn.disabled = true;
+  clearCache(); // xoá cache cũ trước khi tải mới
 
   try {
     const fetched = await fetchAllData((text, sub) => {
       loadText.textContent = text;
-      loadSub.textContent = sub;
+      loadSub.textContent  = sub;
     });
 
-    const setting  = parseSetting(fetched.Setting);
-    const cd       = parseCountries(fetched.Countries);
-    const dhl      = parseCostDHL(fetched.Cost_DHL);
-    const upsSav   = parseCostUPS(fetched.UPS_Saver);
-    const upsExp   = parseCostUPS(fetched.UPS_Exp);
-    const fedexIP  = parseCostFedEx(fetched.FedEx_IP);
-    const fedexIE  = parseCostFedEx(fetched.FedEx_IE);
+    const setting = parseSetting(fetched.Setting);
+    const cd      = parseCountries(fetched.Countries);
+    const dhl     = parseCostDHL(fetched.Cost_DHL);
+    const upsSav  = parseCostUPS(fetched.UPS_Saver);
+    const upsExp  = parseCostUPS(fetched.UPS_Exp);
+    const fedexIP = parseCostFedEx(fetched.FedEx_IP);
+    const fedexIE = parseCostFedEx(fetched.FedEx_IE);
 
     applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE);
-    saveCache({setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE});
+    saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE }, remoteVersion);
 
-    calcBtn.disabled=false;
-    dot.className='status-dot ok';
-    const now=new Date().toLocaleTimeString('vi-VN');
-    statusTxt.textContent=`✅ Cập nhật lúc ${now} · ${Object.keys(cd).length} quốc gia`;
+    calcBtn.disabled = false;
+    dot.className    = 'status-dot ok';
+    const now = new Date().toLocaleTimeString('vi-VN');
+    statusTxt.textContent = `✅ Cập nhật lúc ${now} · v${remoteVersion} · ${Object.keys(cd).length} quốc gia`;
     overlay.classList.add('hidden');
 
   } catch(err) {
     overlay.classList.add('hidden');
-    dot.className='status-dot err';
-    statusTxt.textContent='❌ Lỗi tải dữ liệu';
-    errBanner.textContent='⚠️ Không tải được dữ liệu: '+err.message;
+    dot.className = 'status-dot err';
+    statusTxt.textContent = '❌ Lỗi tải dữ liệu';
+    errBanner.textContent = '⚠️ Không tải được dữ liệu: ' + err.message;
     errBanner.classList.add('show');
     console.error(err);
   }
