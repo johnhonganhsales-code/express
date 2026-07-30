@@ -908,8 +908,8 @@ function calculate() {
 // ============================================================
 // CACHE (version-based – không dùng TTL nữa)
 // ============================================================
-const CACHE_KEY     = 'multicarrier_cache_v12';
-const CACHE_VER_KEY = 'multicarrier_version_v12'; // lưu version đang có trong cache
+const CACHE_KEY     = 'multicarrier_cache_v13';
+const CACHE_VER_KEY = 'multicarrier_version_v13'; // lưu version đang có trong cache
 
 function serializeForCache(p) {
   return JSON.parse(JSON.stringify(p, (key, value) =>
