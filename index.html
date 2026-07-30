@@ -96,23 +96,19 @@
   .reset-btn { width: 100%; padding: 11px; background: transparent; color: var(--gray); border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; margin-top: 4px; }
   .error-banner { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 11px 14px; font-size: 13px; color: #b91c1c; margin-bottom: 14px; display: none; }
   .error-banner.show { display: block; }
-  .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.96); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 14px; }
-  .loading-overlay.hidden { display: none; }
-  .spinner { width: 44px; height: 44px; border: 3px solid var(--border); border-top-color: var(--dark); border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-size: 14px; color: var(--gray); font-weight: 500; }
-  .loading-sub { font-size: 12px; color: #9ca3af; }
+  /* Loading overlay – ẩn hoàn toàn, không dùng nữa */
+  .loading-overlay { display: none !important; }
+  /* Progress bar mỏng ở trên cùng */
+  .progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: #22c55e; width: 0%; z-index: 9999; transition: width 0.3s ease; border-radius: 0 2px 2px 0; box-shadow: 0 0 8px rgba(34,197,94,0.6); }
+  .progress-bar.done { width: 100%; opacity: 0; transition: width 0.3s ease, opacity 0.4s ease 0.2s; }
+  .progress-bar.hidden { display: none; }
   footer { text-align: center; padding: 16px; font-size: 11px; color: #9ca3af; }
   @media (max-width: 480px) { .carrier-total { font-size: 16px; } }
 </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="loading-overlay">
-  <div class="spinner"></div>
-  <div class="loading-text" id="loading-text">Đang tải bảng giá...</div>
-  <div class="loading-sub" id="loading-sub">Kết nối Google Sheets</div>
-</div>
+<div class="progress-bar hidden" id="progress-bar"></div>
 
 <header>
   <div class="header-logos">
@@ -1007,77 +1003,79 @@ function populateCountries() {
 // LOAD DATA
 // ============================================================
 async function loadData(forceRefresh=false) {
-  const overlay   = document.getElementById('loading-overlay');
+  const pb        = document.getElementById('progress-bar');
   const calcBtn   = document.getElementById('calc-btn');
   const dot       = document.getElementById('status-dot');
   const statusTxt = document.getElementById('status-text');
   const errBanner = document.getElementById('error-banner');
-  const loadText  = document.getElementById('loading-text');
-  const loadSub   = document.getElementById('loading-sub');
+
+  // Helper: điều khiển progress bar
+  function pbShow(pct) {
+    pb.classList.remove('hidden', 'done');
+    pb.style.width = pct + '%';
+  }
+  function pbDone() {
+    pb.classList.add('done');
+    setTimeout(() => pb.classList.add('hidden'), 700);
+  }
 
   errBanner.classList.remove('show');
-
-  // ── BƯỚC 1: Nếu forceRefresh → xoá cache ngay ──────────────
   if (forceRefresh) clearCache();
 
-  // ── BƯỚC 2: Kiểm tra version (API nhỏ, ~50ms) ──────────────
+  // ── BƯỚC 1: Load cache ngay → hiện giao diện trước ─────────
+  const cachedFirst = loadCache();
+  if (cachedFirst && !forceRefresh) {
+    applyData(cachedFirst.setting,cachedFirst.cd,cachedFirst.dhl,cachedFirst.upsSav,cachedFirst.upsExp,cachedFirst.fedexIP,cachedFirst.fedexIE);
+    calcBtn.disabled = false;
+    dot.className    = 'status-dot ok';
+    const ago = Math.round((Date.now()-cachedFirst.ts)/60000);
+    statusTxt.textContent = `✅ Cache (${ago} phút trước) · ${Object.keys(cachedFirst.cd).length} quốc gia`;
+  }
+
+  // ── BƯỚC 2: Kiểm tra version ngầm (không block UI) ─────────
   dot.className = 'status-dot loading';
-  statusTxt.textContent = 'Đang kiểm tra phiên bản...';
+  pbShow(15);
 
   let remoteVersion = null;
   try {
-    loadText.textContent = 'Kiểm tra cập nhật...';
-    loadSub.textContent  = 'Gọi API version';
-    // Chỉ hiện overlay nếu chưa có cache
-    if (!loadCache()) overlay.classList.remove('hidden');
-
     remoteVersion = await fetchVersion();
+    pbShow(35);
   } catch(e) {
-    // Không lấy được version → thử dùng cache cũ (nếu có), nếu không → báo lỗi
-    const cached = loadCache();
-    if (cached) {
-      applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE);
-      calcBtn.disabled = false;
-      dot.className    = 'status-dot ok';
-      const ago = Math.round((Date.now()-cached.ts)/60000);
-      statusTxt.textContent = `⚠️ Offline – dùng cache (${ago} phút trước) · ${Object.keys(cached.cd).length} quốc gia`;
-      overlay.classList.add('hidden');
-      return;
+    pbDone();
+    if (cachedFirst) {
+      dot.className = 'status-dot ok';
+      const ago = Math.round((Date.now()-cachedFirst.ts)/60000);
+      statusTxt.textContent = `⚠️ Offline – dùng cache (${ago} phút trước) · ${Object.keys(cachedFirst.cd).length} quốc gia`;
+    } else {
+      dot.className = 'status-dot err';
+      statusTxt.textContent = '❌ Không kết nối được';
+      errBanner.textContent = '⚠️ ' + e.message;
+      errBanner.classList.add('show');
     }
-    // Không có cache, không có mạng → báo lỗi
-    overlay.classList.add('hidden');
-    dot.className = 'status-dot err';
-    statusTxt.textContent = '❌ Không kết nối được';
-    errBanner.textContent = '⚠️ Không lấy được phiên bản dữ liệu: ' + e.message;
-    errBanner.classList.add('show');
     return;
   }
 
-  // ── BƯỚC 3: So sánh version với cache ──────────────────────
+  // ── BƯỚC 3: So sánh version ────────────────────────────────
   const cachedVersion = getCachedVersion();
   const cached = loadCache();
 
   if (!forceRefresh && cached && cachedVersion && cachedVersion === remoteVersion) {
-    // Version giống → dùng cache, không tải Sheet
-    applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE);
-    calcBtn.disabled = false;
-    dot.className    = 'status-dot ok';
+    pbDone();
+    dot.className = 'status-dot ok';
     const ago = Math.round((Date.now()-cached.ts)/60000);
     statusTxt.textContent = `✅ Cache v${remoteVersion} (${ago} phút trước) · ${Object.keys(cached.cd).length} quốc gia`;
-    overlay.classList.add('hidden');
     return;
   }
 
-  // ── BƯỚC 4: Version mới → tải toàn bộ Sheet ───────────────
-  overlay.classList.remove('hidden');
-  calcBtn.disabled = true;
-  clearCache(); // xoá cache cũ trước khi tải mới
+  // ── BƯỚC 4: Version mới → tải lại toàn bộ Sheet ───────────
+  pbShow(50);
+  statusTxt.textContent = '🔄 Đang tải dữ liệu mới...';
+  dot.className = 'status-dot loading';
+  clearCache();
 
   try {
-    const fetched = await fetchAllData((text, sub) => {
-      loadText.textContent = text;
-      loadSub.textContent  = sub;
-    });
+    pbShow(60);
+    const fetched = await fetchAllData(() => { pbShow(80); });
 
     const setting = parseSetting(fetched.Setting);
     const cd      = parseCountries(fetched.Countries);
@@ -1089,15 +1087,16 @@ async function loadData(forceRefresh=false) {
 
     applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE);
     saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE }, remoteVersion);
+    pbShow(100);
+    pbDone();
 
     calcBtn.disabled = false;
     dot.className    = 'status-dot ok';
     const now = new Date().toLocaleTimeString('vi-VN');
     statusTxt.textContent = `✅ Cập nhật lúc ${now} · v${remoteVersion} · ${Object.keys(cd).length} quốc gia`;
-    overlay.classList.add('hidden');
 
   } catch(err) {
-    overlay.classList.add('hidden');
+    pbDone();
     dot.className = 'status-dot err';
     statusTxt.textContent = '❌ Lỗi tải dữ liệu';
     errBanner.textContent = '⚠️ Không tải được dữ liệu: ' + err.message;
