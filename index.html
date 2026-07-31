@@ -146,6 +146,12 @@
       </div>
     </div>
     <div class="zone-badge" id="zone-display" id="zone-display"></div>
+    <div id="vsvx-badge" style="display:none;font-size:12px;color:#166534;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:6px 12px;margin-top:6px;"></div>
+    <div class="field" id="vsvx-field" style="display:none;margin-top:10px;">
+      <label>Thành phố / Mã bưu chính <span style="font-weight:400;color:var(--gray)">(tùy chọn – phụ phí vùng sâu DHL)</span></label>
+      <input type="text" id="vsvx-input" placeholder="Ví dụ: Jalalabad hoặc 2000" oninput="checkVsvxInput()" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;color:var(--dark);background:white;outline:none;transition:border-color 0.15s;">
+      <div id="vsvx-result" style="display:none;font-size:12px;margin-top:6px;padding:6px 10px;border-radius:6px;"></div>
+    </div>
     <div class="field">
       <label>Cân nặng thực (kg)</label>
       <input type="number" id="weight" placeholder="Ví dụ: 2.5" min="0.1" step="0.5">
@@ -502,7 +508,10 @@ function upsZoneLabel(zoneNum, zoneNumMap, countryName) {
     }
   }
   return String(zoneNum).padStart(2,'0');
-}function updateZone() {
+}
+let _lastVsvxCountry = null; // theo dõi nước trước đó để biết khi nào cần reset VSVX
+
+function updateZone() {
   const c = document.getElementById('country').value;
   const zd = document.getElementById('zone-display');
   if (c && countryData[c]) {
@@ -525,7 +534,26 @@ function upsZoneLabel(zoneNum, zoneNumMap, countryName) {
     }
     zd.textContent = '📍 ' + parts.join(' · ');
     zd.classList.add('show');
-  } else zd.classList.remove('show');
+    // Load VSVX ngầm theo ISO + hiện ô nhập nếu nước có DHL
+    const iso = countryData[c] ? countryData[c].iso : null;
+    if (iso) loadVsvx(iso);
+    const hasDHL = countryData[c] && countryData[c].dhl;
+    document.getElementById('vsvx-field').style.display = hasDHL ? 'block' : 'none';
+    // Chỉ reset VSVX khi thực sự đổi nước (không reset khi chỉ đổi chiều xuất/nhập)
+    if (c !== _lastVsvxCountry) {
+      _lastVsvxCountry = c;
+      window._vsvxMatched = false;
+      document.getElementById('vsvx-input').value = '';
+      document.getElementById('vsvx-result').style.display = 'none';
+      document.getElementById('vsvx-input').style.borderColor = '';
+    }
+  } else {
+    zd.classList.remove('show');
+    document.getElementById('vsvx-badge').style.display = 'none';
+    document.getElementById('vsvx-field').style.display = 'none';
+    window._vsvxMatched = false;
+    _lastVsvxCountry = null;
+  }
 }
 
 // ============================================================
@@ -1108,7 +1136,8 @@ function parseOtherCharges(rows) {
     if (dtl.includes('non') || dtl.includes('package')) docTypeNorm = 'non-document';
     else if (dtl.includes('document') || dtl.includes('doc')) docTypeNorm = 'document';
 
-    charges.push({ name, carrier, docType: docTypeNorm, flat, condition, note, isoList });
+    const perKgExport = num(row[9]); // J: per_kg_export (dùng cho dhl_vsvx)
+    charges.push({ name, carrier, docType: docTypeNorm, flat, condition, note, isoList, perKgExport });
   }
 
   console.log('[OC] charges:', charges.length, '| demand carriers:', Object.keys(demand).map(k=>k+':'+demand[k].length));
@@ -1254,7 +1283,7 @@ function getFedExRate(weight, zoneLetter, ratesObj, perKgKeys) {
 // ============================================================
 // RENDER ONE CARRIER
 // ============================================================
-function renderCarrier(id, base, fuel, fuelPct, demand, demandPct, vat, vatPct, meta, otherCharges=[]) {
+function renderCarrier(id, base, fuel, fuelPct, demand, demandPct, vat, vatPct, meta, otherCharges=[], billableWeight=0) {
   const card = document.getElementById('card-' + id);
   if (base<=0) {
     if (card) card.style.display = 'none';
@@ -1262,12 +1291,17 @@ function renderCarrier(id, base, fuel, fuelPct, demand, demandPct, vat, vatPct, 
   }
   if (card) card.style.display = '';
 
-  // Other charges: each flat × (1 + FSC%) × (1 + VAT%)
+  // Other charges: flat × (1 + FSC%) × (1 + VAT%)
+  // Riêng dhl_vsvx: tính max(flat, perKgExport × weight) trước khi nhân FSC/VAT
   let otherTotal = 0;
   const ocDetail = otherCharges.map(ch => {
-    const total = ch.flat * (1 + fuelPct/100) * (1 + vatPct/100);
+    let base_flat = ch.flat;
+    if ((ch.condition === 'dhl_vsvx' || ch.condition === 'dhlsin_vsvx') && ch.perKgExport > 0 && billableWeight > 0) {
+      base_flat = Math.max(ch.flat, ch.perKgExport * billableWeight);
+    }
+    const total = base_flat * (1 + fuelPct/100) * (1 + vatPct/100);
     otherTotal += total;
-    return { name: ch.name, flat: ch.flat, total };
+    return { name: ch.name, flat: base_flat, total };
   });
 
   // demand đã bao gồm fuel (demandWithFuel). VAT tính trên toàn bộ (base+fuel+demand).
@@ -1429,6 +1463,8 @@ function evalCondition(cond, carrier, weight, dims, country, type, isoList=[], a
     case 'dhlsin_highrisk':       return isoMatch();
     // DHL SIN: điểm đến vùng hạn chế (dùng ISO list từ col H)
     case 'dhlsin_restricted':     return isoMatch();
+    case 'dhl_vsvx':              return window._vsvxMatched === true;
+    case 'dhlsin_vsvx':           return window._vsvxMatched === true;
     default:                      return false;
   }
 }
@@ -1456,6 +1492,8 @@ const CHARGE_GROUP = {
   'dhl_highrisk':'risk','dhl_restricted':'restricted',
   'dhlsin_highrisk':'risk','dhlsin_restricted':'restricted',
   'residential_us':'residential',
+  'dhl_vsvx':'vsvx',
+  'dhlsin_vsvx':'vsvx',
 };
 
 // Conditions chỉ áp dụng khi KHÔNG phải freight
@@ -1552,7 +1590,7 @@ function calculate() {
   const { amt: dhlDemand, perKg: dhlDemandPerKg } = calcDemand('DHL', fuelDHL);
   const dhlOC=getOtherCharges('DHL',roundedWeight,dims,country,effectiveType,false,wt);
   renderCarrier('dhl',dhlBase,dhlFuel,fuelDHL,dhlDemand,dhlDemandPerKg,0,vatPct,
-    {zone:`DHL Vùng ${zones.dhl||'N/A'}`,weight:`${roundedWeight} kg`,type:typeLabel},dhlOC);
+    {zone:`DHL Vùng ${zones.dhl||'N/A'}`,weight:`${roundedWeight} kg`,type:typeLabel},dhlOC,roundedWeight);
 
   // DHL SIN — chỉ hiện khi hàng xuất (chưa có bảng giá nhập)
   const dhlsinZone = zones.dhlsin;
@@ -1958,6 +1996,149 @@ function reset() {
   });
   setType('document');
   setDirection('export');
+  window._vsvxMatched = false;
+  const vi = document.getElementById('vsvx-input'); if (vi) vi.value = '';
+  const vr = document.getElementById('vsvx-result'); if (vr) vr.style.display = 'none';
+  const vf = document.getElementById('vsvx-field'); if (vf) vf.style.display = 'none';
+}
+
+// ============================================================
+// VSVX – Lọc địa chỉ DHL theo ISO (cache vào localStorage)
+// ============================================================
+// _vsvxMatched: true nếu city/postcode user nhập nằm trong danh sách VSVX
+window._vsvxMatched = false;
+
+function checkVsvxInput() {
+  const val = (document.getElementById('vsvx-input').value || '').trim();
+  const resultEl = document.getElementById('vsvx-result');
+  const inputEl  = document.getElementById('vsvx-input');
+
+  if (!val) {
+    window._vsvxMatched = false;
+    resultEl.style.display = 'none';
+    inputEl.style.borderColor = '';
+    return;
+  }
+
+  // Lấy ISO của nước đang chọn
+  const country = document.getElementById('country').value;
+  const iso = (countryData[country] && countryData[country].iso) ? countryData[country].iso : null;
+  if (!iso) return;
+
+  const data = vsvxMemCache[iso];
+  if (!data) {
+    // Chưa load xong → chờ load rồi recheck
+    resultEl.textContent = '⏳ Đang kiểm tra...';
+    resultEl.style.background = '#f3f4f6';
+    resultEl.style.border = '1px solid #d1d5db';
+    resultEl.style.color = '#6b7280';
+    resultEl.style.display = 'block';
+    loadVsvx(iso).then(() => checkVsvxInput());
+    return;
+  }
+
+  // Normalize: bỏ dấu gạch ngang và khoảng trắng để so sánh
+  // VD: user gõ "2890313" khớp data "289-0313"
+  //     user gõ "V1J1T1"  khớp data "V1J 1T1"
+  //     user gõ "2250314" khớp data "2250-314"
+  const normalize = s => String(s).replace(/[-\s]/g, '').toLowerCase();
+  const valNorm = normalize(val);
+  const q = val.toLowerCase();
+  let matched = false;
+
+  // Kiểm tra postcode theo ranges (chỉ thuần số sau normalize)
+  if (/^\d+$/.test(valNorm) && data.ranges && data.ranges.length) {
+    const valNum = parseInt(valNorm, 10);
+    matched = data.ranges.some(r => {
+      const fromNum = parseInt(normalize(r.from), 10);
+      const toNum   = parseInt(normalize(r.to),   10);
+      return valNum >= fromNum && valNum <= toNum;
+    });
+  }
+
+  // Kiểm tra postcode / city trong danh sách cities
+  if (!matched && data.cities && data.cities.length) {
+    matched = data.cities.some(c => {
+      const cNorm = normalize(c);
+      // Exact match sau normalize — bắt buộc gõ liền (VD: V1J1T1, 2890313)
+      if (cNorm === valNorm) return true;
+      // Fallback tên thành phố (chỉ khi val trông như tên chữ, không phải postcode)
+      if (!/^[a-z0-9]+$/.test(valNorm)) {
+        const cLow = c.toLowerCase();
+        return cLow === q || cLow.includes(q) || q.includes(cLow);
+      }
+      return false;
+    });
+  }
+
+  window._vsvxMatched = matched;
+
+  if (matched) {
+    resultEl.textContent = '⚠️ Địa chỉ vùng sâu vùng xa – sẽ tính phụ phí DHL';
+    resultEl.style.background = '#fef9c3';
+    resultEl.style.border = '1px solid #fde047';
+    resultEl.style.color = '#854d0e';
+    inputEl.style.borderColor = '#f59e0b';
+  } else {
+    resultEl.textContent = '✅ Địa chỉ bình thường – không tính phụ phí';
+    resultEl.style.background = '#f0fdf4';
+    resultEl.style.border = '1px solid #86efac';
+    resultEl.style.color = '#166534';
+    inputEl.style.borderColor = '#22c55e';
+  }
+  resultEl.style.display = 'block';
+}
+const vsvxMemCache = {}; // session cache, tránh gọi localStorage nhiều lần
+
+async function loadVsvx(iso) {
+  if (!iso) return;
+  const badge = document.getElementById('vsvx-badge');
+
+  // 1. Đã có trong memory session → dùng luôn
+  if (vsvxMemCache[iso] !== undefined) {
+    renderVsvxBadge(iso, vsvxMemCache[iso]);
+    return;
+  }
+
+  // 2. Thử localStorage
+  try {
+    const saved = localStorage.getItem('vsvx_' + iso);
+    if (saved) {
+      vsvxMemCache[iso] = JSON.parse(saved);
+      renderVsvxBadge(iso, vsvxMemCache[iso]);
+      return;
+    }
+  } catch(e) {}
+
+  // 3. Gọi server (lần đầu tiên cho ISO này)
+  badge.textContent = '⏳ Đang kiểm tra vùng phủ DHL...';
+  badge.style.display = 'block';
+  try {
+    const res = await fetch(`${PROXY}?vsvx=${iso}&t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data && data.error) throw new Error(data.error);
+    vsvxMemCache[iso] = data;
+    try { localStorage.setItem('vsvx_' + iso, JSON.stringify(data)); } catch(e) {}
+    renderVsvxBadge(iso, data);
+  } catch(e) {
+    badge.style.display = 'none'; // ẩn nếu lỗi, không làm phiền user
+  }
+}
+
+function renderVsvxBadge(iso, data) {
+  const badge = document.getElementById('vsvx-badge');
+  if (!data || (!data.cities?.length && !data.ranges?.length)) {
+    badge.style.display = 'none';
+    return;
+  }
+  const cities = data.cities?.length || 0;
+  const ranges = data.ranges?.length || 0;
+  const parts = [];
+  if (cities) parts.push(`${cities} thành phố`);
+  if (ranges) parts.push(`${ranges} vùng bưu chính`);
+  badge.textContent = `📋 DHL hỗ trợ ${parts.join(' · ')} tại ${iso}`;
+  badge.style.display = 'block';
 }
 
 loadData();
