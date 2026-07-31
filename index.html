@@ -536,7 +536,6 @@ function updateZone() {
     zd.classList.add('show');
     // Load VSVX ngầm theo ISO + hiện ô nhập nếu nước có DHL
     const iso = countryData[c] ? countryData[c].iso : null;
-    console.log('[VSVX] updateZone iso=', iso, 'countryData entry=', countryData[c]);
     if (iso) loadVsvx(iso);
     const hasDHL = countryData[c] && countryData[c].dhl;
     document.getElementById('vsvx-field').style.display = hasDHL ? 'block' : 'none';
@@ -2095,7 +2094,6 @@ const vsvxMemCache = {}; // session cache, tránh gọi localStorage nhiều l�
 
 async function loadVsvx(iso) {
   if (!iso) return;
-  console.log('[VSVX] loadVsvx called, iso=', iso);
   const badge = document.getElementById('vsvx-badge');
 
   // 1. Đã có trong memory session → dùng luôn
@@ -2104,16 +2102,22 @@ async function loadVsvx(iso) {
     return;
   }
 
-  // 2. Thử localStorage
+  // 2. Thử localStorage — validate trước khi dùng
   try {
     const saved = localStorage.getItem('vsvx_' + iso);
-    console.log('[VSVX] localStorage vsvx_' + iso + '=', saved ? '(có data, ' + saved.length + ' chars)' : 'null');
     if (saved) {
-      vsvxMemCache[iso] = JSON.parse(saved);
-      renderVsvxBadge(iso, vsvxMemCache[iso]);
-      return;
+      const parsed = JSON.parse(saved);
+      const valid = (parsed.cities && parsed.cities.length > 0) || (parsed.ranges && parsed.ranges.length > 0);
+      if (valid) {
+        vsvxMemCache[iso] = parsed;
+        renderVsvxBadge(iso, parsed);
+        return;
+      } else {
+        // Data rác → xóa để fetch lại
+        localStorage.removeItem('vsvx_' + iso);
+      }
     }
-  } catch(e) { console.warn('[VSVX] localStorage error', e); }
+  } catch(e) { localStorage.removeItem('vsvx_' + iso); }
 
   // 3. Gọi server (lần đầu tiên cho ISO này)
   badge.textContent = '⏳ Đang kiểm tra vùng phủ DHL...';
@@ -2126,12 +2130,11 @@ async function loadVsvx(iso) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (data && data.error) throw new Error(data.error);
-    console.log('[VSVX] fetch OK, cities=' + (data.cities||[]).length + ' ranges=' + (data.ranges||[]).length);
     vsvxMemCache[iso] = data;
     try { localStorage.setItem('vsvx_' + iso, JSON.stringify(data)); } catch(e) {}
     renderVsvxBadge(iso, data);
   } catch(e) {
-    console.error('[VSVX] Lỗi load', iso, e.message, e);
+    console.warn('[VSVX] Lỗi load', iso, e.message);
     // Thử lại không có cache-buster (phòng GAS redirect strip params)
     try {
       const res2 = await fetch(`${PROXY}?vsvx=${iso}`, { redirect: 'follow' });
@@ -2142,7 +2145,7 @@ async function loadVsvx(iso) {
       try { localStorage.setItem('vsvx_' + iso, JSON.stringify(data2)); } catch(e2) {}
       renderVsvxBadge(iso, data2);
     } catch(e2) {
-      console.error('[VSVX] Retry thất bại', iso, e2.message, e2);
+      console.warn('[VSVX] Retry thất bại', iso, e2.message);
       badge.textContent = '⚠️ Không tải được danh sách vùng phủ DHL';
       badge.style.background = '#fef9c3';
       badge.style.border = '1px solid #fde047';
