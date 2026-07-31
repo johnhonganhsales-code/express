@@ -1862,6 +1862,8 @@ function populateCountries() {
     opt.value=c; opt.textContent=c;
     sel.appendChild(opt);
   });
+  // Sau khi data load xong, cập nhật zone + load VSVX cho nước đang chọn
+  updateZone();
 }
 
 // ============================================================
