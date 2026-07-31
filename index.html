@@ -183,8 +183,8 @@
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">
-    <button class="calc-btn" id="calc-btn" onclick="calculate()" disabled>📤 Hàng xuất →</button>
-    <button class="calc-btn" id="import-btn" style="background:#374151;opacity:0.5;cursor:not-allowed" disabled title="Tính năng đang phát triển">📥 Hàng nhập</button>
+    <button class="calc-btn" id="calc-btn" onclick="setDirection('export');calculate()" disabled>📤 Hàng xuất →</button>
+    <button class="calc-btn" id="import-btn" style="background:#374151;opacity:0.6;cursor:pointer" disabled onclick="setDirection('import');calculate()">📥 Hàng nhập</button>
   </div>
 
   <div class="results-section" id="results-section">
@@ -392,6 +392,11 @@ const GIDS = {
   Other_Charges:    1167824324,
   UPS_Freight_Exp:  2017156335,
   Cost_DHLSIN:      602095630,
+  UPS_Saver_Imp:    1805636746,
+  UPS_Exp_Imp:      1326309191,
+  UPS_Freight_Imp:  314852818,
+  FedEx_IP_Imp:     823881690,
+  FedEx_IE_Imp:     949561842,
 };
 
 // ============================================================
@@ -413,12 +418,18 @@ let dhlDocRates   = {}, dhlNonDocRates = {}, dhlMultRates = {};
 let dhlsinDocRates = {}, dhlsinNonDocRates = {}, dhlsinMultRates = {};
 // DHLSIN zone -> column index mapping
 // Zone1=1,Zone2=2,Zone3=4,Zone4=6,Zone5=7,Zone6=8,Zone7=10,Zone8A=11,Zone8B=12,Zone9=13,Zone10=14,Zone11=15,Zone12=16
-const DHLSIN_ZONE_COL = {1:1,2:2,3:4,4:6,5:7,6:8,7:10,'8A':11,'8B':12,9:13,10:14,11:15,12:16,'BN':3,'PK':5};
+const DHLSIN_ZONE_COL = {1:1,2:2,3:4,4:6,5:7,6:8,7:10,'8A':11,'8B':12,9:13,10:14,11:15,12:16,'BN':3,'PK':5,'EU1':8,'EU2':9,'MY':1};
 let upsSaverDoc   = {}, upsSaverNonDoc = {}, upsSaverSpecialDoc={}, upsSaverSpecialNonDoc={}, upsSaverZoneNumMap={}, upsSaverPerKgKeys=[];
 let upsExpDoc     = {}, upsExpNonDoc   = {}, upsExpSpecialDoc={}, upsExpSpecialNonDoc={}, upsExpZoneNumMap={}, upsExpPerKgKeys=[];
 let upsFreightExpDoc  = {}, upsFreightExpNonDoc = {}, upsFreightExpSpecialDoc={}, upsFreightExpSpecialNonDoc={}, upsFreightExpZoneNumMap={}, upsFreightExpPerKgKeys=[];
+let upsSaverImpDoc={}, upsSaverImpNonDoc={}, upsSaverImpSpecialDoc={}, upsSaverImpSpecialNonDoc={}, upsSaverImpZoneNumMap={}, upsSaverImpPerKgKeys=[];
+let upsExpImpDoc={}, upsExpImpNonDoc={}, upsExpImpSpecialDoc={}, upsExpImpSpecialNonDoc={}, upsExpImpZoneNumMap={}, upsExpImpPerKgKeys=[];
+let upsFreightImpDoc={}, upsFreightImpNonDoc={}, upsFreightImpSpecialDoc={}, upsFreightImpSpecialNonDoc={}, upsFreightImpZoneNumMap={}, upsFreightImpPerKgKeys=[];
+let currentDirection = 'export'; // 'export' | 'import'
 let fedexIPRates  = {}, fedexIERates   = {};
 let fedexIPPerKgKeys = [], fedexIEPerKgKeys = [];
+let fedexIPImpRates = {}, fedexIEImpRates = {};
+let fedexIPImpPerKgKeys = [], fedexIEImpPerKgKeys = [];
 // FedEx zone letter → col index in rate array
 const FEDEX_ZONES = ['A','B','C','D','E','F','G','H','K','M','P','O','Q','R','S','T','U','V','W','X','Y','Z'];
 let currentType = 'document';
@@ -460,16 +471,58 @@ function setType(t) {
   document.getElementById('btn-nondoc').classList.toggle('active', t==='non-document');
 }
 
-function updateZone() {
+function setDirection(dir) {
+  currentDirection = dir;
+  const isImp = dir === 'import';
+  document.getElementById('calc-btn').classList.toggle('active-dir', !isImp);
+  document.getElementById('import-btn').classList.toggle('active-dir', isImp);
+  document.getElementById('calc-btn').style.background = isImp ? '#374151' : '#1a1a1a';
+  document.getElementById('calc-btn').style.opacity = isImp ? '0.6' : '1';
+  document.getElementById('import-btn').style.background = isImp ? '#1a1a1a' : '#374151';
+  document.getElementById('import-btn').style.opacity = isImp ? '1' : '0.6';
+  updateZone(); // cập nhật zone display khi đổi chiều
+}
+
+
+// Helper: lấy tên zone UPS thân thiện, ưu tiên tên nước cho special col
+function upsZoneLabel(zoneNum, zoneNumMap, countryName) {
+  if (!zoneNum) return 'N/A';
+  if (zoneNum > 10 && zoneNumMap && zoneNumMap[zoneNum]) {
+    return zoneNumMap[zoneNum].replace(/\b\w/g, c => c.toUpperCase());
+  }
+  // Kiem tra neu nuoc nay co special col trung ten (zone <= 10 nhung van la special)
+  if (zoneNumMap && countryName) {
+    const cs = countryName.toLowerCase().replace(/\s*\([^)]*\)/g,'').trim();
+    for (const [num, key] of Object.entries(zoneNumMap)) {
+      if (parseInt(num) !== zoneNum) continue;
+      if (cs === key || cs.startsWith(key) || key.startsWith(cs) ||
+          key.split(',').some(p => cs.startsWith(p.trim()) || p.trim().startsWith(cs))) {
+        return key.replace(/\b\w/g, c => c.toUpperCase());
+      }
+    }
+  }
+  return String(zoneNum).padStart(2,'0');
+}function updateZone() {
   const c = document.getElementById('country').value;
   const zd = document.getElementById('zone-display');
   if (c && countryData[c]) {
     const d = countryData[c];
     let parts = [];
     if (d.dhl)     parts.push(`DHL: Vùng ${d.dhl}`);
-    if (d.dhlsin)  parts.push(`DHL SIN: Zone ${d.dhlsin}${d.iso==='BN'?' (BN)':d.iso==='PK'?' (PK)':''}`);;
+    if (d.dhlsin || d.iso==='PK') {
+      const sinLabel = d.iso==='BN' ? 'BN (đặc biệt)'
+        : d.iso==='PK' ? 'PK (đặc biệt)'
+        : d.iso==='MY' ? 'Zone 1 (MY)'
+        : (d.dhlsin==='EU1'||d.dhlsin==='EU2') ? d.dhlsin
+        : `Zone ${d.dhlsin}`;
+      parts.push(`DHL SIN: ${sinLabel}`);
+    };
     if (d.fedexIP) parts.push(`FedEx: Zone ${d.fedexIP}`);
-    if (d.upsSaver) parts.push(`UPS Saver: Zone ${d.upsSaver}`);
+    const upsZoneNum = (currentDirection === 'import' && d.upsSaverImp) ? d.upsSaverImp : d.upsSaver;
+    if (upsZoneNum) {
+      const zoneMap = currentDirection === 'import' ? upsSaverImpZoneNumMap : upsSaverZoneNumMap;
+      parts.push(`UPS: Zone ${upsZoneLabel(upsZoneNum, zoneMap, c)}`);
+    }
     zd.textContent = '📍 ' + parts.join(' · ');
     zd.classList.add('show');
   } else zd.classList.remove('show');
@@ -499,6 +552,11 @@ const DATA_KEYS = [
   ['Other_Charges',   GIDS.Other_Charges],
   ['UPS_Freight_Exp', GIDS.UPS_Freight_Exp],
   ['Cost_DHLSIN',     GIDS.Cost_DHLSIN],
+  ['UPS_Saver_Imp',   GIDS.UPS_Saver_Imp],
+  ['UPS_Exp_Imp',     GIDS.UPS_Exp_Imp],
+  ['UPS_Freight_Imp', GIDS.UPS_Freight_Imp],
+  ['FedEx_IP_Imp',    GIDS.FedEx_IP_Imp],
+  ['FedEx_IE_Imp',    GIDS.FedEx_IE_Imp],
 ];
 
 // Tải toàn bộ dữ liệu nhanh nhất có thể:
@@ -580,7 +638,10 @@ function parseCountries(rows) {
     const dhl        = parseInt(row[2]);
     const upsSav     = parseInt(row[3]);
     const upsExp     = parseInt(row[4]);
-    const upsFreight = parseInt(row[5]);  // col F = UPS Freight zone
+    const upsFreight    = parseInt(row[5]);  // col F = UPS Freight Export zone
+    const upsSaverImpZ  = parseInt(row[6]);  // col G = UPS Saver Import zone
+    const upsExpImpZ    = parseInt(row[7]);  // col H = UPS Exp Import zone
+    const upsFreightImpZ= parseInt(row[8]);  // col I = UPS Freight Import zone
     const fedexIP    = String(row[9]||'').trim().toUpperCase();
     const fedexIE    = String(row[10]||'').trim().toUpperCase();
     const fedexIPF   = String(row[11]||'').trim().toUpperCase();  // col L = FedEx IPF zone
@@ -589,18 +650,25 @@ function parseCountries(rows) {
     const dhlsinRaw  = String(row[dhlsinColIdx]||'').trim().toUpperCase();
     const dhlsinZone = (() => {
       if (!dhlsinRaw || dhlsinRaw==='0' || dhlsinRaw==='N/A') return null;
+      // Kiểm tra các giá trị đặc biệt TRƯỚC parseInt để tránh "8B" → 8, "EU1" → NaN v.v.
+      if (dhlsinRaw==='8A' || dhlsinRaw==='8B') return dhlsinRaw; // 8A/8B (phải check trước parseInt!)
+      if (dhlsinRaw==='EU1' || dhlsinRaw==='EU2') return dhlsinRaw; // EU zones
+      if (dhlsinRaw==='BN') return 'BN';                      // Brunei special col
+      if (dhlsinRaw==='MY') return 'MY';                      // Malaysia = Zone1 col
       const n = parseInt(dhlsinRaw);
-      if (!isNaN(n) && n>=1) return n;           // zone số (1-12)
-      if (dhlsinRaw==='8A' || dhlsinRaw==='8B') return dhlsinRaw; // 8A/8B
+      if (!isNaN(n) && n>=1) return n;                        // zone số thuần (1-12)
       return null;
     })();
     // ISO của quốc gia dùng để tra cột đặc biệt BN/PK
     result[name] = {
       iso,
-      dhl:        (!isNaN(dhl)        && dhl>=1 && dhl<=10) ? dhl        : null,
-      upsSaver:   (!isNaN(upsSav)     && upsSav>=1)          ? upsSav     : null,
-      upsExp:     (!isNaN(upsExp)     && upsExp>=1)          ? upsExp     : null,
-      upsFreight: (!isNaN(upsFreight) && upsFreight>=1)      ? upsFreight : null,
+      dhl:          (!isNaN(dhl)          && dhl>=1 && dhl<=10) ? dhl          : null,
+      upsSaver:     (!isNaN(upsSav)       && upsSav>=1)        ? upsSav       : null,
+      upsExp:       (!isNaN(upsExp)       && upsExp>=1)        ? upsExp       : null,
+      upsFreight:   (!isNaN(upsFreight)   && upsFreight>=1)    ? upsFreight   : null,
+      upsSaverImp:  (!isNaN(upsSaverImpZ) && upsSaverImpZ>=1)  ? upsSaverImpZ : null,
+      upsExpImp:    (!isNaN(upsExpImpZ)   && upsExpImpZ>=1)    ? upsExpImpZ   : null,
+      upsFreightImp:(!isNaN(upsFreightImpZ)&& upsFreightImpZ>=1)? upsFreightImpZ: null,
       fedexIP:  (fedexIP  && fedexIP!='0')  ? fedexIP  : null,
       fedexIE:  (fedexIE  && fedexIE!='0')  ? fedexIE  : null,
       fedexIPF: (fedexIPF && fedexIPF!='0') ? fedexIPF : null,
@@ -712,10 +780,12 @@ function parseCostDHLSIN(rows) {
 // Ngược lại dùng zone number -> col index
 function getDHLSINRate(weight, zone, countryISO) {
   // Xác định column index
+  // ISO override: BN và PK luôn dùng cột đặc biệt (Countries có thể ghi 'BN'/'PK' hoặc null)
+  // MY được xử lý qua zone='MY' → DHLSIN_ZONE_COL['MY']=1
   let colIdx;
-  if (countryISO === 'BN') colIdx = 3;      // Brunei: cột đặc biệt
-  else if (countryISO === 'PK') colIdx = 5;  // Pakistan: cột đặc biệt
-  else colIdx = DHLSIN_ZONE_COL[zone] || null;
+  if (countryISO === 'BN') colIdx = 3;       // Brunei: cột đặc biệt (array idx 2)
+  else if (countryISO === 'PK') colIdx = 5;  // Pakistan: cột đặc biệt (array idx 4)
+  else colIdx = DHLSIN_ZONE_COL[zone] ?? null;
 
   if (colIdx === null || colIdx === undefined) return 0;
 
@@ -810,15 +880,15 @@ function parseCostUPS(rows) {
     // Normalize dashes (en/em) for robust matching
     const c0lN = c0l.replace(/[–—]/g, '-');
     // "freight" rows (UPS Freight sheet) → treat as nondoc section
-    if (c0lN.includes('freight')) { section='nondoc'; specialCols=[]; continue; }
+    if (c0lN.includes('freight')) { section='nondoc'; specialCols=[]; console.log('[UPS PARSE] section=nondoc (freight) at row',i,'c0=',c0); continue; }
     if (
       (c0lN.includes('document') && !c0lN.includes('non') && !c0lN.includes('package')) ||
       c0lN.includes('- document')
-    ) { section='doc'; specialCols=[]; continue; }
+    ) { section='doc'; specialCols=[]; console.log('[UPS PARSE] section=doc at row',i,'c0=',c0); continue; }
     if (
       c0lN.includes('package') || c0lN.includes('non-doc') || c0lN.includes('nondoc') ||
       c0lN.includes('- package') || c0lN.includes('non-document')
-    ) { section='nondoc'; specialCols=[]; continue; }
+    ) { section='nondoc'; specialCols=[]; console.log('[UPS PARSE] section=nondoc at row',i,'c0=',c0); continue; }
     // Header row: "KG" with special cols
     if (c0l==='kg'||c0l==='kg (kg)') {
       specialCols=[];
@@ -1094,7 +1164,10 @@ function getUPSRate(weight, zoneNum, docTable, nonDocTable, specialDoc, specialN
   if (!zoneNum) return 0;
   // Nếu specialDoc rỗng (sheet không có section Document) → KHÔNG dùng specialNonDoc khi type=document
   const hasSpecialDoc = Object.keys(specialDoc).length > 0;
-  const spTable = (currentType==='document' && hasSpecialDoc) ? specialDoc : (currentType==='document' ? null : specialNonDoc);
+  // Nếu không có specialDoc nhưng có specialNonDoc → dùng specialNonDoc cho cả document
+  // (một số sheet import chỉ có 1 bảng chung cho cả doc/nondoc)
+  const spTable = (currentType==='document' && hasSpecialDoc) ? specialDoc
+    : (Object.keys(specialNonDoc).length > 0 ? specialNonDoc : null);
   const applyWeight = (unitPrice, key) => ((perKgKeys && perKgKeys.includes(key)) || (weight >= 21 && key >= 21) ? unitPrice * weight : unitPrice);
 
   // Lookup trong một sub-table {wt->price}
@@ -1110,16 +1183,13 @@ function getUPSRate(weight, zoneNum, docTable, nonDocTable, specialDoc, specialN
     return applyWeight(price, k);
   };
 
-  // 1) Ưu tiên: tìm special col theo zoneNum
-  if (zoneNumMap && zoneNumMap[zoneNum] && spTable) {
-    const result = lookupSub(spTable[zoneNumMap[zoneNum]]);
-    if (result !== null) return result;
-  }
-
-  // 2) Fallback: tìm special col theo tên nước
+  // 1) Ưu tiên: tìm special col theo tên nước (chính xác nhất, tránh nhầm zoneNumMap)
   if (countryName && spTable) {
     const variants = countryVariants(countryName);
-    for (const variant of variants) {
+    // Thêm variant đã strip phần (CODE) vd: "China South (CN-S)" -> "china south"
+    const stripped = countryName.toLowerCase().replace(/\s*\([^)]*\)/g,'').trim();
+    const allVariants = new Set([...variants, stripped]);
+    for (const variant of allVariants) {
       for (const [k, v] of Object.entries(spTable)) {
         if (variant === k || k.split(',').some(part => part.trim() === variant.trim())) {
           const result = lookupSub(v);
@@ -1127,6 +1197,26 @@ function getUPSRate(weight, zoneNum, docTable, nonDocTable, specialDoc, specialN
         }
       }
     }
+  }
+
+  // 2) Zone > 10: bắt buộc nằm trong special col (zone array chỉ có 01-10)
+  if (zoneNum > 10 && spTable) {
+    // Nếu sheet không có section Document → ẩn khi người dùng chọn Document
+    const hasSpecialDocSection = Object.keys(specialDoc).length > 0;
+    if (currentType === 'document' && !hasSpecialDocSection) return 0;
+    // Thử các dạng key: "zone 11", "11", hoặc tra zoneNumMap
+    const candidates = [
+      `zone ${zoneNum}`,
+      String(zoneNum),
+      zoneNumMap && zoneNumMap[zoneNum] ? zoneNumMap[zoneNum] : null,
+    ].filter(Boolean);
+    for (const spKey of candidates) {
+      if (spTable[spKey]) {
+        const result = lookupSub(spTable[spKey]);
+        if (result !== null) return result;
+      }
+    }
+    return 0;
   }
 
   // 3) Fallback cuối: zone number array (Zone 01-10)
@@ -1219,13 +1309,21 @@ function renderCarrier(id, base, fuel, fuelPct, demand, demandPct, vat, vatPct, 
         providerVal = entries;
       } else {
         const typeStr = currentType === 'document' ? 'document' : 'non-document';
-        // 1) Khớp cả docType lẫn direction export
+        const dirStr  = currentDirection === 'import' ? 'import' : 'export';
+        // Helper: khớp docType chính xác (tránh 'non-document' match 'document')
+        const docTypeMatch = (docType) => {
+          const dt = docType.toLowerCase();
+          if (dt.includes('tất cả') || dt === 'all') return true;
+          if (currentType === 'document') return dt === 'document' || (dt.includes('document') && !dt.includes('non'));
+          return dt.includes('non') || dt.includes('package');
+        };
+        // 1) Khớp cả docType lẫn direction
         let match = entries.find(e =>
-          (e.docType.includes(typeStr) || e.docType.includes('tất cả')) &&
-          (e.direction.includes('export') || e.direction.includes('tất cả'))
+          docTypeMatch(e.docType) &&
+          (e.direction.includes(dirStr) || e.direction.includes('tất cả'))
         );
-        // 2) Fallback: chỉ khớp direction export
-        if (!match) match = entries.find(e => e.direction.includes('export') || e.direction.includes('tất cả'));
+        // 2) Fallback: chỉ khớp direction
+        if (!match) match = entries.find(e => e.direction.includes(dirStr) || e.direction.includes('tất cả'));
         // 3) Fallback cuối: lấy phần tử đầu tiên
         if (!match) match = entries[0];
         if (match) providerVal = match.val;
@@ -1323,6 +1421,14 @@ function evalCondition(cond, carrier, weight, dims, country, type, isoList=[], a
     case 'fedex_os4':             return longest > 157;
     // DHL SIN: phí quá tải riêng khi cân tính cước > 24kg
     case 'dhlsin_overweight':     return aw > 24;
+    // DHL SIN: hàng quá khổ (canh dài nhất >=100cm hoặc canh thứ 2 >=80cm)
+    case 'dhlsin_oversize':       return longest >= 100 || mid >= 80;
+    // DHL SIN: cân >=70kg (dùng cân thực tế)
+    case 'dhlsin_weight_70':      return aw >= 70;
+    // DHL SIN: rủi ro cao (dùng ISO list từ col H)
+    case 'dhlsin_highrisk':       return isoMatch();
+    // DHL SIN: điểm đến vùng hạn chế (dùng ISO list từ col H)
+    case 'dhlsin_restricted':     return isoMatch();
     default:                      return false;
   }
 }
@@ -1345,8 +1451,10 @@ const CHARGE_GROUP = {
   'dhl_oversize':'size',
   'ups_oversize1':'size','ups_oversize2':'size','ups_oversize3':'size',
   'fedex_os1':'size','fedex_os2':'size','fedex_os3':'size','fedex_os4':'size',
+  'dhlsin_oversize':'size','dhlsin_weight_70':'size','dhlsin_overweight':'size',
   'remote':'remote',
   'dhl_highrisk':'risk','dhl_restricted':'restricted',
+  'dhlsin_highrisk':'risk','dhlsin_restricted':'restricted',
   'residential_us':'residential',
 };
 
@@ -1435,21 +1543,29 @@ function calculate() {
   document.getElementById('fedex-ip-service').textContent = `IP Package · ${countryShort}`;
   document.getElementById('fedex-ie-service').textContent = `IE Package · ${countryShort}`;
 
-  // DHL
-  const dhlBase=zones.dhl?getDHLRate(roundedWeight,zones.dhl):0;
+  // Xác định hướng nhập/xuất sớm để DHL/FedEx biết có ẩn không
+  const isImport = currentDirection === 'import';
+
+  // DHL — chỉ hiện khi hàng xuất (chưa có bảng giá nhập)
+  const dhlBase = (!isImport && zones.dhl) ? getDHLRate(roundedWeight,zones.dhl) : 0;
   const dhlFuel=dhlBase*fuelDHL/100;
   const { amt: dhlDemand, perKg: dhlDemandPerKg } = calcDemand('DHL', fuelDHL);
   const dhlOC=getOtherCharges('DHL',roundedWeight,dims,country,effectiveType,false,wt);
   renderCarrier('dhl',dhlBase,dhlFuel,fuelDHL,dhlDemand,dhlDemandPerKg,0,vatPct,
     {zone:`DHL Vùng ${zones.dhl||'N/A'}`,weight:`${roundedWeight} kg`,type:typeLabel},dhlOC);
 
-  // DHL SIN
+  // DHL SIN — chỉ hiện khi hàng xuất (chưa có bảng giá nhập)
   const dhlsinZone = zones.dhlsin;
-  const dhlsinBase = dhlsinZone ? getDHLSINRate(roundedWeight, dhlsinZone, countryISO) : 0;
+  const dhlsinEligible = !isImport && !!(dhlsinZone || countryISO === 'PK');
+  const dhlsinBase = dhlsinEligible ? getDHLSINRate(roundedWeight, dhlsinZone, countryISO) : 0;
   const dhlsinFuel = dhlsinBase * fuelDHL / 100;
-  const { amt: dhlsinDemand, perKg: dhlsinDemandPerKg } = calcDemand('DHL', fuelDHL);
-  const dhlsinOC = getOtherCharges('DHL', roundedWeight, dims, country, effectiveType, false, wt);
-  const dhlsinZoneLabel = countryISO === 'BN' ? 'BN (đặc biệt)' : countryISO === 'PK' ? 'PK (đặc biệt)' : `Zone ${dhlsinZone || 'N/A'}`;
+  const { amt: dhlsinDemand, perKg: dhlsinDemandPerKg } = calcDemand('DHL SIN', fuelDHL);
+  const dhlsinOC = getOtherCharges('DHL SIN', roundedWeight, dims, country, effectiveType, false, wt);
+  const dhlsinZoneLabel = countryISO === 'BN' ? 'BN (đặc biệt)'
+    : countryISO === 'PK' ? 'PK (đặc biệt)'
+    : countryISO === 'MY' ? 'Zone 1 (MY)'
+    : (dhlsinZone === 'EU1' || dhlsinZone === 'EU2') ? dhlsinZone
+    : `Zone ${dhlsinZone || 'N/A'}`;
   document.getElementById('dhl-sin-service').textContent = `SIN Express · ${countryShort}`;
   renderCarrier('dhl-sin', dhlsinBase, dhlsinFuel, fuelDHL, dhlsinDemand, dhlsinDemandPerKg, 0, vatPct,
     {zone:`DHL SIN ${dhlsinZoneLabel}`, weight:`${roundedWeight} kg`, type:typeLabel}, dhlsinOC);
@@ -1472,11 +1588,13 @@ function calculate() {
   const fedexWeightLabel = fedexBillableWeight > roundedWeight
     ? `${roundedWeight} kg → min ${fedexBillableWeight} kg (oversize)` : `${roundedWeight} kg`;
 
-  // FedEx IP → IPF khi freight
+  // FedEx IP / IPF — xuất dùng fedexIPRates, nhập dùng fedexIPImpRates
   const fipZone = useFedExFreight ? (zones.fedexIPF || zones.fedexIP) : zones.fedexIP;
   const fipLabel = useFedExFreight ? 'FedEx International Priority Freight' : 'FedEx International Priority';
   const fipService = useFedExFreight ? `IPF · ${countryShort}` : `IP Package · ${countryShort}`;
-  const fipBase = fipZone ? getFedExRate(fedexBillableWeight, fipZone, fedexIPRates, fedexIPPerKgKeys) : 0;
+  const fipRates   = isImport ? fedexIPImpRates   : fedexIPRates;
+  const fipPerKg   = isImport ? fedexIPImpPerKgKeys : fedexIPPerKgKeys;
+  const fipBase = fipZone ? getFedExRate(fedexBillableWeight, fipZone, fipRates, fipPerKg) : 0;
   const fipFuel=fipBase*fuelFedEx/100;
   const { amt: fipDemand, perKg: fipDemandPerKg } = calcDemand('FedEx', fuelFedEx);
   const fipOC=getOtherCharges('FedEx',roundedWeight,dims,country,effectiveType,useFedExFreight,wt);
@@ -1485,11 +1603,13 @@ function calculate() {
   renderCarrier('fedex-ip',fipBase,fipFuel,fuelFedEx,fipDemand,fipDemandPerKg,0,vatPct,
     {zone:`FedEx Zone ${fipZone||'N/A'}`,weight:fedexWeightLabel,type:typeLabel},fipOC);
 
-  // FedEx IE → IEF khi freight (ẩn nếu không có zone IEF)
+  // FedEx IE / IEF — xuất dùng fedexIERates, nhập dùng fedexIEImpRates
   const fieZone = useFedExFreight ? (zones.fedexIEF || zones.fedexIE) : zones.fedexIE;
   const fieLabel = useFedExFreight ? 'FedEx International Economy Freight' : 'FedEx International Economy';
   const fieService = useFedExFreight ? `IEF · ${countryShort}` : `IE Package · ${countryShort}`;
-  const fieBase = fieZone ? getFedExRate(fedexBillableWeight, fieZone, fedexIERates, fedexIEPerKgKeys) : 0;
+  const fieRates   = isImport ? fedexIEImpRates   : fedexIERates;
+  const fiePerKg   = isImport ? fedexIEImpPerKgKeys : fedexIEPerKgKeys;
+  const fieBase = fieZone ? getFedExRate(fedexBillableWeight, fieZone, fieRates, fiePerKg) : 0;
   const fieFuel=fieBase*fuelFedEx/100;
   const { amt: fieDemand, perKg: fieDemandPerKg } = calcDemand('FedEx', fuelFedEx);
   const fieOC=getOtherCharges('FedEx',roundedWeight,dims,country,effectiveType,useFedExFreight,wt);
@@ -1502,44 +1622,61 @@ function calculate() {
   const upsFreightThreshold = parseFloat(document.getElementById('ups-freight-threshold').value) || 70;
   const useUPSFreight = wt > upsFreightThreshold;
 
-  // UPS: khi >70kg dùng UPS Freight Exp sheet + zone col upsFreight
-  const freightZone = zones.upsFreight || zones.upsSaver; // fallback nếu không có col riêng
+  // Zone cols: Export dùng upsSaver/upsExp/upsFreight, Import dùng upsSaverImp/upsExpImp/upsFreightImp
+  // Countries có col riêng cho import: col6=UPS Saver Import, col7=UPS Exp Import, col8=UPS Freight Import
+  const impFreightZone    = zones.upsFreightImp || zones.upsSaverImp; // fallback
+  const expFreightZone    = zones.upsFreight    || zones.upsSaver;
 
   // UPS Saver (hoặc Freight khi >70kg)
-  const usSaverZone = useUPSFreight ? freightZone : zones.upsSaver;
-  const usBase = usSaverZone
-    ? (useUPSFreight
-        ? getUPSRate(roundedWeight,usSaverZone,upsFreightExpDoc,upsFreightExpNonDoc,upsFreightExpSpecialDoc,upsFreightExpSpecialNonDoc,country,upsFreightExpZoneNumMap,upsFreightExpPerKgKeys)
-        : getUPSRate(roundedWeight,usSaverZone,upsSaverDoc,upsSaverNonDoc,upsSaverSpecialDoc,upsSaverSpecialNonDoc,country,upsSaverZoneNumMap,upsSaverPerKgKeys))
-    : 0;
+  const usSaverZone = isImport
+    ? (useUPSFreight ? impFreightZone : zones.upsSaverImp)
+    : (useUPSFreight ? expFreightZone : zones.upsSaver);
+
+  let usBase = 0;
+  if (usSaverZone) {
+    if (useUPSFreight) {
+      usBase = isImport
+        ? getUPSRate(roundedWeight,usSaverZone,upsFreightImpDoc,upsFreightImpNonDoc,upsFreightImpSpecialDoc,upsFreightImpSpecialNonDoc,country,upsFreightImpZoneNumMap,upsFreightImpPerKgKeys)
+        : getUPSRate(roundedWeight,usSaverZone,upsFreightExpDoc,upsFreightExpNonDoc,upsFreightExpSpecialDoc,upsFreightExpSpecialNonDoc,country,upsFreightExpZoneNumMap,upsFreightExpPerKgKeys);
+    } else {
+      usBase = isImport
+        ? getUPSRate(roundedWeight,usSaverZone,upsSaverImpDoc,upsSaverImpNonDoc,upsSaverImpSpecialDoc,upsSaverImpSpecialNonDoc,country,upsSaverImpZoneNumMap,upsSaverImpPerKgKeys)
+        : getUPSRate(roundedWeight,usSaverZone,upsSaverDoc,upsSaverNonDoc,upsSaverSpecialDoc,upsSaverSpecialNonDoc,country,upsSaverZoneNumMap,upsSaverPerKgKeys);
+    }
+  }
   const usFuel=usBase*fuelUPS/100;
   const { amt: usDemand, perKg: usDemandPerKg } = calcDemand('UPS', fuelUPS);
   const usOC=getOtherCharges('UPS',roundedWeight,dims,country,effectiveType,useUPSFreight,wt);
-  const usSaverLabel = useUPSFreight ? 'UPS Freight Exp' : 'Worldwide Saver';
-  document.getElementById('ups-saver-name').textContent = useUPSFreight ? 'UPS Freight Exp' : 'UPS Worldwide Saver';
-  document.getElementById('ups-saver-service').textContent = useUPSFreight ? `UPS Freight Exp · ${countryShort}` : `Express Saver · ${countryShort}`;
+  const usSaverNameLabel = useUPSFreight ? (isImport ? 'UPS Freight Imp' : 'UPS Freight Exp') : 'UPS Worldwide Saver';
+  const usSaverSvcLabel  = useUPSFreight ? (isImport ? `Freight Imp · ${countryShort}` : `Freight Exp · ${countryShort}`) : `Express Saver · ${countryShort}`;
+  document.getElementById('ups-saver-name').textContent = usSaverNameLabel;
+  document.getElementById('ups-saver-service').textContent = usSaverSvcLabel;
   renderCarrier('ups-saver',usBase,usFuel,fuelUPS,usDemand,usDemandPerKg,0,vatPct,
-    {zone:`UPS Zone ${String(usSaverZone||'N/A').padStart(2,'0')}`,weight:`${roundedWeight} kg`,type:typeLabel},usOC);
+    {zone:`UPS Zone ${upsZoneLabel(usSaverZone, isImport?upsSaverImpZoneNumMap:upsSaverZoneNumMap, country)}`,weight:`${roundedWeight} kg`,type:typeLabel},usOC);
 
   // UPS Expedited (ẩn khi >70kg vì đã dùng Freight ở trên)
-  const ueZone = zones.upsExp;
-  const ueBase = (!useUPSFreight && ueZone)
-    ? getUPSRate(roundedWeight,ueZone,upsExpDoc,upsExpNonDoc,upsExpSpecialDoc,upsExpSpecialNonDoc,country,upsExpZoneNumMap,upsExpPerKgKeys)
-    : 0;
+  const ueZone = isImport ? zones.upsExpImp : zones.upsExp;
+  let ueBase = 0;
+  if (!useUPSFreight && ueZone) {
+    ueBase = isImport
+      ? getUPSRate(roundedWeight,ueZone,upsExpImpDoc,upsExpImpNonDoc,upsExpImpSpecialDoc,upsExpImpSpecialNonDoc,country,upsExpImpZoneNumMap,upsExpImpPerKgKeys)
+      : getUPSRate(roundedWeight,ueZone,upsExpDoc,upsExpNonDoc,upsExpSpecialDoc,upsExpSpecialNonDoc,country,upsExpZoneNumMap,upsExpPerKgKeys);
+  }
   const ueFuel=ueBase*fuelUPS/100;
   const { amt: ueDemand, perKg: ueDemandPerKg } = calcDemand('UPS', fuelUPS);
   const ueOC=getOtherCharges('UPS',roundedWeight,dims,country,effectiveType,false,wt);
-  document.getElementById('ups-exp-service').textContent = `Worldwide Expedited · ${countryShort}`;
+  document.getElementById('ups-exp-service').textContent = isImport ? `Worldwide Expedited Imp · ${countryShort}` : `Worldwide Expedited · ${countryShort}`;
   renderCarrier('ups-exp',ueBase,ueFuel,fuelUPS,ueDemand,ueDemandPerKg,0,vatPct,
-    {zone:`UPS Zone ${String(ueZone||'N/A').padStart(2,'0')}`,weight:`${roundedWeight} kg`,type:typeLabel},ueOC);
+    {zone:`UPS Zone ${upsZoneLabel(ueZone, isImport?upsExpImpZoneNumMap:upsExpZoneNumMap, country)}`,weight:`${roundedWeight} kg`,type:typeLabel},ueOC);
 
   // Restore currentType
   currentType = savedType;
 
   // Show + header
   document.getElementById('results-section').classList.add('show');
+  const dirLabel = currentDirection === 'import' ? '📥 Hàng nhập' : '📤 Hàng xuất';
   document.getElementById('results-meta').textContent=
-    `Kết quả cho ${countryShort} · ${roundedWeight} kg · ${typeLabelDisplay}`;
+    `${dirLabel} · ${countryShort} · ${roundedWeight} kg · ${typeLabelDisplay}`;
 
   document.getElementById('results-section').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -1547,8 +1684,8 @@ function calculate() {
 // ============================================================
 // CACHE (version-based – không dùng TTL nữa)
 // ============================================================
-const CACHE_KEY     = 'multicarrier_cache_v23'; // v23: thêm nhà cung cấp per carrier
-const CACHE_VER_KEY = 'multicarrier_version_v23';
+const CACHE_KEY     = 'multicarrier_cache_v28'; // v28: add FedEx IP/IE import rates
+const CACHE_VER_KEY = 'multicarrier_version_v28';
 
 function serializeForCache(p) {
   return JSON.parse(JSON.stringify(p, (key, value) =>
@@ -1598,7 +1735,7 @@ async function fetchVersion() {
 // ============================================================
 // APPLY DATA
 // ============================================================
-function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFreightExp, demandData, dhlsin) {
+function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFreightExp, demandData, dhlsin, upsSavImp, upsExpImp, upsFreightImp, fedexIPImp, fedexIEImp) {
   if (Array.isArray(oc)) OTHER_CHARGES = oc;
   if (demandData && typeof demandData === 'object') demandRates = demandData;
   if (setting.providers && typeof setting.providers === 'object') providerMap = setting.providers;
@@ -1614,6 +1751,30 @@ function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFr
     dhlsinDocRates    = dhlsin.doc    || {};
     dhlsinNonDocRates = dhlsin.nonDoc || {};
     dhlsinMultRates   = dhlsin.mult   || {};
+  }
+  if (upsSavImp) {
+    upsSaverImpDoc          = upsSavImp.doc        || {};
+    upsSaverImpNonDoc       = upsSavImp.nonDoc     || {};
+    upsSaverImpSpecialDoc   = upsSavImp.specialDoc || {};
+    upsSaverImpSpecialNonDoc= upsSavImp.specialNonDoc || {};
+    upsSaverImpZoneNumMap   = upsSavImp.zoneNumMap || {};
+    upsSaverImpPerKgKeys    = upsSavImp.perKgKeys  || [];
+  }
+  if (upsExpImp) {
+    upsExpImpDoc          = upsExpImp.doc        || {};
+    upsExpImpNonDoc       = upsExpImp.nonDoc     || {};
+    upsExpImpSpecialDoc   = upsExpImp.specialDoc || {};
+    upsExpImpSpecialNonDoc= upsExpImp.specialNonDoc || {};
+    upsExpImpZoneNumMap   = upsExpImp.zoneNumMap || {};
+    upsExpImpPerKgKeys    = upsExpImp.perKgKeys  || [];
+  }
+  if (upsFreightImp) {
+    upsFreightImpDoc          = upsFreightImp.doc        || {};
+    upsFreightImpNonDoc       = upsFreightImp.nonDoc     || {};
+    upsFreightImpSpecialDoc   = upsFreightImp.specialDoc || {};
+    upsFreightImpSpecialNonDoc= upsFreightImp.specialNonDoc || {};
+    upsFreightImpZoneNumMap   = upsFreightImp.zoneNumMap || {};
+    upsFreightImpPerKgKeys    = upsFreightImp.perKgKeys  || [];
   }
   countryData    = cd;
   if (setting.countryAliases) countryAliases = setting.countryAliases;
@@ -1636,6 +1797,10 @@ function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFr
   fedexIERates   = fedexIE;
   fedexIPPerKgKeys = fedexIP.perKgKeys||[];
   fedexIEPerKgKeys = fedexIE.perKgKeys||[];
+  fedexIPImpRates      = fedexIPImp  || {};
+  fedexIEImpRates      = fedexIEImp  || {};
+  fedexIPImpPerKgKeys  = (fedexIPImp  && fedexIPImp.perKgKeys)  || [];
+  fedexIEImpPerKgKeys  = (fedexIEImp  && fedexIEImp.perKgKeys)  || [];
 
   if (setting.dhlFuel!==undefined)   document.getElementById('fuel-dhl').value   = setting.dhlFuel.toFixed(2);
   if (setting.fedexFuel!==undefined) document.getElementById('fuel-fedex').value = setting.fedexFuel.toFixed(2);
@@ -1686,8 +1851,9 @@ async function loadData(forceRefresh=false) {
   // ── BƯỚC 1: Load cache ngay → hiện giao diện trước ─────────
   const cachedFirst = loadCache();
   if (cachedFirst && !forceRefresh) {
-    applyData(cachedFirst.setting,cachedFirst.cd,cachedFirst.dhl,cachedFirst.upsSav,cachedFirst.upsExp,cachedFirst.fedexIP,cachedFirst.fedexIE,cachedFirst.oc,cachedFirst.upsFreightExp,cachedFirst.demandData,cachedFirst.dhlsin);
+    applyData(cachedFirst.setting,cachedFirst.cd,cachedFirst.dhl,cachedFirst.upsSav,cachedFirst.upsExp,cachedFirst.fedexIP,cachedFirst.fedexIE,cachedFirst.oc,cachedFirst.upsFreightExp,cachedFirst.demandData,cachedFirst.dhlsin,cachedFirst.upsSavImp,cachedFirst.upsExpImp,cachedFirst.upsFreightImp,cachedFirst.fedexIPImp||null,cachedFirst.fedexIEImp||null);
     calcBtn.disabled = false;
+    document.getElementById('import-btn').disabled = false;
     dot.className    = 'status-dot ok';
     const ago = Math.round((Date.now()-cachedFirst.ts)/60000);
     statusTxt.textContent = `✅ Cache (${ago} phút trước) · ${Object.keys(cachedFirst.cd).length} quốc gia`;
@@ -1723,12 +1889,9 @@ async function loadData(forceRefresh=false) {
   if (!forceRefresh && cached && cachedVersion && cachedVersion === remoteVersion) {
     pbDone();
     // Nếu cache cũ chưa có dhlsin → parse lại để cập nhật
-    if (!cached.dhlsin) {
-      applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE,cached.oc,cached.upsFreightExp,cached.demandData,null);
-    } else {
-      applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE,cached.oc,cached.upsFreightExp,cached.demandData,cached.dhlsin);
-    }
+    applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE,cached.oc,cached.upsFreightExp,cached.demandData,cached.dhlsin||null,cached.upsSavImp,cached.upsExpImp,cached.upsFreightImp,cached.fedexIPImp||null,cached.fedexIEImp||null);
     calcBtn.disabled = false;
+    document.getElementById('import-btn').disabled = false;
     dot.className = 'status-dot ok';
     const ago = Math.round((Date.now()-cached.ts)/60000);
     statusTxt.textContent = `✅ Cache v${remoteVersion} (${ago} phút trước) · ${Object.keys(cached.cd).length} quốc gia`;
@@ -1755,13 +1918,19 @@ async function loadData(forceRefresh=false) {
     const { charges: oc, demand: demandData } = parseOtherCharges(fetched.Other_Charges || []);
     const upsFreightExp = parseCostUPS(fetched.UPS_Freight_Exp || []);
     const dhlsin  = parseCostDHLSIN(fetched.Cost_DHLSIN || []);
+    const upsSavImp     = parseCostUPS(fetched.UPS_Saver_Imp   || []);
+    const upsExpImp     = parseCostUPS(fetched.UPS_Exp_Imp     || []);
+    const upsFreightImp = parseCostUPS(fetched.UPS_Freight_Imp || []);
+    const fedexIPImp = parseCostFedEx(fetched.FedEx_IP_Imp || []);
+    const fedexIEImp = parseCostFedEx(fetched.FedEx_IE_Imp || []);
 
-    applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin);
-    saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin }, remoteVersion);
+    applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp);
+    saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp }, remoteVersion);
     pbShow(100);
     pbDone();
 
     calcBtn.disabled = false;
+    document.getElementById('import-btn').disabled = false;
     dot.className    = 'status-dot ok';
     const now = new Date().toLocaleTimeString('vi-VN');
     statusTxt.textContent = `✅ Cập nhật lúc ${now} · v${remoteVersion} · ${Object.keys(cd).length} quốc gia`;
@@ -1788,6 +1957,7 @@ function reset() {
     if (card) { card.classList.remove('open'); card.style.display = ''; }
   });
   setType('document');
+  setDirection('export');
 }
 
 loadData();
