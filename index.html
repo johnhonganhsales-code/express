@@ -6,6 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<meta name="color-scheme" content="light only">
 <title>Hồng Anh Express Quốc tế</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -21,7 +22,18 @@
     --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.10), 0 8px 32px rgba(0,0,0,0.06);
   }
 
+  :root { color-scheme: light only; }
   body { font-family: 'Inter', sans-serif; background: var(--light); color: var(--dark); min-height: 100vh; }
+  /* Ép sáng cho mọi ô nhập để tránh Android/Chrome tự đảo màu (chữ trùng màu nền, gõ số không thấy hiện) */
+  input, select, textarea {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    opacity: 1 !important;
+    caret-color: #111827 !important;
+  }
+  input::-webkit-input-placeholder { color: #9ca3af !important; -webkit-text-fill-color: #9ca3af !important; opacity: 1 !important; }
+  input::placeholder { color: #9ca3af !important; opacity: 1 !important; }
 
   /* ── HEADER ── */
   header {
@@ -305,9 +317,9 @@
   <!-- Fuel Surcharge hiện tại -->
   <div class="sidebar-card">
     <div class="sidebar-title"><span>⛽</span> Fuel Surcharge</div>
-    <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb dhl">DHL</span> Express</div><div id="sb-fuel-dhl">23.5%</div></div>
-    <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb fedex">FedEx</span> IP/IE</div><div id="sb-fuel-fedex">22.0%</div></div>
-    <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb ups">UPS</span> Saver/Exp</div><div id="sb-fuel-ups">21.0%</div></div>
+    <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb dhl">DHL</span> Express</div><div id="sb-fuel-dhl">F5 để refesh</div></div>
+    <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb fedex">FedEx</span> IP/IE</div><div id="sb-fuel-fedex">F5 để refesh</div></div>
+    <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb ups">UPS</span> Saver/Exp</div><div id="sb-fuel-ups">F5 để refesh</div></div>
   </div>
 
   <!-- Lịch sử tính -->
@@ -320,7 +332,7 @@
   <div class="sidebar-card">
     <div class="sidebar-title"><span>💡</span> Mẹo sử dụng</div>
     <div class="notice-item"><div class="idot dot-blue"></div><div>Nhập đủ kích thước để tính cân thể tích chính xác hơn.</div></div>
-    <div class="notice-item"><div class="idot dot-blue"></div><div>Nhập /mã bưu chính để kiểm tra phụ phí vùng xa DHL &amp; FedEx ODA.</div></div>
+    <div class="notice-item"><div class="idot dot-blue"></div><div>Nhập thành phố/mã bưu chính để kiểm tra phụ phí vùng xa DHL &amp; FedEx ODA.</div></div>
     <div class="notice-item"><div class="idot dot-blue"></div><div>Bấm vào kết quả từng hãng để xem chi tiết cước.</div></div>
   </div>
 
@@ -342,13 +354,13 @@
         <label style="display:block;font-size:14px;font-weight:500;color:var(--dark);margin-bottom:6px;">Quốc gia đến</label>
         <div class="select-wrap">
           <select id="country" onchange="updateZone()">
-            <option value="">-- Chọn quốc gia --</option>
+            <option value=""> Chọn quốc gia </option>
           </select>
         </div>
       </div>
       <div class="field" id="vsvx-field" style="display:none;margin:0;">
         <label>Postcode </label>
-        <input type="text" id="vsvx-input" placeholder="" oninput="checkVsvxInput()" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;color:var(--dark);background:white;outline:none;transition:border-color 0.15s;">
+        <input type="text" id="vsvx-input" placeholder=" " oninput="checkVsvxInput()" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;color:var(--dark);background:white;outline:none;transition:border-color 0.15s;">
       </div>
     </div>
     <div id="vsvx-oda-row" style="display:none;flex-direction:row;gap:6px;margin-top:6px;">
@@ -371,19 +383,17 @@
       </div>
 
       <div class="piece-table-wrap">
-        <table class="piece-table" id="piece-table">
-          <thead>
-            <tr>
-              <th class="col-no">No.</th>
-              <th class="col-w">Cân nặng <span class="piece-unit-head" id="head-weight">kg</span></th>
-              <th class="col-dim">Dài <span class="piece-unit-head" id="head-dim">cm</span></th>
-              <th class="col-dim">Rộng <span class="piece-unit-head" id="head-dim2">cm</span></th>
-              <th class="col-dim">Cao <span class="piece-unit-head" id="head-dim3">cm</span></th>
-              <th class="col-del"></th>
-            </tr>
-          </thead>
-          <tbody id="piece-tbody"></tbody>
-        </table>
+        <div class="piece-grid" id="piece-table">
+          <div class="piece-head-row">
+            <div class="pg-no">No.</div>
+            <div class="pg-w">Cân nặng <span class="piece-unit-head" id="head-weight">kg</span></div>
+            <div class="pg-dim">Dài <span class="piece-unit-head" id="head-dim">cm</span></div>
+            <div class="pg-dim">Rộng <span class="piece-unit-head" id="head-dim2">cm</span></div>
+            <div class="pg-dim">Cao <span class="piece-unit-head" id="head-dim3">cm</span></div>
+            <div class="pg-del"></div>
+          </div>
+          <div id="piece-tbody"></div>
+        </div>
       </div>
 
       <div class="piece-footer">
@@ -426,34 +436,46 @@
 
 .piece-table-wrap { border: 1.5px solid #bfdbfe; border-top: none; overflow: hidden; }
 .piece-table { width: 100%; border-collapse: collapse; background: white; }
-.piece-table thead tr { background: #eff6ff; }
-.piece-table th {
-  padding: 7px 10px; font-size: 11.5px; font-weight: 700; color: #1d4ed8;
+.piece-unit-head { font-weight: 500; color: #93c5fd; font-size: 10.5px; }
+
+/* Grid layout thay table - tránh bug input invisible trên Android WebView */
+.piece-grid { width: 100%; background: white; }
+.piece-head-row, .piece-row {
+  display: grid;
+  grid-template-columns: 30px 1fr 1fr 1fr 1fr 28px;
+  align-items: center;
+}
+.piece-head-row {
+  background: #eff6ff;
+  border-bottom: 1px solid #dbeafe;
+}
+.piece-head-row > div {
+  padding: 7px 6px; font-size: 11px; font-weight: 700; color: #1d4ed8;
   text-align: center; border-right: 1px solid #dbeafe;
 }
-.piece-table th:last-child { border-right: none; }
-.piece-unit-head { font-weight: 500; color: #93c5fd; font-size: 10.5px; }
-.col-no { width: 36px; }
-.col-w { width: 22%; }
-.col-dim { width: 20%; }
-.col-del { width: 32px; }
-
-.piece-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; }
-.piece-table tbody tr:last-child { border-bottom: none; }
-.piece-table tbody tr:hover { background: #eff6ff; }
-.piece-table td { padding: 6px 8px; text-align: center; border-right: 1px solid #f1f5f9; vertical-align: middle; }
-.piece-table td:last-child { border-right: none; }
-.piece-no { font-size: 12px; font-weight: 600; color: #64748b; }
+.piece-head-row > div:last-child { border-right: none; }
+.piece-row {
+  border-bottom: 1px solid #f1f5f9;
+  background: white;
+}
+.piece-row:last-child { border-bottom: none; }
+.pg-no { padding: 6px 4px; font-size: 12px; font-weight: 600; color: #64748b; text-align: center; }
+.pg-w, .pg-dim { padding: 4px 4px; border-right: 1px solid #f1f5f9; }
+.pg-dim:last-of-type { border-right: none; }
+.pg-del { display: flex; align-items: center; justify-content: center; padding: 4px 2px; }
 
 .piece-input-wrap { display: flex; align-items: center; gap: 3px; }
 .piece-input {
   width: 100%; padding: 6px 8px; border: 1.5px solid #e2e8f0; border-radius: 7px;
-  font-size: 13.5px; font-family: inherit; color: var(--dark); text-align: right;
+  font-size: 13.5px; font-family: inherit; color: #111827 !important; text-align: right;
   outline: none; transition: border-color 0.15s, box-shadow 0.15s;
-  -moz-appearance: textfield;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: #ffffff !important;
+  opacity: 1 !important;
+  appearance: none; -webkit-appearance: none;
 }
 .piece-input::-webkit-inner-spin-button,
-.piece-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.piece-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .piece-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
 .piece-input-unit { font-size: 11px; color: #94a3b8; white-space: nowrap; }
 .piece-del-btn {
@@ -512,38 +534,38 @@ function renderPieceRows() {
   const tbody = document.getElementById('piece-tbody');
   const wu = pieceUnit.w, du = pieceUnit.d;
   tbody.innerHTML = pieceRows.map((r, i) => `
-    <tr>
-      <td class="piece-no">${i + 1}.</td>
-      <td>
+    <div class="piece-row">
+      <div class="pg-no">${i + 1}.</div>
+      <div class="pg-w">
         <div class="piece-input-wrap">
-          <input class="piece-input" type="number" min="0.01" step="0.1" value="${r.weight || ''}" 
-            oninput="updatePiece(${i},'weight',this.value)" placeholder="">
-          <span class="piece-input-unit">${wu}</span>
+          <input class="piece-input" type="text" inputmode="decimal" value="${r.weight || ''}"
+            oninput="updatePiece(${i},'weight',this.value)" placeholder="0">
+
         </div>
-      </td>
-      <td>
+      </div>
+      <div class="pg-dim">
         <div class="piece-input-wrap">
-          <input class="piece-input" type="number" min="0" step="1" value="${r.l}"
-            oninput="updatePiece(${i},'l',this.value)" placeholder="">
-          <span class="piece-input-unit">${du}</span>
+          <input class="piece-input" type="text" inputmode="numeric" value="${r.l || ''}"
+            oninput="updatePiece(${i},'l',this.value)" placeholder="0">
+
         </div>
-      </td>
-      <td>
+      </div>
+      <div class="pg-dim">
         <div class="piece-input-wrap">
-          <input class="piece-input" type="number" min="0" step="1" value="${r.w}"
-            oninput="updatePiece(${i},'w',this.value)" placeholder="">
-          <span class="piece-input-unit">${du}</span>
+          <input class="piece-input" type="text" inputmode="numeric" value="${r.w || ''}"
+            oninput="updatePiece(${i},'w',this.value)" placeholder="0">
+
         </div>
-      </td>
-      <td>
+      </div>
+      <div class="pg-dim">
         <div class="piece-input-wrap">
-          <input class="piece-input" type="number" min="0" step="1" value="${r.h}"
-            oninput="updatePiece(${i},'h',this.value)" placeholder="">
-          <span class="piece-input-unit">${du}</span>
+          <input class="piece-input" type="text" inputmode="numeric" value="${r.h || ''}"
+            oninput="updatePiece(${i},'h',this.value)" placeholder="0">
+
         </div>
-      </td>
-      <td>${pieceRows.length > 1 ? `<button class="piece-del-btn" onclick="deletePieceRow(${i})">×</button>` : ''}</td>
-    </tr>
+      </div>
+      <div class="pg-del">${pieceRows.length > 1 ? `<button class="piece-del-btn" onclick="deletePieceRow(${i})">×</button>` : ''}</div>
+    </div>
   `).join('');
   document.getElementById('piece-count-display').textContent = pieceRows.length;
 }
@@ -2228,9 +2250,13 @@ function calculate() {
     {zone:`UPS Zone ${upsZoneLabel(usSaverZone, isImport?upsSaverImpZoneNumMap:upsSaverZoneNumMap, country)}`,weight:`${roundedWeightUPS} kg`,type:typeLabel},usOC);
 
   // UPS Expedited (ẩn khi >70kg vì đã dùng Freight ở trên)
+  // Ẩn khi chọn Document mà sheet UPS Expedited không có bảng giá Document riêng
   const ueZone = isImport ? zones.upsExpImp : zones.upsExp;
   let ueBase = 0;
-  if (!useUPSFreight && ueZone) {
+  const ueHasDocTable = isImport
+    ? Object.keys(upsExpImpDoc).length > 0
+    : Object.keys(upsExpDoc).length > 0;
+  if (!useUPSFreight && ueZone && (effectiveType !== 'document' || ueHasDocTable)) {
     ueBase = isImport
       ? getUPSRate(roundedWeightUPS,ueZone,upsExpImpDoc,upsExpImpNonDoc,upsExpImpSpecialDoc,upsExpImpSpecialNonDoc,country,upsExpImpZoneNumMap,upsExpImpPerKgKeys)
       : getUPSRate(roundedWeightUPS,ueZone,upsExpDoc,upsExpNonDoc,upsExpSpecialDoc,upsExpSpecialNonDoc,country,upsExpZoneNumMap,upsExpPerKgKeys);
