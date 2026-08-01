@@ -8,88 +8,205 @@
 <meta http-equiv="Expires" content="0">
 <title>Hồng Anh Express Quốc tế</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --red: #D40511; --yellow: #FFCC00; --dark: #1a1a1a;
-    --gray: #6b7280; --light: #f3f4f6; --white: #ffffff;
-    --border: #e5e7eb; --success: #059669;
+    --red: #D40511; --yellow: #FFCC00; --dark: #111827;
+    --gray: #6b7280; --light: #f1f5f9; --white: #ffffff;
+    --border: #e2e8f0; --success: #059669;
     --fedex-purple: #4D148C; --fedex-orange: #FF6200;
     --ups-brown: #351C15; --ups-gold: #FFB500;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.10), 0 8px 32px rgba(0,0,0,0.06);
   }
+
   body { font-family: 'Inter', sans-serif; background: var(--light); color: var(--dark); min-height: 100vh; }
-  header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 16px 24px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
-  .header-logos { display: flex; gap: 8px; align-items: center; }
-  .logo-dhl { background: var(--yellow); padding: 4px 10px; border-radius: 3px; font-weight: 800; font-size: 16px; color: var(--red); letter-spacing: 1px; }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    padding: 14px 28px; display: flex; align-items: center; gap: 14px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .header-logos { display: flex; gap: 10px; align-items: center; }
+  .logo-dhl { background: var(--yellow); padding: 4px 11px; border-radius: 4px; font-weight: 800; font-size: 16px; color: var(--red); letter-spacing: 1px; box-shadow: 0 2px 6px rgba(255,204,0,0.4); }
   .logo-fedex { font-weight: 800; font-size: 16px; letter-spacing: -0.5px; }
-  .logo-fedex .fe { color: #7B39B0; }
+  .logo-fedex .fe { color: #9b59d8; }
   .logo-fedex .ex { color: var(--fedex-orange); }
-  .logo-ups { background: var(--ups-brown); padding: 4px 10px; border-radius: 3px; font-weight: 800; font-size: 14px; color: var(--ups-gold); }
-  .header-sep { color: #4b5563; font-size: 18px; }
-  header h1 { color: #e5e7eb; font-size: 14px; font-weight: 500; margin-left: 4px; }
-  .container { max-width: 680px; margin: 0 auto; padding: 20px 16px 40px; }
-  .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 14px; }
-  .card-title { font-size: 12px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 16px; }
-  .field { margin-bottom: 14px; }
-  label { display: block; font-size: 14px; font-weight: 500; color: var(--dark); margin-bottom: 6px; }
-  select, input[type=number] { width: 100%; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 15px; font-family: inherit; color: var(--dark); background: white; appearance: none; -webkit-appearance: none; transition: border-color 0.15s; outline: none; }
-  select:focus, input:focus { border-color: #6b7280; }
+  .logo-ups { background: var(--ups-brown); padding: 4px 10px; border-radius: 4px; font-weight: 800; font-size: 14px; color: var(--ups-gold); }
+  .header-sep { color: #334155; font-size: 18px; }
+  header h1 { color: #cbd5e1; font-size: 13px; font-weight: 500; margin-left: 4px; letter-spacing: 0.01em; }
+
+  /* ── LAYOUT ── */
+  .page-layout { display: flex; align-items: flex-start; max-width: 1160px; margin: 0 auto; padding: 0 20px; gap: 20px; }
+  .container { max-width: 700px; margin: 0; flex: 1; min-width: 0; padding: 20px 0 40px; }
+
+  /* ── CARD ── */
+  .card {
+    background: white; border-radius: 16px; padding: 22px;
+    box-shadow: var(--card-shadow); margin-bottom: 14px;
+    border: 1px solid rgba(0,0,0,0.04);
+    transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: var(--card-shadow-hover); }
+  .card-title { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 18px; }
+
+  /* ── FORM FIELDS ── */
+  .field { margin-bottom: 16px; }
+  label { display: block; font-size: 13.5px; font-weight: 600; color: #374151; margin-bottom: 7px; }
+  select, input[type=number] {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--border);
+    border-radius: 10px; font-size: 15px; font-family: inherit; color: var(--dark);
+    background: white; appearance: none; -webkit-appearance: none;
+    transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+  }
+  select:focus, input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+  }
+  select:hover, input[type=number]:hover { border-color: #94a3b8; }
   .select-wrap { position: relative; }
-  .select-wrap::after { content: '▾'; position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: var(--gray); pointer-events: none; font-size: 13px; }
-  .type-toggle { display: grid; grid-template-columns: 1fr 1fr; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .type-btn { padding: 11px; text-align: center; font-size: 14px; font-weight: 500; cursor: pointer; border: none; background: white; color: var(--gray); transition: all 0.15s; font-family: inherit; }
-  .type-btn.active { background: var(--dark); color: white; }
+  .select-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--gray); pointer-events: none; font-size: 13px; }
+
+  /* ── TYPE TOGGLE (Document / Non-Document) ── */
+  .type-toggle {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden;
+    background: #f8fafc;
+  }
+  .type-btn {
+    padding: 12px; text-align: center; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; background: transparent; color: #94a3b8;
+    transition: background 0.2s, color 0.2s, transform 0.15s, box-shadow 0.2s;
+    font-family: inherit; position: relative; overflow: hidden;
+    letter-spacing: 0.01em;
+  }
+  .type-btn::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.35) 0%, transparent 70%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .type-btn:hover:not(.active) {
+    background: #f1f5f9; color: var(--dark);
+    transform: translateY(-1px);
+  }
+  .type-btn:hover:not(.active)::after { opacity: 1; }
+  .type-btn.active {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    color: white;
+    box-shadow: 0 2px 10px rgba(29,78,216,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  /* Shake animation on hover for type-btn */
+  @keyframes btnShake {
+    0%,100% { transform: translateX(0) translateY(-1px); }
+    20%      { transform: translateX(-3px) translateY(-1px); }
+    40%      { transform: translateX(3px) translateY(-1px); }
+    60%      { transform: translateX(-2px) translateY(-1px); }
+    80%      { transform: translateX(2px) translateY(-1px); }
+  }
+  .type-btn:not(.active):hover { animation: btnShake 0.4s ease; }
   .type-btn:first-child { border-right: 1.5px solid var(--border); }
+
+  /* ── CALC BUTTONS (Hàng xuất / Hàng nhập) ── */
+  @keyframes calcShake {
+    0%,100% { transform: translateX(0) translateY(-2px); }
+    20%      { transform: translateX(-4px) translateY(-2px); }
+    40%      { transform: translateX(4px) translateY(-2px); }
+    60%      { transform: translateX(-3px) translateY(-2px); }
+    80%      { transform: translateX(3px) translateY(-2px); }
+  }
+  .calc-btn {
+    width: 100%; padding: 15px; color: white; border: none;
+    border-radius: 12px; font-size: 15px; font-weight: 700; font-family: inherit;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    box-shadow: 0 2px 8px rgba(29,78,216,0.35);
+    position: relative; overflow: hidden; letter-spacing: 0.01em;
+  }
+  .calc-btn::before {
+    content: '';
+    position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    transition: left 0.45s ease;
+  }
+  .calc-btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(29,78,216,0.5);
+    filter: brightness(1.15);
+    animation: calcShake 0.4s ease;
+  }
+  .calc-btn:not(:disabled):hover::before { left: 100%; }
+  .calc-btn:not(:disabled):active { transform: translateY(0); box-shadow: 0 2px 8px rgba(29,78,216,0.2); }
+  .calc-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+  /* ── MISC ── */
   .dim-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
   .dim-row label { font-size: 12px; color: var(--gray); margin-bottom: 4px; }
-  .vol-badge { display: none; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 7px 12px; font-size: 13px; color: #166534; margin-bottom: 6px; }
+  .vol-badge { display: none; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 7px 12px; font-size: 13px; color: #166534; margin-bottom: 6px; }
   .vol-badge.show { display: block; }
   .surcharge-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
   .surcharge-row label { margin: 0; font-size: 14px; font-weight: 400; flex: 1; }
   .surcharge-row input { width: 90px; text-align: right; padding: 8px 10px; font-size: 14px; }
   .pct { font-size: 13px; color: var(--gray); margin-left: 4px; }
-  .status-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9ca3af; margin-bottom: 12px; padding: 8px 12px; background: #f9fafb; border-radius: 8px; border: 1px solid var(--border); }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9ca3af;
+    margin-bottom: 12px; padding: 9px 14px;
+    background: #f8fafc; border-radius: 10px; border: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
-  .status-dot.ok { background: var(--success); }
+  .status-dot.ok { background: var(--success); box-shadow: 0 0 0 3px rgba(5,150,105,0.15); }
   .status-dot.err { background: #ef4444; }
   .status-dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .status-refresh { margin-left: auto; cursor: pointer; color: #6b7280; font-size: 11px; text-decoration: underline; }
-  .calc-btn { width: 100%; padding: 14px; background: var(--dark); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.15s; }
-  .calc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status-progress { position: absolute; left: 0; top: 0; height: 100%; background: rgba(34,197,94,0.35); width: 0%; transition: width 0.3s ease; border-radius: 10px; pointer-events: none; }
+
+  /* ── RESULTS ── */
   .results-section { display: none; }
   .results-section.show { display: block; }
-  .results-header { font-size: 12px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 10px 2px; }
-  /* Carrier cards */
-  .carrier-card { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 10px; overflow: hidden; }
-  .carrier-summary { display: flex; align-items: center; padding: 14px 16px; cursor: pointer; gap: 12px; user-select: none; }
-  .carrier-summary:hover { background: #fafafa; }
-  .carrier-badge { display: flex; align-items: center; justify-content: center; width: 54px; height: 34px; border-radius: 6px; flex-shrink: 0; }
-  .carrier-badge.dhl { background: var(--yellow); }
+  .results-header { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin: 20px 0 10px 2px; }
+
+  /* ── CARRIER CARDS ── */
+  .carrier-card {
+    background: white; border-radius: 14px;
+    box-shadow: var(--card-shadow); margin-bottom: 10px; overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.04);
+    transition: box-shadow 0.2s, transform 0.15s;
+  }
+  .carrier-card:hover { box-shadow: var(--card-shadow-hover); transform: translateY(-1px); }
+  .carrier-summary { display: flex; align-items: center; padding: 15px 16px; cursor: pointer; gap: 12px; user-select: none; transition: background 0.15s; }
+  .carrier-summary:hover { background: #f8fafc; }
+  .carrier-badge { display: flex; align-items: center; justify-content: center; width: 56px; height: 36px; border-radius: 8px; flex-shrink: 0; }
+  .carrier-badge.dhl { background: var(--yellow); box-shadow: 0 2px 6px rgba(255,204,0,0.35); }
   .carrier-badge.dhl span { font-weight: 800; font-size: 13px; color: var(--red); letter-spacing: 0.5px; }
   .carrier-badge.fedex { background: white; border: 1.5px solid #e5e7eb; }
   .carrier-badge.fedex .fe { font-weight: 800; font-size: 13px; color: var(--fedex-purple); }
   .carrier-badge.fedex .ex { font-weight: 800; font-size: 13px; color: var(--fedex-orange); }
-  .carrier-badge.ups { background: var(--ups-brown); }
+  .carrier-badge.ups { background: var(--ups-brown); box-shadow: 0 2px 6px rgba(53,28,21,0.3); }
   .carrier-badge.ups span { font-weight: 800; font-size: 12px; color: var(--ups-gold); }
   .carrier-info { flex: 1; min-width: 0; }
-  .carrier-name { font-size: 13px; font-weight: 600; color: var(--dark); }
+  .carrier-name { font-size: 13px; font-weight: 700; color: var(--dark); }
   .carrier-service { font-size: 12px; color: var(--gray); margin-top: 2px; }
   .carrier-price-col { text-align: right; flex-shrink: 0; }
-  .carrier-total { font-size: 19px; font-weight: 700; color: var(--dark); line-height: 1; }
+  .carrier-total { font-size: 20px; font-weight: 800; color: var(--dark); line-height: 1; }
   .carrier-total.na { font-size: 15px; color: #9ca3af; font-weight: 500; }
   .carrier-total-sub { font-size: 11px; color: var(--gray); margin-top: 2px; }
   .expand-btn { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--border); background: white; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--gray); cursor: pointer; flex-shrink: 0; transition: all 0.2s; line-height: 1; font-weight: 500; }
   .carrier-card.open .expand-btn { background: var(--dark); border-color: var(--dark); color: white; transform: rotate(45deg); }
-  .carrier-detail { display: none; border-top: 1px solid var(--border); padding: 14px 16px; background: #fafafa; }
+  .carrier-detail { display: none; border-top: 1px solid #f1f5f9; padding: 14px 16px; background: #fafbfc; }
   .carrier-card.open .carrier-detail { display: block; }
   .detail-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; color: #4b5563; border-bottom: 1px dashed #f0f0f0; }
   .detail-row:last-child { border-bottom: none; }
-  .detail-row span:last-child { font-weight: 500; color: var(--dark); }
-  .detail-row.total-row { font-weight: 600; color: var(--dark); font-size: 14px; border-top: 1px solid #e5e7eb; margin-top: 4px; padding-top: 10px; border-bottom: none; }
+  .detail-row span:last-child { font-weight: 600; color: var(--dark); }
+  .detail-row.total-row { font-weight: 700; color: var(--dark); font-size: 14px; border-top: 1px solid #e5e7eb; margin-top: 4px; padding-top: 10px; border-bottom: none; }
   .detail-row.total-row span:last-child { color: var(--dark); }
-  .detail-meta { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; display: flex; gap: 8px; flex-wrap: wrap; }
-  .meta-tag { font-size: 11px; color: var(--gray); background: white; border: 1px solid var(--border); padding: 3px 8px; border-radius: 20px; }
+  .detail-meta { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; display: flex; gap: 6px; flex-wrap: wrap; }
+  .meta-tag { font-size: 11px; color: var(--gray); background: #f8fafc; border: 1px solid var(--border); padding: 3px 9px; border-radius: 20px; }
   .na-note { font-size: 13px; color: #9ca3af; text-align: center; padding: 8px 0; font-style: italic; }
   .detail-row.provider-row { background: #fffbeb; border-radius: 6px; margin-bottom: 6px; padding: 6px 8px !important; border-bottom: 1px solid #fde68a !important; }
   .detail-row.provider-row span:first-child { font-size: 11px; font-weight: 600; color: #92400e; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -98,18 +215,69 @@
   .detail-row.other-charge span:last-child { color: #7c3aed; font-weight: 500; }
   .other-charges-header { font-size: 11px; font-weight: 600; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 0 2px; opacity: 0.8; }
   .detail-row.subtotal-row { font-weight: 500; color: #374151; font-size: 13px; border-top: 1px dashed #d1d5db; margin-top: 2px; padding-top: 6px; }
-  .zone-badge { display: none; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 9px 14px; font-size: 13px; color: #166534; margin-bottom: 14px; }
+
+  /* ── BADGES / MISC ── */
+  .zone-badge { display: none; background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 9px 14px; font-size: 13px; color: #166534; margin-bottom: 14px; }
   .zone-badge.show { display: block; }
-  .reset-btn { width: 100%; padding: 11px; background: transparent; color: var(--gray); border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; margin-top: 4px; }
-  .error-banner { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 11px 14px; font-size: 13px; color: #b91c1c; margin-bottom: 14px; display: none; }
+  .reset-btn { width: 100%; padding: 11px; background: transparent; color: var(--gray); border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; cursor: pointer; margin-top: 4px; transition: all 0.15s; }
+  .reset-btn:hover { background: #f8fafc; border-color: #94a3b8; color: var(--dark); }
+  .error-banner { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 10px; padding: 11px 14px; font-size: 13px; color: #b91c1c; margin-bottom: 14px; display: none; }
   .error-banner.show { display: block; }
-  /* Loading overlay – ẩn hoàn toàn, không dùng nữa */
   .loading-overlay { display: none !important; }
-  /* Inline progress bar bên trong status-bar */
-  .status-bar { position: relative; overflow: hidden; }
-  .status-progress { position: absolute; left: 0; top: 0; height: 100%; background: rgba(34,197,94,0.45); width: 0%; transition: width 0.3s ease; border-radius: 8px; pointer-events: none; }
-  footer { text-align: center; padding: 16px; font-size: 11px; color: #9ca3af; }
+  footer { text-align: center; padding: 20px; font-size: 11px; color: #9ca3af; }
   @media (max-width: 480px) { .carrier-total { font-size: 16px; } }
+
+  /* ── SIDEBAR ── */
+  .sidebar { width: 270px; flex-shrink: 0; padding: 20px 0 40px; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
+  .sidebar-card {
+    background: white; border-radius: 14px; padding: 14px 16px;
+    box-shadow: var(--card-shadow); margin-bottom: 12px;
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+  .sidebar-title { font-size: 10.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .sidebar-title span { font-size: 13px; }
+  .notice-item { display: flex; gap: 8px; padding: 7px 0; border-bottom: 1px dashed #f1f5f9; font-size: 12.5px; color: #374151; line-height: 1.45; }
+  .notice-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .notice-item .idot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .dot-red { background: #ef4444; } .dot-yellow { background: #f59e0b; } .dot-green { background: #22c55e; } .dot-blue { background: #3b82f6; }
+  .fuel-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #f1f5f9; font-size: 12.5px; }
+  .fuel-row:last-child { border-bottom: none; }
+  .fuel-lbl { display: flex; align-items: center; gap: 6px; color: #374151; font-weight: 500; }
+  .fuel-badge-sb { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 4px; }
+  .fuel-badge-sb.dhl { background: #FFCC00; color: #D40511; }
+  .fuel-badge-sb.fedex { background: #4D148C; color: white; }
+  .fuel-badge-sb.ups { background: #351C15; color: #FFB500; }
+  .history-item { font-size: 12px; color: #374151; padding: 6px 8px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 5px; cursor: pointer; transition: all 0.15s; }
+  .history-item:hover { background: #f0fdf4; border-color: #86efac; transform: translateX(2px); }
+  .history-item .h-route { font-weight: 700; font-size: 11px; color: #6b7280; text-transform: uppercase; }
+  .history-item .h-detail { margin-top: 2px; }
+  .history-empty { font-size: 12px; color: #9ca3af; text-align: center; padding: 8px 0; font-style: italic; }
+  @media (max-width: 1000px) { .sidebar { display: none; } .page-layout { display: block; max-width: 700px; margin: 0 auto; padding: 0; } .container { padding: 20px 16px 40px; } }
+
+  /* Import button distinct style */
+  .calc-btn.import-btn { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); box-shadow: 0 2px 8px rgba(30,64,175,0.35); }
+  .calc-btn.import-btn:not(:disabled):hover { box-shadow: 0 6px 20px rgba(30,64,175,0.5); }
+  .calc-btn:not(:disabled):hover { animation: calcShake 0.4s ease; }
+
+  /* Glow pulse on active type-btn */
+  @keyframes glowPulse {
+    0% { box-shadow: 0 2px 10px rgba(29,78,216,0.4), inset 0 1px 0 rgba(255,255,255,0.15); }
+    50% { box-shadow: 0 4px 20px rgba(29,78,216,0.6), inset 0 1px 0 rgba(255,255,255,0.15); }
+    100% { box-shadow: 0 2px 10px rgba(29,78,216,0.4), inset 0 1px 0 rgba(255,255,255,0.15); }
+  }
+  .type-btn.active { animation: glowPulse 2s ease-in-out infinite; }
+
+  /* Input text field for vsvx */
+  input[type=text] {
+    width:100%; padding:11px 14px; border:1.5px solid var(--border);
+    border-radius:10px; font-size:15px; font-family:inherit; color:var(--dark);
+    background:white; outline:none; transition:border-color 0.2s, box-shadow 0.2s;
+  }
+  input[type=text]:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,0.10); }
+
+  /* Button grid gap */
+  .btn-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:0; }
+
 </style>
 </head>
 <body>
@@ -125,6 +293,38 @@
   <h1>Hồng Anh Express Quốc tế</h1>
 </header>
 
+<div class="page-layout">
+<aside class="sidebar">
+
+  <!-- Thông báo -->
+  <div class="sidebar-card">
+    <div class="sidebar-title"><span>📢</span> Thông báo <span id="notices-status" style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0"></span></div>
+    <div id="notices-container"><div class="notice-item"><div class="idot dot-blue"></div><div style="color:#9ca3af;font-style:italic">Đang tải thông báo...</div></div></div>
+  </div>
+
+  <!-- Fuel Surcharge hiện tại -->
+  <div class="sidebar-card">
+    <div class="sidebar-title"><span>⛽</span> Fuel Surcharge</div>
+    <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb dhl">DHL</span> Express</div><div id="sb-fuel-dhl">23.5%</div></div>
+    <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb fedex">FedEx</span> IP/IE</div><div id="sb-fuel-fedex">22.0%</div></div>
+    <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb ups">UPS</span> Saver/Exp</div><div id="sb-fuel-ups">21.0%</div></div>
+  </div>
+
+  <!-- Lịch sử tính -->
+  <div class="sidebar-card">
+    <div class="sidebar-title"><span>🕑</span> Lịch sử tính</div>
+    <div id="sidebar-history"><div class="history-empty">Chưa có lần tính nào</div></div>
+  </div>
+
+  <!-- Mẹo -->
+  <div class="sidebar-card">
+    <div class="sidebar-title"><span>💡</span> Mẹo sử dụng</div>
+    <div class="notice-item"><div class="idot dot-blue"></div><div>Nhập đủ kích thước để tính cân thể tích chính xác hơn.</div></div>
+    <div class="notice-item"><div class="idot dot-blue"></div><div>Nhập thành phố/mã bưu chính để kiểm tra phụ phí vùng xa DHL &amp; FedEx ODA.</div></div>
+    <div class="notice-item"><div class="idot dot-blue"></div><div>Bấm vào kết quả từng hãng để xem chi tiết cước.</div></div>
+  </div>
+
+</aside>
 <div class="container">
   <div class="error-banner" id="error-banner"></div>
 
@@ -137,36 +337,306 @@
         <button class="type-btn" id="btn-nondoc" onclick="setType('non-document')">📦 Non-Document</button>
       </div>
     </div>
-    <div class="field">
-      <label>Quốc gia đến</label>
-      <div class="select-wrap">
-        <select id="country" onchange="updateZone()">
-          <option value="">-- Chọn quốc gia --</option>
-        </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">
+      <div>
+        <label style="display:block;font-size:14px;font-weight:500;color:var(--dark);margin-bottom:6px;">Quốc gia đến</label>
+        <div class="select-wrap">
+          <select id="country" onchange="updateZone()">
+            <option value="">-- Chọn quốc gia --</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" id="vsvx-field" style="display:none;margin:0;">
+        <label>Thành phố / Mã bưu chính <span style="font-weight:400;color:var(--gray)">(DHL &amp; FedEx)</span></label>
+        <input type="text" id="vsvx-input" placeholder="Ví dụ: Jalalabad hoặc 2000" oninput="checkVsvxInput()" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;color:var(--dark);background:white;outline:none;transition:border-color 0.15s;">
       </div>
     </div>
-    <div class="zone-badge" id="zone-display" id="zone-display"></div>
+    <div id="vsvx-oda-row" style="display:none;flex-direction:row;gap:6px;margin-top:6px;">
+      <div id="vsvx-result" style="opacity:0;pointer-events:none;font-size:13px;padding:6px 12px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;"></div>
+      <div id="fedex-oda-result" style="opacity:0;pointer-events:none;font-size:13px;padding:6px 12px;border-radius:6px;flex:1;min-width:0;"></div>
+    </div>
+    <div class="zone-badge" id="zone-display"></div>
     <div id="vsvx-badge" style="display:none;font-size:12px;color:#166534;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:6px 12px;margin-top:6px;"></div>
-    <div class="field" id="vsvx-field" style="display:none;margin-top:10px;">
-      <label>Thành phố / Mã bưu chính <span style="font-weight:400;color:var(--gray)">(tùy chọn – phụ phí vùng sâu DHL)</span></label>
-      <input type="text" id="vsvx-input" placeholder="Ví dụ: Jalalabad hoặc 2000" oninput="checkVsvxInput()" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;color:var(--dark);background:white;outline:none;transition:border-color 0.15s;">
-      <div id="vsvx-result" style="display:none;font-size:12px;margin-top:6px;padding:6px 10px;border-radius:6px;"></div>
-    </div>
-    <div class="field">
-      <label>Cân nặng thực (kg)</label>
-      <input type="number" id="weight" placeholder="Ví dụ: 2.5" min="0.1" step="0.5">
-    </div>
-    <div class="field">
-      <label>Kích thước (tùy chọn)</label>
-      <div class="dim-row">
-        <div><label>Dài (cm)</label><input type="number" id="dim-l" placeholder="0" min="0" step="0.1" oninput="calcVolWeight()"></div>
-        <div><label>Rộng (cm)</label><input type="number" id="dim-w" placeholder="0" min="0" step="0.1" oninput="calcVolWeight()"></div>
-        <div><label>Cao (cm)</label><input type="number" id="dim-h" placeholder="0" min="0" step="0.1" oninput="calcVolWeight()"></div>
+    <!-- ── PIECE DETAILS TABLE ── -->
+    <div class="field" id="piece-details-section">
+      <div class="piece-details-header">
+        <span class="piece-details-title">Chi tiết kiện hàng</span>
+        <div class="piece-unit-group">
+          <span class="piece-unit-label">Đơn vị</span>
+          <div class="piece-unit-toggle">
+            <button class="piece-unit-btn active" id="unit-kg-cm" onclick="setPieceUnit('kg','cm')">kg / cm</button>
+            <button class="piece-unit-btn" id="unit-lb-in" onclick="setPieceUnit('lb','in')">lb / in</button>
+          </div>
+        </div>
       </div>
-      <div class="vol-badge" id="vol-badge"></div>
-      <input type="number" id="vol-weight" placeholder="Hoặc nhập cân thể tích trực tiếp (kg)" min="0" step="0.01">
+
+      <div class="piece-table-wrap">
+        <table class="piece-table" id="piece-table">
+          <thead>
+            <tr>
+              <th class="col-no">No.</th>
+              <th class="col-w">Cân nặng <span class="piece-unit-head" id="head-weight">kg</span></th>
+              <th class="col-dim">Dài <span class="piece-unit-head" id="head-dim">cm</span></th>
+              <th class="col-dim">Rộng <span class="piece-unit-head" id="head-dim2">cm</span></th>
+              <th class="col-dim">Cao <span class="piece-unit-head" id="head-dim3">cm</span></th>
+              <th class="col-del"></th>
+            </tr>
+          </thead>
+          <tbody id="piece-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="piece-footer">
+        <div class="piece-count-wrap">
+          <label class="piece-count-label">Số kiện</label>
+          <div class="piece-count-ctrl">
+            <button class="piece-count-btn" onclick="removePieceRow()">−</button>
+            <span id="piece-count-display">1</span>
+            <button class="piece-count-btn" onclick="addPieceRow()">+</button>
+          </div>
+        </div>
+        <div class="vol-badge" id="vol-badge"></div>
+      </div>
+
+      <!-- Hidden legacy inputs kept for JS compatibility -->
+      <input type="hidden" id="weight" value="">
+      <input type="hidden" id="dim-l" value="">
+      <input type="hidden" id="dim-w" value="">
+      <input type="hidden" id="dim-h" value="">
+      <input type="hidden" id="vol-weight" value="">
     </div>
-    <div style="font-size:12px;color:var(--gray);">💡 Cân tính cước = max(thực, thể tích). Thể tích = L×W×H ÷ 5000</div>
+
+<style>
+/* ── PIECE DETAILS ── */
+.piece-details-header {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  border-radius: 10px 10px 0 0;
+  padding: 9px 14px; margin-bottom: 0;
+}
+.piece-details-title { font-size: 12.5px; font-weight: 700; color: #fff; letter-spacing: 0.02em; }
+.piece-unit-group { display: flex; align-items: center; gap: 8px; }
+.piece-unit-label { font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,0.75); }
+.piece-unit-toggle { display: flex; border: 1.5px solid rgba(255,255,255,0.25); border-radius: 6px; overflow: hidden; background: rgba(255,255,255,0.12); }
+.piece-unit-btn {
+  padding: 4px 10px; font-size: 11.5px; font-weight: 700; border: none; cursor: pointer;
+  background: transparent; color: rgba(255,255,255,0.7); font-family: inherit; transition: background 0.15s, color 0.15s;
+}
+.piece-unit-btn.active { background: white; color: #1d4ed8; }
+
+.piece-table-wrap { border: 1.5px solid #bfdbfe; border-top: none; overflow: hidden; }
+.piece-table { width: 100%; border-collapse: collapse; background: white; }
+.piece-table thead tr { background: #eff6ff; }
+.piece-table th {
+  padding: 7px 10px; font-size: 11.5px; font-weight: 700; color: #1d4ed8;
+  text-align: center; border-right: 1px solid #dbeafe;
+}
+.piece-table th:last-child { border-right: none; }
+.piece-unit-head { font-weight: 500; color: #93c5fd; font-size: 10.5px; }
+.col-no { width: 36px; }
+.col-w { width: 22%; }
+.col-dim { width: 20%; }
+.col-del { width: 32px; }
+
+.piece-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; }
+.piece-table tbody tr:last-child { border-bottom: none; }
+.piece-table tbody tr:hover { background: #eff6ff; }
+.piece-table td { padding: 6px 8px; text-align: center; border-right: 1px solid #f1f5f9; vertical-align: middle; }
+.piece-table td:last-child { border-right: none; }
+.piece-no { font-size: 12px; font-weight: 600; color: #64748b; }
+
+.piece-input-wrap { display: flex; align-items: center; gap: 3px; }
+.piece-input {
+  width: 100%; padding: 6px 8px; border: 1.5px solid #e2e8f0; border-radius: 7px;
+  font-size: 13.5px; font-family: inherit; color: var(--dark); text-align: right;
+  outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  -moz-appearance: textfield;
+}
+.piece-input::-webkit-inner-spin-button,
+.piece-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.piece-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+.piece-input-unit { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+.piece-del-btn {
+  width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #fca5a5;
+  background: #fff; color: #ef4444; font-size: 14px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.piece-del-btn:hover { background: #fef2f2; }
+
+.piece-footer {
+  border: 1.5px solid #bfdbfe; border-top: 1px solid #dbeafe;
+  border-radius: 0 0 10px 10px;
+  background: #f0f7ff; padding: 8px 14px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.piece-count-wrap { display: flex; align-items: center; gap: 8px; }
+.piece-count-label { font-size: 12px; font-weight: 600; color: #475569; }
+.piece-count-ctrl { display: flex; align-items: center; gap: 0; border: 1.5px solid #2563eb; border-radius: 7px; overflow: hidden; }
+.piece-count-btn {
+  width: 28px; height: 28px; border: none; background: #2563eb; color: white;
+  font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: background 0.15s; display: flex; align-items: center; justify-content: center;
+}
+.piece-count-btn:hover { background: #1d4ed8; }
+#piece-count-display { padding: 0 12px; font-size: 14px; font-weight: 700; color: #1d4ed8; background: white; min-width: 32px; text-align: center; }
+</style>
+
+<script>
+// ── Piece Details logic ──
+let pieceUnit = { w: 'kg', d: 'cm' };
+let pieceRows = [];
+
+function initPieces() {
+  pieceRows = [];
+  const tbody = document.getElementById('piece-tbody');
+  tbody.innerHTML = '';
+  addPieceRow(false);
+  syncPieceLegacy();
+}
+
+function addPieceRow(sync = true) {
+  pieceRows.push({ weight: '', l: '', w: '', h: '' });
+  renderPieceRows();
+  if (sync) syncPieceLegacy();
+}
+
+function removePieceRow() {
+  if (pieceRows.length <= 1) return;
+  pieceRows.pop();
+  renderPieceRows();
+  syncPieceLegacy();
+}
+
+function renderPieceRows() {
+  const tbody = document.getElementById('piece-tbody');
+  const wu = pieceUnit.w, du = pieceUnit.d;
+  tbody.innerHTML = pieceRows.map((r, i) => `
+    <tr>
+      <td class="piece-no">${i + 1}.</td>
+      <td>
+        <div class="piece-input-wrap">
+          <input class="piece-input" type="number" min="0.01" step="0.1" value="${r.weight || ''}" 
+            oninput="updatePiece(${i},'weight',this.value)" placeholder="">
+          <span class="piece-input-unit">${wu}</span>
+        </div>
+      </td>
+      <td>
+        <div class="piece-input-wrap">
+          <input class="piece-input" type="number" min="0" step="1" value="${r.l}"
+            oninput="updatePiece(${i},'l',this.value)" placeholder="">
+          <span class="piece-input-unit">${du}</span>
+        </div>
+      </td>
+      <td>
+        <div class="piece-input-wrap">
+          <input class="piece-input" type="number" min="0" step="1" value="${r.w}"
+            oninput="updatePiece(${i},'w',this.value)" placeholder="">
+          <span class="piece-input-unit">${du}</span>
+        </div>
+      </td>
+      <td>
+        <div class="piece-input-wrap">
+          <input class="piece-input" type="number" min="0" step="1" value="${r.h}"
+            oninput="updatePiece(${i},'h',this.value)" placeholder="">
+          <span class="piece-input-unit">${du}</span>
+        </div>
+      </td>
+      <td>${pieceRows.length > 1 ? `<button class="piece-del-btn" onclick="deletePieceRow(${i})">×</button>` : ''}</td>
+    </tr>
+  `).join('');
+  document.getElementById('piece-count-display').textContent = pieceRows.length;
+}
+
+function updatePiece(i, field, val) {
+  pieceRows[i][field] = val === '' ? '' : parseFloat(val) || 0;
+  syncPieceLegacy();
+}
+
+function deletePieceRow(i) {
+  if (pieceRows.length <= 1) return;
+  pieceRows.splice(i, 1);
+  renderPieceRows();
+  syncPieceLegacy();
+}
+
+function setPieceUnit(wu, du) {
+  pieceUnit = { w: wu, d: du };
+  document.getElementById('unit-kg-cm').classList.toggle('active', wu === 'kg');
+  document.getElementById('unit-lb-in').classList.toggle('active', wu === 'lb');
+  ['head-weight','head-dim','head-dim2','head-dim3'].forEach((id,i) => {
+    document.getElementById(id).textContent = i === 0 ? wu : du;
+  });
+  renderPieceRows();
+}
+
+// Lưu dữ liệu từng kiện đã quy đổi sang kg/cm để calculate() dùng
+window._piecesKg = []; // [{ wKg, lCm, wCm, hCm }]
+
+function syncPieceLegacy() {
+  const LB_TO_KG = 0.453592, IN_TO_CM = 2.54;
+  let totalW = 0, maxVol = 0;
+  let firstL = '', firstWcm = '', firstH = '';
+  window._piecesKg = [];
+
+  pieceRows.forEach((r, i) => {
+    let wKg = parseFloat(r.weight) || 0;
+    let lCm = parseFloat(r.l) || 0;
+    let wCm = parseFloat(r.w) || 0;
+    let hCm = parseFloat(r.h) || 0;
+    if (pieceUnit.w === 'lb') wKg *= LB_TO_KG;
+    if (pieceUnit.d === 'in') { lCm *= IN_TO_CM; wCm *= IN_TO_CM; hCm *= IN_TO_CM; }
+    window._piecesKg.push({ wKg, lCm, wCm, hCm });
+    totalW += wKg;
+    const vol = (lCm * wCm * hCm) / 5000;
+    if (vol > maxVol) maxVol = vol;
+    if (i === 0) { firstL = lCm || ''; firstWcm = wCm || ''; firstH = hCm || ''; }
+  });
+
+  document.getElementById('weight').value = totalW.toFixed(3);
+  document.getElementById('dim-l').value = firstL;
+  document.getElementById('dim-w').value = firstWcm;
+  document.getElementById('dim-h').value = firstH;
+  if (maxVol > 0) {
+    document.getElementById('vol-weight').value = maxVol.toFixed(3);
+    calcVolWeight();
+  } else {
+    document.getElementById('vol-weight').value = '';
+    const badge = document.getElementById('vol-badge');
+    if (badge) badge.classList.remove('show');
+  }
+}
+
+// Làm tròn 1 kiện theo quy tắc từng hãng:
+// DHL : >= 30kg -> 1kg; < 30kg -> 0.5kg
+// FedEx/UPS: >= 20kg -> 1kg; < 20kg -> 0.5kg
+function roundPieceWeight(kg, carrier) {
+  const isDHL = (carrier === 'DHL');
+  const threshold = isDHL ? 30 : 20;
+  const step = kg >= threshold ? 1 : 0.5;
+  return Math.ceil(kg / step) * step;
+}
+
+// Tính tổng cân tính cước cho 1 hãng:
+// Mỗi kiện: max(thực, thể tích) -> làm tròn theo hãng -> cộng tổng
+function calcTotalRoundedByCarrier(carrier) {
+  const pieces = window._piecesKg || [];
+  if (!pieces.length) {
+    const wt  = parseFloat(document.getElementById('weight').value) || 0;
+    const vwt = parseFloat(document.getElementById('vol-weight').value) || 0;
+    return roundPieceWeight(Math.max(wt, vwt), carrier);
+  }
+  let total = 0;
+  pieces.forEach(p => {
+    const volW = (p.lCm * p.wCm * p.hCm) / 5000;
+    const chargeEach = Math.max(p.wKg, volW);
+    total += roundPieceWeight(chargeEach, carrier);
+  });
+  return total;
+}
+
+document.addEventListener('DOMContentLoaded', () => { initPieces(); });
+</script>
   </div>
 
   <div class="card" style="padding:12px 16px">
@@ -188,9 +658,9 @@
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">
+  <div class="btn-grid">
     <button class="calc-btn" id="calc-btn" onclick="setDirection('export');calculate()" disabled>📤 Hàng xuất →</button>
-    <button class="calc-btn" id="import-btn" style="background:#374151;opacity:0.6;cursor:pointer" disabled onclick="setDirection('import');calculate()">📥 Hàng nhập</button>
+    <button class="calc-btn import-btn" id="import-btn" disabled onclick="setDirection('import');calculate()">📥 Hàng nhập</button>
   </div>
 
   <div class="results-section" id="results-section">
@@ -379,6 +849,7 @@
     <button class="reset-btn" onclick="reset()">↺ Tính lại</button>
   </div>
 </div>
+</div><!-- end page-layout -->
 
 <footer id="footer-text">Design by Tiến Nguyễn</footer>
 
@@ -482,10 +953,10 @@ function setDirection(dir) {
   const isImp = dir === 'import';
   document.getElementById('calc-btn').classList.toggle('active-dir', !isImp);
   document.getElementById('import-btn').classList.toggle('active-dir', isImp);
-  document.getElementById('calc-btn').style.background = isImp ? '#374151' : '#1a1a1a';
-  document.getElementById('calc-btn').style.opacity = isImp ? '0.6' : '1';
-  document.getElementById('import-btn').style.background = isImp ? '#1a1a1a' : '#374151';
-  document.getElementById('import-btn').style.opacity = isImp ? '1' : '0.6';
+  document.getElementById('calc-btn').style.background = isImp ? '' : '';
+  document.getElementById('calc-btn').style.opacity = isImp ? '0.55' : '1';
+  document.getElementById('import-btn').style.background = '';
+  document.getElementById('import-btn').style.opacity = isImp ? '1' : '0.55';
   updateZone(); // cập nhật zone display khi đổi chiều
 }
 
@@ -534,24 +1005,33 @@ function updateZone() {
     }
     zd.textContent = '📍 ' + parts.join(' · ');
     zd.classList.add('show');
-    // Load VSVX ngầm theo ISO + hiện ô nhập nếu nước có DHL
+    // Hiện ô nhập ngay lập tức nếu nước có DHL hoặc FedEx (không đợi VSVX/ODA)
+    const hasDHL   = countryData[c] && countryData[c].dhl;
+    const hasFedEx = countryData[c] && countryData[c].fedexIP;
+    const showField = hasDHL || hasFedEx;
+    document.getElementById('vsvx-field').style.display = showField ? 'block' : 'none';
+    // Load VSVX ngầm theo ISO
     const iso = countryData[c] ? countryData[c].iso : null;
-    if (iso) loadVsvx(iso);
-    const hasDHL = countryData[c] && countryData[c].dhl;
-    document.getElementById('vsvx-field').style.display = hasDHL ? 'block' : 'none';
+    if (iso && hasDHL) loadVsvx(iso);
+    // Load FedEx ODA ngầm theo ISO (bất kể có DHL hay không)
+    if (iso) loadFedexOda(iso);
     // Chỉ reset VSVX khi thực sự đổi nước (không reset khi chỉ đổi chiều xuất/nhập)
     if (c !== _lastVsvxCountry) {
       _lastVsvxCountry = c;
-      window._vsvxMatched = false;
+      window._vsvxMatched = false; window._fedexOdaTier = null;
+      
       document.getElementById('vsvx-input').value = '';
-      document.getElementById('vsvx-result').style.display = 'none';
+      const _vr = document.getElementById('vsvx-result'); if(_vr){_vr.style.opacity='0';_vr.style.pointerEvents='none';}
+      const _vor = document.getElementById('fedex-oda-result'); if(_vor){_vor.style.opacity='0';_vor.style.pointerEvents='none';}
+      syncOdaRow();
       document.getElementById('vsvx-input').style.borderColor = '';
     }
   } else {
     zd.classList.remove('show');
     document.getElementById('vsvx-badge').style.display = 'none';
     document.getElementById('vsvx-field').style.display = 'none';
-    window._vsvxMatched = false;
+    window._vsvxMatched = false; window._fedexOdaTier = null;
+    
     _lastVsvxCountry = null;
   }
 }
@@ -1299,9 +1779,15 @@ function renderCarrier(id, base, fuel, fuelPct, demand, demandPct, vat, vatPct, 
     if ((ch.condition === 'dhl_vsvx' || ch.condition === 'dhlsin_vsvx') && ch.perKgExport > 0 && billableWeight > 0) {
       base_flat = Math.max(ch.flat, ch.perKgExport * billableWeight);
     }
+    // FedEx ODA Tier B & C: max(flat, perKgExport × weight) — Tier A chỉ flat
+    if ((ch.condition === 'fedex_oda_b' || ch.condition === 'fedex_oda_c') && ch.perKgExport > 0 && billableWeight > 0) {
+      base_flat = Math.max(ch.flat, ch.perKgExport * billableWeight);
+    }
     const total = base_flat * (1 + fuelPct/100) * (1 + vatPct/100);
     otherTotal += total;
-    return { name: ch.name, flat: base_flat, total };
+    // Nếu phụ phí được nhân theo số kiện, hiển thị thêm "× N kiện"
+    const displayName = (ch._pieceCount > 1) ? `${ch.name} × ${ch._pieceCount} kiện` : ch.name;
+    return { name: displayName, flat: base_flat, total };
   });
 
   // demand đã bao gồm fuel (demandWithFuel). VAT tính trên toàn bộ (base+fuel+demand).
@@ -1465,6 +1951,10 @@ function evalCondition(cond, carrier, weight, dims, country, type, isoList=[], a
     case 'dhlsin_restricted':     return isoMatch();
     case 'dhl_vsvx':              return window._vsvxMatched === true;
     case 'dhlsin_vsvx':           return window._vsvxMatched === true;
+    // FedEx ODA: tier được lưu trong window._fedexOdaTier sau khi user nhập city/postcode
+    case 'fedex_oda_a':           return window._fedexOdaTier === 'A';
+    case 'fedex_oda_b':           return window._fedexOdaTier === 'B';
+    case 'fedex_oda_c':           return window._fedexOdaTier === 'C';
     default:                      return false;
   }
 }
@@ -1494,6 +1984,9 @@ const CHARGE_GROUP = {
   'residential_us':'residential',
   'dhl_vsvx':'vsvx',
   'dhlsin_vsvx':'vsvx',
+  'fedex_oda_a':'fedex_oda',
+  'fedex_oda_b':'fedex_oda',
+  'fedex_oda_c':'fedex_oda',
 };
 
 // Conditions chỉ áp dụng khi KHÔNG phải freight
@@ -1509,21 +2002,54 @@ const OC_FREIGHT_ONLY = new Set([
 ]);
 
 function getOtherCharges(carrier, weight, dims, country, type, isFreight=false, actualWeight) {
-  // weight = chargeWeight (max thực+dim), actualWeight = cân thực tế
+  // weight = chargeWeight (max thực+dim), actualWeight = cân thực tế tổng lô
   // evalCondition dùng actualWeight cho các case quá cân; weight cho DHL dim>70
   const aw = (actualWeight !== undefined) ? actualWeight : weight;
-  const matched = OTHER_CHARGES.filter(ch => {
+  const pieces = window._piecesKg || [];
+
+  // ── Lấy danh sách tất cả charges áp dụng cho hãng này ──
+  const candidates = OTHER_CHARGES.filter(ch => {
     if (ch.carrier !== carrier && ch.carrier !== 'all') return false;
     if (OC_NORMAL_ONLY.has(ch.condition) && isFreight) return false;
     if (OC_FREIGHT_ONLY.has(ch.condition) && !isFreight) return false;
-    return evalCondition(ch.condition, carrier, weight, dims, country, type, ch.isoList || [], aw);
+    return true;
   });
-  // Per group: keep only the one with highest flat value
+
+  // ── Với các phụ phí nhóm 'size': kiểm tra từng kiện riêng ──
+  // Với phụ phí khác (remote, risk, vsvx, oda, ...): kiểm tra theo tổng lô như cũ
   const byGroup = {};
-  matched.forEach(ch => {
+
+  candidates.forEach(ch => {
     const g = CHARGE_GROUP[ch.condition] || ch.condition;
-    if (!byGroup[g] || ch.flat > byGroup[g].flat) byGroup[g] = ch;
+
+    if (g === 'size' && pieces.length >= 1) {
+      // Đếm số kiện bị trigger (mỗi kiện kiểm tra độc lập)
+      let count = 0;
+      pieces.forEach(p => {
+        const pDims    = { l: p.lCm, w: p.wCm, h: p.hCm };
+        const pAw      = p.wKg;
+        const pChargeW = Math.max(p.wKg, (p.lCm * p.wCm * p.hCm) / 5000);
+        if (evalCondition(ch.condition, carrier, pChargeW, pDims, country, type, ch.isoList || [], pAw)) {
+          count++;
+        }
+      });
+      if (count === 0) return; // không kiện nào bị → skip
+
+      // Giữ charge có flat cao nhất trong group; nhân flat theo số kiện bị
+      const existingCount = byGroup[g] ? (byGroup[g]._rawCount || 0) : 0;
+      const existingFlat  = byGroup[g] ? (byGroup[g]._rawFlat  || 0) : 0;
+      if (!byGroup[g] || ch.flat > existingFlat) {
+        byGroup[g] = { ...ch, _rawFlat: ch.flat, _rawCount: count,
+                       flat: ch.flat * count,
+                       _pieceCount: count > 1 ? count : 0 };
+      }
+    } else {
+      // Phụ phí tính theo lô (không per-piece)
+      if (!evalCondition(ch.condition, carrier, weight, dims, country, type, ch.isoList || [], aw)) return;
+      if (!byGroup[g] || ch.flat > byGroup[g].flat) byGroup[g] = ch;
+    }
   });
+
   return Object.values(byGroup);
 }
 
@@ -1544,7 +2070,12 @@ function calculate() {
 
   const zones=countryData[country]||{};
   const chargeWeight=Math.max(wt,vwt);
-  const roundedWeight=Math.ceil(chargeWeight*2)/2;
+  // roundedWeight riêng cho từng hãng (làm tròn từng kiện rồi cộng)
+  const roundedWeightDHL    = calcTotalRoundedByCarrier('DHL');
+  const roundedWeightFedEx  = calcTotalRoundedByCarrier('FedEx');
+  const roundedWeightUPS    = calcTotalRoundedByCarrier('UPS');
+  // Dùng DHL làm mặc định cho các chỗ chỉ cần 1 giá trị (header, demand, etc.)
+  const roundedWeight = roundedWeightDHL;
 
   // Dims for other charge detection
   const dimL=parseFloat(document.getElementById('dim-l').value)||0;
@@ -1572,7 +2103,11 @@ function calculate() {
   function calcDemand(carrier, fuel) {
     const perKg = getDemandPerKg(carrier, countryISO);
     if (!perKg) return { amt: 0, perKg: 0 };
-    const amt = perKg * roundedWeight * (1 + fuel / 100);
+    // Dùng weight đúng theo từng hãng cho demand
+    const rw = (carrier === 'FedEx') ? roundedWeightFedEx
+             : (carrier === 'UPS')   ? roundedWeightUPS
+             : roundedWeightDHL;
+    const amt = perKg * rw * (1 + fuel / 100);
     return { amt, perKg };
   }
 
@@ -1585,20 +2120,20 @@ function calculate() {
   const isImport = currentDirection === 'import';
 
   // DHL — chỉ hiện khi hàng xuất (chưa có bảng giá nhập)
-  const dhlBase = (!isImport && zones.dhl) ? getDHLRate(roundedWeight,zones.dhl) : 0;
+  const dhlBase = (!isImport && zones.dhl) ? getDHLRate(roundedWeightDHL,zones.dhl) : 0;
   const dhlFuel=dhlBase*fuelDHL/100;
   const { amt: dhlDemand, perKg: dhlDemandPerKg } = calcDemand('DHL', fuelDHL);
-  const dhlOC=getOtherCharges('DHL',roundedWeight,dims,country,effectiveType,false,wt);
+  const dhlOC=getOtherCharges('DHL',roundedWeightDHL,dims,country,effectiveType,false,wt);
   renderCarrier('dhl',dhlBase,dhlFuel,fuelDHL,dhlDemand,dhlDemandPerKg,0,vatPct,
-    {zone:`DHL Vùng ${zones.dhl||'N/A'}`,weight:`${roundedWeight} kg`,type:typeLabel},dhlOC,roundedWeight);
+    {zone:`DHL Vùng ${zones.dhl||'N/A'}`,weight:`${roundedWeightDHL} kg`,type:typeLabel},dhlOC,roundedWeightDHL);
 
   // DHL SIN — chỉ hiện khi hàng xuất (chưa có bảng giá nhập)
   const dhlsinZone = zones.dhlsin;
   const dhlsinEligible = !isImport && !!(dhlsinZone || countryISO === 'PK');
-  const dhlsinBase = dhlsinEligible ? getDHLSINRate(roundedWeight, dhlsinZone, countryISO) : 0;
+  const dhlsinBase = dhlsinEligible ? getDHLSINRate(roundedWeightDHL, dhlsinZone, countryISO) : 0;
   const dhlsinFuel = dhlsinBase * fuelDHL / 100;
   const { amt: dhlsinDemand, perKg: dhlsinDemandPerKg } = calcDemand('DHL SIN', fuelDHL);
-  const dhlsinOC = getOtherCharges('DHL SIN', roundedWeight, dims, country, effectiveType, false, wt);
+  const dhlsinOC = getOtherCharges('DHL SIN', roundedWeightDHL, dims, country, effectiveType, false, wt);
   const dhlsinZoneLabel = countryISO === 'BN' ? 'BN (đặc biệt)'
     : countryISO === 'PK' ? 'PK (đặc biệt)'
     : countryISO === 'MY' ? 'Zone 1 (MY)'
@@ -1606,7 +2141,7 @@ function calculate() {
     : `Zone ${dhlsinZone || 'N/A'}`;
   document.getElementById('dhl-sin-service').textContent = `SIN Express · ${countryShort}`;
   renderCarrier('dhl-sin', dhlsinBase, dhlsinFuel, fuelDHL, dhlsinDemand, dhlsinDemandPerKg, 0, vatPct,
-    {zone:`DHL SIN ${dhlsinZoneLabel}`, weight:`${roundedWeight} kg`, type:typeLabel}, dhlsinOC);
+    {zone:`DHL SIN ${dhlsinZoneLabel}`, weight:`${roundedWeightDHL} kg`, type:typeLabel}, dhlsinOC);
 
   // FedEx: kiểm tra có phải dùng Freight (IPF/IEF) không
   const fedexFreightWeightThresh = parseFloat(document.getElementById('fedex-freight-weight').value) || 70;
@@ -1621,10 +2156,10 @@ function calculate() {
 
   // FedEx: apply min billable weight if oversize (18kg min)
   const fedexBillableWeight = effectiveType==='document'
-    ? roundedWeight
-    : Math.max(roundedWeight, getFedExBillableWeight(roundedWeight, dims));
-  const fedexWeightLabel = fedexBillableWeight > roundedWeight
-    ? `${roundedWeight} kg → min ${fedexBillableWeight} kg (oversize)` : `${roundedWeight} kg`;
+    ? roundedWeightFedEx
+    : Math.max(roundedWeightFedEx, getFedExBillableWeight(roundedWeightFedEx, dims));
+  const fedexWeightLabel = fedexBillableWeight > roundedWeightFedEx
+    ? `${roundedWeightFedEx} kg → min ${fedexBillableWeight} kg (oversize)` : `${roundedWeightFedEx} kg`;
 
   // FedEx IP / IPF — xuất dùng fedexIPRates, nhập dùng fedexIPImpRates
   const fipZone = useFedExFreight ? (zones.fedexIPF || zones.fedexIP) : zones.fedexIP;
@@ -1635,7 +2170,7 @@ function calculate() {
   const fipBase = fipZone ? getFedExRate(fedexBillableWeight, fipZone, fipRates, fipPerKg) : 0;
   const fipFuel=fipBase*fuelFedEx/100;
   const { amt: fipDemand, perKg: fipDemandPerKg } = calcDemand('FedEx', fuelFedEx);
-  const fipOC=getOtherCharges('FedEx',roundedWeight,dims,country,effectiveType,useFedExFreight,wt);
+  const fipOC=getOtherCharges('FedEx',roundedWeightFedEx,dims,country,effectiveType,useFedExFreight,wt);
   document.getElementById('fedex-ip-name').textContent = fipLabel;
   document.getElementById('fedex-ip-service').textContent = fipService;
   renderCarrier('fedex-ip',fipBase,fipFuel,fuelFedEx,fipDemand,fipDemandPerKg,0,vatPct,
@@ -1650,7 +2185,7 @@ function calculate() {
   const fieBase = fieZone ? getFedExRate(fedexBillableWeight, fieZone, fieRates, fiePerKg) : 0;
   const fieFuel=fieBase*fuelFedEx/100;
   const { amt: fieDemand, perKg: fieDemandPerKg } = calcDemand('FedEx', fuelFedEx);
-  const fieOC=getOtherCharges('FedEx',roundedWeight,dims,country,effectiveType,useFedExFreight,wt);
+  const fieOC=getOtherCharges('FedEx',roundedWeightFedEx,dims,country,effectiveType,useFedExFreight,wt);
   document.getElementById('fedex-ie-name').textContent = fieLabel;
   document.getElementById('fedex-ie-service').textContent = fieService;
   renderCarrier('fedex-ie',fieBase,fieFuel,fuelFedEx,fieDemand,fieDemandPerKg,0,vatPct,
@@ -1674,47 +2209,47 @@ function calculate() {
   if (usSaverZone) {
     if (useUPSFreight) {
       usBase = isImport
-        ? getUPSRate(roundedWeight,usSaverZone,upsFreightImpDoc,upsFreightImpNonDoc,upsFreightImpSpecialDoc,upsFreightImpSpecialNonDoc,country,upsFreightImpZoneNumMap,upsFreightImpPerKgKeys)
-        : getUPSRate(roundedWeight,usSaverZone,upsFreightExpDoc,upsFreightExpNonDoc,upsFreightExpSpecialDoc,upsFreightExpSpecialNonDoc,country,upsFreightExpZoneNumMap,upsFreightExpPerKgKeys);
+        ? getUPSRate(roundedWeightUPS,usSaverZone,upsFreightImpDoc,upsFreightImpNonDoc,upsFreightImpSpecialDoc,upsFreightImpSpecialNonDoc,country,upsFreightImpZoneNumMap,upsFreightImpPerKgKeys)
+        : getUPSRate(roundedWeightUPS,usSaverZone,upsFreightExpDoc,upsFreightExpNonDoc,upsFreightExpSpecialDoc,upsFreightExpSpecialNonDoc,country,upsFreightExpZoneNumMap,upsFreightExpPerKgKeys);
     } else {
       usBase = isImport
-        ? getUPSRate(roundedWeight,usSaverZone,upsSaverImpDoc,upsSaverImpNonDoc,upsSaverImpSpecialDoc,upsSaverImpSpecialNonDoc,country,upsSaverImpZoneNumMap,upsSaverImpPerKgKeys)
-        : getUPSRate(roundedWeight,usSaverZone,upsSaverDoc,upsSaverNonDoc,upsSaverSpecialDoc,upsSaverSpecialNonDoc,country,upsSaverZoneNumMap,upsSaverPerKgKeys);
+        ? getUPSRate(roundedWeightUPS,usSaverZone,upsSaverImpDoc,upsSaverImpNonDoc,upsSaverImpSpecialDoc,upsSaverImpSpecialNonDoc,country,upsSaverImpZoneNumMap,upsSaverImpPerKgKeys)
+        : getUPSRate(roundedWeightUPS,usSaverZone,upsSaverDoc,upsSaverNonDoc,upsSaverSpecialDoc,upsSaverSpecialNonDoc,country,upsSaverZoneNumMap,upsSaverPerKgKeys);
     }
   }
   const usFuel=usBase*fuelUPS/100;
   const { amt: usDemand, perKg: usDemandPerKg } = calcDemand('UPS', fuelUPS);
-  const usOC=getOtherCharges('UPS',roundedWeight,dims,country,effectiveType,useUPSFreight,wt);
+  const usOC=getOtherCharges('UPS',roundedWeightUPS,dims,country,effectiveType,useUPSFreight,wt);
   const usSaverNameLabel = useUPSFreight ? (isImport ? 'UPS Freight Imp' : 'UPS Freight Exp') : 'UPS Worldwide Saver';
   const usSaverSvcLabel  = useUPSFreight ? (isImport ? `Freight Imp · ${countryShort}` : `Freight Exp · ${countryShort}`) : `Express Saver · ${countryShort}`;
   document.getElementById('ups-saver-name').textContent = usSaverNameLabel;
   document.getElementById('ups-saver-service').textContent = usSaverSvcLabel;
   renderCarrier('ups-saver',usBase,usFuel,fuelUPS,usDemand,usDemandPerKg,0,vatPct,
-    {zone:`UPS Zone ${upsZoneLabel(usSaverZone, isImport?upsSaverImpZoneNumMap:upsSaverZoneNumMap, country)}`,weight:`${roundedWeight} kg`,type:typeLabel},usOC);
+    {zone:`UPS Zone ${upsZoneLabel(usSaverZone, isImport?upsSaverImpZoneNumMap:upsSaverZoneNumMap, country)}`,weight:`${roundedWeightUPS} kg`,type:typeLabel},usOC);
 
   // UPS Expedited (ẩn khi >70kg vì đã dùng Freight ở trên)
   const ueZone = isImport ? zones.upsExpImp : zones.upsExp;
   let ueBase = 0;
   if (!useUPSFreight && ueZone) {
     ueBase = isImport
-      ? getUPSRate(roundedWeight,ueZone,upsExpImpDoc,upsExpImpNonDoc,upsExpImpSpecialDoc,upsExpImpSpecialNonDoc,country,upsExpImpZoneNumMap,upsExpImpPerKgKeys)
-      : getUPSRate(roundedWeight,ueZone,upsExpDoc,upsExpNonDoc,upsExpSpecialDoc,upsExpSpecialNonDoc,country,upsExpZoneNumMap,upsExpPerKgKeys);
+      ? getUPSRate(roundedWeightUPS,ueZone,upsExpImpDoc,upsExpImpNonDoc,upsExpImpSpecialDoc,upsExpImpSpecialNonDoc,country,upsExpImpZoneNumMap,upsExpImpPerKgKeys)
+      : getUPSRate(roundedWeightUPS,ueZone,upsExpDoc,upsExpNonDoc,upsExpSpecialDoc,upsExpSpecialNonDoc,country,upsExpZoneNumMap,upsExpPerKgKeys);
   }
   const ueFuel=ueBase*fuelUPS/100;
   const { amt: ueDemand, perKg: ueDemandPerKg } = calcDemand('UPS', fuelUPS);
-  const ueOC=getOtherCharges('UPS',roundedWeight,dims,country,effectiveType,false,wt);
+  const ueOC=getOtherCharges('UPS',roundedWeightUPS,dims,country,effectiveType,false,wt);
   document.getElementById('ups-exp-service').textContent = isImport ? `Worldwide Expedited Imp · ${countryShort}` : `Worldwide Expedited · ${countryShort}`;
   renderCarrier('ups-exp',ueBase,ueFuel,fuelUPS,ueDemand,ueDemandPerKg,0,vatPct,
-    {zone:`UPS Zone ${upsZoneLabel(ueZone, isImport?upsExpImpZoneNumMap:upsExpZoneNumMap, country)}`,weight:`${roundedWeight} kg`,type:typeLabel},ueOC);
+    {zone:`UPS Zone ${upsZoneLabel(ueZone, isImport?upsExpImpZoneNumMap:upsExpZoneNumMap, country)}`,weight:`${roundedWeightUPS} kg`,type:typeLabel},ueOC);
 
   // Restore currentType
   currentType = savedType;
 
   // Show + header
-  document.getElementById('results-section').classList.add('show');
+  document.getElementById('results-section').classList.add('show'); sidebarPostCalc();
   const dirLabel = currentDirection === 'import' ? '📥 Hàng nhập' : '📤 Hàng xuất';
   document.getElementById('results-meta').textContent=
-    `${dirLabel} · ${countryShort} · ${roundedWeight} kg · ${typeLabelDisplay}`;
+    `${dirLabel} · ${countryShort} · DHL:${roundedWeightDHL}kg / FedEx:${roundedWeightFedEx}kg / UPS:${roundedWeightUPS}kg · ${typeLabelDisplay}`;
 
   document.getElementById('results-section').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -1886,7 +2421,20 @@ async function loadData(forceRefresh=false) {
   }
 
   errBanner.classList.remove('show');
-  if (forceRefresh) clearCache();
+  if (forceRefresh) {
+    clearCache();
+    // Xóa toàn bộ VSVX cache (localStorage + memory) để force re-fetch từ GAS
+    try {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('vsvx_')) keys.push(k);
+      }
+      keys.forEach(k => localStorage.removeItem(k));
+    } catch(e) {}
+    Object.keys(vsvxMemCache).forEach(k => delete vsvxMemCache[k]);
+    Object.keys(vsvxFetching).forEach(k => delete vsvxFetching[k]);
+  }
 
   // ── BƯỚC 1: Load cache ngay → hiện giao diện trước ─────────
   const cachedFirst = loadCache();
@@ -1998,27 +2546,34 @@ function reset() {
   });
   setType('document');
   setDirection('export');
-  window._vsvxMatched = false;
+  window._vsvxMatched = false; window._fedexOdaTier = null;
+  
   const vi = document.getElementById('vsvx-input'); if (vi) vi.value = '';
-  const vr = document.getElementById('vsvx-result'); if (vr) vr.style.display = 'none';
+  const vr = document.getElementById('vsvx-result'); if (vr) { vr.style.opacity = '0'; vr.style.pointerEvents = 'none'; }
+  const vor = document.getElementById('fedex-oda-result'); if (vor) { vor.style.opacity = '0'; vor.style.pointerEvents = 'none'; }
   const vf = document.getElementById('vsvx-field'); if (vf) vf.style.display = 'none';
+  syncOdaRow();
 }
 
 // ============================================================
 // VSVX – Lọc địa chỉ DHL theo ISO (cache vào localStorage)
 // ============================================================
 // _vsvxMatched: true nếu city/postcode user nhập nằm trong danh sách VSVX
-window._vsvxMatched = false;
+window._vsvxMatched = false; window._fedexOdaTier = null;
 
 function checkVsvxInput() {
   const val = (document.getElementById('vsvx-input').value || '').trim();
   const resultEl = document.getElementById('vsvx-result');
   const inputEl  = document.getElementById('vsvx-input');
 
+  // Always trigger FedEx ODA check in parallel
+  checkFedexOdaInput();
+
   if (!val) {
-    window._vsvxMatched = false;
-    resultEl.style.display = 'none';
+    window._vsvxMatched = false; window._fedexOdaTier = null;
+    resultEl.style.opacity = '0'; resultEl.style.pointerEvents = 'none';
     inputEl.style.borderColor = '';
+    syncOdaRow();
     return;
   }
 
@@ -2029,13 +2584,14 @@ function checkVsvxInput() {
 
   const data = vsvxMemCache[iso];
   if (!data) {
-    // Chưa load xong → chờ load rồi recheck
+    // Chưa load → show loading, kick off fetch 1 lần (loadVsvx tự recheck khi xong)
     resultEl.textContent = '⏳ Đang kiểm tra...';
     resultEl.style.background = '#f3f4f6';
     resultEl.style.border = '1px solid #d1d5db';
     resultEl.style.color = '#6b7280';
-    resultEl.style.display = 'block';
-    loadVsvx(iso).then(() => checkVsvxInput());
+    resultEl.style.opacity = '1'; resultEl.style.pointerEvents = '';
+    syncOdaRow();
+    loadVsvx(iso); // loadVsvx sẽ tự gọi checkVsvxInput khi có data
     return;
   }
 
@@ -2076,7 +2632,7 @@ function checkVsvxInput() {
   window._vsvxMatched = matched;
 
   if (matched) {
-    resultEl.textContent = '⚠️ Địa chỉ vùng sâu vùng xa – sẽ tính phụ phí DHL';
+    resultEl.textContent = '⚠️ Địa chỉ vùng sâu vùng xa – DHL';
     resultEl.style.background = '#fef9c3';
     resultEl.style.border = '1px solid #fde047';
     resultEl.style.color = '#854d0e';
@@ -2088,76 +2644,144 @@ function checkVsvxInput() {
     resultEl.style.color = '#166534';
     inputEl.style.borderColor = '#22c55e';
   }
-  resultEl.style.display = 'block';
+  resultEl.style.opacity = '1'; resultEl.style.pointerEvents = '';
+  syncOdaRow();
 }
-const vsvxMemCache = {}; // session cache, tránh gọi localStorage nhiều lần
+const vsvxMemCache = {}; // session cache: iso -> data (chỉ lưu data hợp lệ có cities/ranges)
+const vsvxFetching = {}; // tránh gọi song song cùng 1 ISO
+const VSVX_CACHE_TTL = 6 * 60 * 60 * 1000; // 6h (khớp GAS CacheService TTL)
+
+function vsvxIsValid(data) {
+  return data && ((data.cities && data.cities.length > 0) || (data.ranges && data.ranges.length > 0));
+}
+
+function vsvxSaveLocal(iso, data) {
+  // Chỉ lưu localStorage khi data hợp lệ, kèm timestamp để TTL
+  if (!vsvxIsValid(data)) return;
+  try {
+    const payload = JSON.stringify({ ts: Date.now(), cities: data.cities, ranges: data.ranges });
+    // Thử lưu; nếu quota exceeded thì xóa các entry cũ nhất trước
+    try {
+      localStorage.setItem('vsvx_' + iso, payload);
+    } catch(e) {
+      // Quota exceeded: xóa tất cả vsvx_ entries để giải phóng chỗ, rồi lưu lại
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('vsvx_')) keys.push(k);
+      }
+      keys.forEach(k => localStorage.removeItem(k));
+      try { localStorage.setItem('vsvx_' + iso, payload); } catch(e2) { /* bỏ qua */ }
+    }
+  } catch(e) { /* JSON.stringify fail */ }
+}
+
+function vsvxLoadLocal(iso) {
+  try {
+    const saved = localStorage.getItem('vsvx_' + iso);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    // Kiểm tra TTL
+    if (parsed.ts && (Date.now() - parsed.ts) > VSVX_CACHE_TTL) {
+      localStorage.removeItem('vsvx_' + iso);
+      return null;
+    }
+    if (!vsvxIsValid(parsed)) {
+      localStorage.removeItem('vsvx_' + iso);
+      return null;
+    }
+    return parsed;
+  } catch(e) {
+    try { localStorage.removeItem('vsvx_' + iso); } catch(e2) {}
+    return null;
+  }
+}
+
+async function fetchVsvxFromServer(iso) {
+  // Thử fetch với cache-buster trước, fallback không có cache-buster
+  const urls = [
+    `${PROXY}?vsvx=${iso}&t=${Date.now()}`,
+    `${PROXY}?vsvx=${iso}`,
+  ];
+  let lastErr;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store', redirect: 'follow' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data && data.error) throw new Error(data.error);
+      return data;
+    } catch(e) {
+      lastErr = e;
+      console.warn('[VSVX] fetch failed:', url, e.message);
+    }
+  }
+  throw lastErr;
+}
 
 async function loadVsvx(iso) {
   if (!iso) return;
   const badge = document.getElementById('vsvx-badge');
 
-  // 1. Đã có trong memory session → dùng luôn
-  if (vsvxMemCache[iso] !== undefined) {
+  // 1. Đã có trong memory session (chỉ valid data mới được lưu vào đây) → dùng luôn
+  if (vsvxMemCache[iso]) {
     renderVsvxBadge(iso, vsvxMemCache[iso]);
     return;
   }
 
-  // 2. Thử localStorage — validate trước khi dùng
-  try {
-    const saved = localStorage.getItem('vsvx_' + iso);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const valid = (parsed.cities && parsed.cities.length > 0) || (parsed.ranges && parsed.ranges.length > 0);
-      if (valid) {
-        vsvxMemCache[iso] = parsed;
-        renderVsvxBadge(iso, parsed);
-        return;
-      } else {
-        // Data rác → xóa để fetch lại
-        localStorage.removeItem('vsvx_' + iso);
-      }
-    }
-  } catch(e) { localStorage.removeItem('vsvx_' + iso); }
+  // 2. Thử localStorage (có TTL)
+  const local = vsvxLoadLocal(iso);
+  if (local) {
+    vsvxMemCache[iso] = local;
+    renderVsvxBadge(iso, local);
+    return;
+  }
 
-  // 3. Gọi server (lần đầu tiên cho ISO này)
+  // 3. Tránh fetch song song cho cùng 1 ISO
+  if (vsvxFetching[iso]) return;
+  vsvxFetching[iso] = true;
+
   badge.textContent = '⏳ Đang kiểm tra vùng phủ DHL...';
+  badge.style.background = '#f0fdf4';
+  badge.style.border = '1px solid #86efac';
+  badge.style.color = '#166534';
   badge.style.display = 'block';
+
   try {
-    const res = await fetch(`${PROXY}?vsvx=${iso}&t=${Date.now()}`, {
-      cache: 'no-store',
-      redirect: 'follow',
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    if (data && data.error) throw new Error(data.error);
-    vsvxMemCache[iso] = data;
-    try { localStorage.setItem('vsvx_' + iso, JSON.stringify(data)); } catch(e) {}
-    renderVsvxBadge(iso, data);
-  } catch(e) {
-    console.warn('[VSVX] Lỗi load', iso, e.message);
-    // Thử lại không có cache-buster (phòng GAS redirect strip params)
-    try {
-      const res2 = await fetch(`${PROXY}?vsvx=${iso}`, { redirect: 'follow' });
-      if (!res2.ok) throw new Error('HTTP ' + res2.status);
-      const data2 = await res2.json();
-      if (data2 && data2.error) throw new Error(data2.error);
-      vsvxMemCache[iso] = data2;
-      try { localStorage.setItem('vsvx_' + iso, JSON.stringify(data2)); } catch(e2) {}
-      renderVsvxBadge(iso, data2);
-    } catch(e2) {
-      console.warn('[VSVX] Retry thất bại', iso, e2.message);
-      badge.textContent = '⚠️ Không tải được danh sách vùng phủ DHL';
-      badge.style.background = '#fef9c3';
-      badge.style.border = '1px solid #fde047';
-      badge.style.color = '#854d0e';
-      badge.style.display = 'block';
+    const data = await fetchVsvxFromServer(iso);
+    vsvxFetching[iso] = false;
+
+    if (vsvxIsValid(data)) {
+      // Data hợp lệ → lưu và hiển thị
+      vsvxMemCache[iso] = data;
+      vsvxSaveLocal(iso, data);
+      renderVsvxBadge(iso, data);
+      // Recheck badge kết quả nếu user đang nhập và vẫn chọn nước này
+      const curVal = (document.getElementById('vsvx-input')?.value || '').trim();
+      const curCountry = document.getElementById('country')?.value;
+      const curIso = (countryData[curCountry] && countryData[curCountry].iso) ? countryData[curCountry].iso : null;
+      if (curVal && curIso === iso) checkVsvxInput();
+    } else {
+      // Server trả về rỗng (GAS cache miss hoặc ISO không có trong file)
+      // KHÔNG lưu vào cache để lần sau có thể thử lại
+      console.warn('[VSVX] Server trả về rỗng cho', iso, '– có thể GAS cache chưa warm');
+      // Vẫn hiển thị ô nhập nhưng không có badge thống kê
+      badge.style.display = 'none';
     }
+  } catch(e) {
+    vsvxFetching[iso] = false;
+    console.warn('[VSVX] Lỗi load', iso, e.message);
+    badge.textContent = '⚠️ Không tải được vùng phủ DHL – nhập thủ công vẫn được';
+    badge.style.background = '#fef9c3';
+    badge.style.border = '1px solid #fde047';
+    badge.style.color = '#854d0e';
+    badge.style.display = 'block';
   }
 }
 
 function renderVsvxBadge(iso, data) {
   const badge = document.getElementById('vsvx-badge');
-  if (!data || (!data.cities?.length && !data.ranges?.length)) {
+  if (!vsvxIsValid(data)) {
     badge.style.display = 'none';
     return;
   }
@@ -2167,9 +2791,346 @@ function renderVsvxBadge(iso, data) {
   if (cities) parts.push(`${cities} thành phố`);
   if (ranges) parts.push(`${ranges} vùng bưu chính`);
   badge.textContent = `📋 DHL hỗ trợ ${parts.join(' · ')} tại ${iso}`;
+  badge.style.background = '#f0fdf4';
+  badge.style.border = '1px solid #86efac';
+  badge.style.color = '#166534';
   badge.style.display = 'block';
 }
 
+
+// ============================================================
+// FEDEX ODA – Out-of-Delivery-Area surcharge check
+// ============================================================
+// Data: Google Drive ID 1ENLVnkVNEvgFq6G697jpUKSMdfJvE6OT
+// GAS endpoint: ?fedex_oda=<ISO2>
+// Returns: { type:'postcode'|'city', entries:[{tier,from?,to?,city?}] }
+// Tier hierarchy: C > B > A > No (where No = không phục vụ)
+// ============================================================
+
+  // dữ liệu ODA cho nước hiện tại (sau khi load)
+const fedexOdaMemCache = {};  // session cache: iso -> data
+const fedexOdaFetching = {};  // tránh gọi song song
+const FEDEX_ODA_TTL = 6 * 60 * 60 * 1000; // 6h (khớp VSVX TTL)
+
+const FEDEX_ODA_TIER_ORDER = { 'C': 3, 'B': 2, 'A': 1, 'No': 0 };
+
+// Sync wrapper row: flex nếu ít nhất 1 badge hiện
+function syncOdaRow() {
+  const row = document.getElementById('vsvx-oda-row');
+  if (!row) return;
+  const vsvx = document.getElementById('vsvx-result');
+  const fedex = document.getElementById('fedex-oda-result');
+  const anyVisible = (vsvx && vsvx.style.opacity !== '0' && vsvx.textContent) || (fedex && fedex.style.opacity !== '0' && fedex.textContent);
+  row.style.display = anyVisible ? 'flex' : 'none';
+}
+
+function fedexOdaIsValid(data) {
+  return data && data.entries && data.entries.length > 0 && data.type;
+}
+
+function fedexOdaSaveLocal(iso, data) {
+  if (!fedexOdaIsValid(data)) return;
+  try {
+    const payload = JSON.stringify({ ts: Date.now(), type: data.type, entries: data.entries });
+    try {
+      localStorage.setItem('fedex_oda_' + iso, payload);
+    } catch(e) {
+      // Quota exceeded: xóa tất cả fedex_oda_ entries, rồi lưu lại
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('fedex_oda_')) keys.push(k);
+      }
+      keys.forEach(k => localStorage.removeItem(k));
+      try { localStorage.setItem('fedex_oda_' + iso, payload); } catch(e2) {}
+    }
+  } catch(e) {}
+}
+
+function fedexOdaLoadLocal(iso) {
+  try {
+    const saved = localStorage.getItem('fedex_oda_' + iso);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (parsed.ts && (Date.now() - parsed.ts) > FEDEX_ODA_TTL) {
+      localStorage.removeItem('fedex_oda_' + iso);
+      return null;
+    }
+    if (!fedexOdaIsValid(parsed)) {
+      localStorage.removeItem('fedex_oda_' + iso);
+      return null;
+    }
+    return parsed;
+  } catch(e) {
+    try { localStorage.removeItem('fedex_oda_' + iso); } catch(e2) {}
+    return null;
+  }
+}
+
+async function fetchFedexOdaFromServer(iso) {
+  const urls = [
+    `${PROXY}?fedex_oda=${iso}&t=${Date.now()}`,
+    `${PROXY}?fedex_oda=${iso}`,
+  ];
+  let lastErr;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store', redirect: 'follow' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data && data.error) throw new Error(data.error);
+      return data;
+    } catch(e) {
+      lastErr = e;
+      console.warn('[FedEx ODA] fetch failed:', url, e.message);
+    }
+  }
+  throw lastErr;
+}
+
+async function loadFedexOda(iso) {
+  if (!iso) return;
+
+  // 1. Memory cache — đã có, không cần làm gì thêm
+  if (fedexOdaMemCache[iso]) return;
+
+  // 2. localStorage TTL cache
+  const local = fedexOdaLoadLocal(iso);
+  if (local) {
+    fedexOdaMemCache[iso] = local;
+    return;
+  }
+
+  // 3. Tránh gọi song song cùng ISO
+  if (fedexOdaFetching[iso]) return;
+  fedexOdaFetching[iso] = true;
+
+  try {
+    const data = await fetchFedexOdaFromServer(iso);
+    fedexOdaFetching[iso] = false;
+
+    if (fedexOdaIsValid(data)) {
+      fedexOdaMemCache[iso] = data;
+      fedexOdaSaveLocal(iso, data);
+      // Recheck nếu user đang nhập và vẫn đang chọn nước này
+      const val = (document.getElementById('vsvx-input')?.value || '').trim();
+      const cur = document.getElementById('country')?.value;
+      const curIso = (countryData[cur] && countryData[cur].iso) ? countryData[cur].iso : null;
+      if (val && curIso === iso) checkFedexOdaInput();
+    } else {
+      console.warn('[FedEx ODA] Server trả về rỗng cho', iso);
+    }
+  } catch(e) {
+    fedexOdaFetching[iso] = false;
+    console.warn('[FedEx ODA] Lỗi load', iso, e.message);
+  }
+}
+
+function fedexOdaMatchTier(data, val) {
+  // Trả về tier cao nhất match ('C'|'B'|'A'|'No') hoặc null nếu không tìm thấy
+  if (!fedexOdaIsValid(data) || !val) return null;
+  const normalize = s => String(s).replace(/[-\s]/g, '').toLowerCase();
+  const valNorm = normalize(val);
+  const q = val.toLowerCase();
+  let bestTier = null;
+  let bestOrder = -1;
+
+  for (const entry of data.entries) {
+    let matched = false;
+
+    if (data.type === 'postcode' && /^\d+$/.test(valNorm)) {
+      // Range match
+      if (entry.from !== undefined && entry.to !== undefined) {
+        const fromNum = parseInt(normalize(String(entry.from)), 10);
+        const toNum   = parseInt(normalize(String(entry.to)),   10);
+        const valNum  = parseInt(valNorm, 10);
+        matched = valNum >= fromNum && valNum <= toNum;
+      }
+    } else if (data.type === 'city' && entry.city) {
+      // City name match
+      const cLow = String(entry.city).toLowerCase();
+      const cNorm = normalize(entry.city);
+      if (cNorm === valNorm) { matched = true; }
+      else if (!/^[a-z0-9]+$/.test(valNorm)) {
+        matched = cLow === q || cLow.includes(q) || q.includes(cLow);
+      }
+    }
+
+    if (matched) {
+      const tierOrder = FEDEX_ODA_TIER_ORDER[entry.tier] ?? -1;
+      if (tierOrder > bestOrder) {
+        bestOrder = tierOrder;
+        bestTier = entry.tier;
+      }
+    }
+  }
+  return bestTier;
+}
+
+function checkFedexOdaInput() {
+  const val = (document.getElementById('vsvx-input')?.value || '').trim();
+  const odaEl = document.getElementById('fedex-oda-result');
+  if (!odaEl) return;
+
+  if (!val) {
+    window._fedexOdaTier = null;
+    odaEl.style.opacity = '0'; odaEl.style.pointerEvents = 'none';
+    syncOdaRow();
+    return;
+  }
+
+  const country = document.getElementById('country').value;
+  const iso = (countryData[country] && countryData[country].iso) ? countryData[country].iso : null;
+  if (!iso) { window._fedexOdaTier = null; odaEl.style.opacity = '0'; odaEl.style.pointerEvents = 'none'; syncOdaRow(); return; }
+
+  // Đọc thẳng từ memCache theo ISO — tránh lệch nước khi window._fedexOdaData stale
+  const data = fedexOdaMemCache[iso] || null;
+  if (!data) {
+    if (fedexOdaFetching[iso]) {
+      // Đang fetch → chỉ show loading; loadFedexOda sẽ tự recheck khi xong
+      odaEl.textContent = '⏳ Đang kiểm tra FedEx ODA...';
+      odaEl.style.background = '#f3f4f6';
+      odaEl.style.border = '1px solid #d1d5db';
+      odaEl.style.color = '#6b7280';
+      odaEl.style.opacity = '1'; odaEl.style.pointerEvents = '';
+      syncOdaRow();
+    } else {
+      // Chưa load → kick off fetch; loadFedexOda sẽ tự recheck khi xong
+      odaEl.style.opacity = '0'; odaEl.style.pointerEvents = 'none';
+      syncOdaRow();
+      loadFedexOda(iso);
+    }
+    return;
+  }
+
+  const tier = fedexOdaMatchTier(data, val);
+
+  // Lưu tier để evalCondition dùng khi tính cước
+  window._fedexOdaTier = (tier && tier !== 'No') ? tier : null;
+
+  if (tier === null) {
+    // Không có trong danh sách ODA → địa chỉ bình thường
+    odaEl.style.opacity = '0'; odaEl.style.pointerEvents = 'none';
+    syncOdaRow();
+    return;
+  }
+
+  // Render badge theo tier
+  let bg, border, color, icon, msg;
+  if (tier === 'No') {
+    bg = '#fef2f2'; border = '1px solid #fca5a5'; color = '#b91c1c';
+    icon = '🚫'; msg = 'FedEx ODA: Không phục vụ địa chỉ này';
+  } else if (tier === 'C') {
+    bg = '#fef2f2'; border = '1px solid #fca5a5'; color = '#b91c1c';
+    icon = '⚠️'; msg = `FedEx ODA: Tier C – phụ phí giao vùng xa (cao nhất)`;
+  } else if (tier === 'B') {
+    bg = '#fef9c3'; border = '1px solid #fde047'; color = '#854d0e';
+    icon = '⚠️'; msg = `FedEx ODA: Tier B – phụ phí giao vùng xa`;
+  } else {
+    bg = '#fff7ed'; border = '1px solid #fdba74'; color = '#9a3412';
+    icon = '⚠️'; msg = `FedEx ODA: Tier A – phụ phí giao vùng xa (thấp nhất)`;
+  }
+
+  odaEl.textContent = icon + ' ' + msg;
+  odaEl.style.background = bg;
+  odaEl.style.border = border;
+  odaEl.style.color = color;
+  odaEl.style.opacity = '1'; odaEl.style.pointerEvents = '';
+  syncOdaRow();
+}
+
+// ── Sidebar: sync fuel display ──
+function syncSidebarFuel() {
+  const dhl = document.getElementById('fuel-dhl');
+  const fedex = document.getElementById('fuel-fedex');
+  const ups = document.getElementById('fuel-ups');
+  if (dhl) document.getElementById('sb-fuel-dhl').textContent = parseFloat(dhl.value).toFixed(1) + '%';
+  if (fedex) document.getElementById('sb-fuel-fedex').textContent = parseFloat(fedex.value).toFixed(1) + '%';
+  if (ups) document.getElementById('sb-fuel-ups').textContent = parseFloat(ups.value).toFixed(1) + '%';
+}
+
+// ── Sidebar: lịch sử tính ──
+const calcHistory = [];
+function addHistory(country, weight, chargeWeight, type) {
+  const countryEl = document.getElementById('country');
+  const label = countryEl ? countryEl.options[countryEl.selectedIndex]?.text : country;
+  calcHistory.unshift({ label, weight, chargeWeight, type, time: new Date() });
+  if (calcHistory.length > 5) calcHistory.pop();
+  renderHistory();
+}
+function renderHistory() {
+  const el = document.getElementById('sidebar-history');
+  if (!el) return;
+  if (!calcHistory.length) { el.innerHTML = '<div class="history-empty">Chưa có lần tính nào</div>'; return; }
+  el.innerHTML = calcHistory.map((h, i) => {
+    const mins = Math.round((new Date() - h.time) / 60000);
+    const ago = mins < 1 ? 'vừa xong' : mins + ' phút trước';
+    return `<div class="history-item" onclick="restoreHistory(${i})">
+      <div class="h-route">${h.label} · ${h.type === 'document' ? 'Doc' : 'Non-Doc'}</div>
+      <div class="h-detail">${h.chargeWeight} kg tính cước · <span style="color:#9ca3af;font-size:11px">${ago}</span></div>
+    </div>`;
+  }).join('');
+}
+function restoreHistory(idx) {
+  // Just visual hint – scroll to form
+  document.querySelector('.container').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Patch calculate to record history
+const _origCalc = typeof calculate === 'function' ? calculate : null;
+document.addEventListener('DOMContentLoaded', () => {
+  syncSidebarFuel();
+  // Observe fuel inputs
+  ['fuel-dhl','fuel-fedex','fuel-ups'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', syncSidebarFuel);
+  });
+});
+
+// Hook into calculate results – intercept after calculate runs
+function sidebarPostCalc() {
+  try {
+    const cw = window._lastChargeWeight || parseFloat(document.getElementById('weight')?.value) || 0;
+    const country = document.getElementById('country')?.value || '';
+    addHistory(country, cw, cw, window._shipType || 'document');
+  } catch(e) {}
+}
+
+// ── Sidebar: load Notices từ Google Sheet ──
+async function loadNotices() {
+  const container = document.getElementById('notices-container');
+  const statusEl  = document.getElementById('notices-status');
+  if (!container) return;
+
+  try {
+    const res = await fetch(PROXY + '?notices=1&t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    const notices = data.notices || [];
+    if (!notices.length) {
+      container.innerHTML = '<div class="notice-item"><div class="idot dot-green"></div><div>Không có thông báo mới.</div></div>';
+      return;
+    }
+
+    container.innerHTML = notices.map(n => {
+      const color = ['red','yellow','green','blue'].includes(n.color) ? n.color : 'blue';
+      return `<div class="notice-item"><div class="idot dot-${color}"></div><div>${n.text}</div></div>`;
+    }).join('');
+
+    if (statusEl) statusEl.textContent = notices.length + ' mục';
+
+  } catch (e) {
+    console.warn('[Notices]', e.message);
+    container.innerHTML = '<div class="notice-item"><div class="idot dot-yellow"></div><div style="color:#92400e">Không tải được thông báo – kiểm tra lại GAS.</div></div>';
+    if (statusEl) statusEl.textContent = '⚠️ lỗi';
+  }
+}
+
+
+loadNotices();
 loadData();
 </script>
 </body>
