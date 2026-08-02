@@ -1631,14 +1631,21 @@ function parseOtherCharges(rows) {
     }
 
     // ── Other charge rows (như cũ) ───────────────────────────
-    if (flat <= 0) continue;
+    // Debug ODA rows
+    if (String(row[5]||'').toLowerCase().includes('fedex_oda') || String(row[5]||'').toLowerCase().includes('dhl_vsvx')) {
+      console.log(`[ODA/VSVX DEBUG] row ${i} condition="${row[5]}" full:`, JSON.stringify(row.slice(0,15)));
+    }
+    const perKgExportCheck = num(row[9]) || num(row[10]) || num(row[8]) || num(row[3]);
+    const isPerKgCondition = ['dhl_vsvx','dhlsin_vsvx','fedex_oda_a','fedex_oda_b','fedex_oda_c'].includes(String(row[5]||'').trim().toLowerCase());
+    if (flat <= 0 && !(isPerKgCondition && perKgExportCheck > 0)) continue;
 
     let docTypeNorm = 'all';
     const dtl = docType.toLowerCase();
     if (dtl.includes('non') || dtl.includes('package')) docTypeNorm = 'non-document';
     else if (dtl.includes('document') || dtl.includes('doc')) docTypeNorm = 'document';
 
-    const perKgExport = num(row[9]); // J: per_kg_export (dùng cho dhl_vsvx)
+    // Thử tất cả cột có thể chứa per_kg: D(3), I(8), J(9), K(10)
+    const perKgExport = num(row[9]) || num(row[10]) || num(row[8]) || num(row[3]);
     charges.push({ name, carrier, docType: docTypeNorm, flat, condition, note, isoList, perKgExport });
   }
 
@@ -1801,7 +1808,8 @@ function renderCarrier(id, base, fuel, fuelPct, demand, demandPct, vat, vatPct, 
     if ((ch.condition === 'dhl_vsvx' || ch.condition === 'dhlsin_vsvx') && ch.perKgExport > 0 && billableWeight > 0) {
       base_flat = Math.max(ch.flat, ch.perKgExport * billableWeight);
     }
-    // FedEx ODA Tier B & C: max(flat, perKgExport × weight) — Tier A chỉ flat
+    // FedEx ODA Tier B & C: max(flat_minimum, perKgExport × weight) — Tier A chỉ flat
+    // flat trong sheet là phí tối thiểu; khi weight lớn thì perKgExport × weight thắng
     if ((ch.condition === 'fedex_oda_b' || ch.condition === 'fedex_oda_c') && ch.perKgExport > 0 && billableWeight > 0) {
       base_flat = Math.max(ch.flat, ch.perKgExport * billableWeight);
     }
@@ -2196,7 +2204,7 @@ function calculate() {
   document.getElementById('fedex-ip-name').textContent = fipLabel;
   document.getElementById('fedex-ip-service').textContent = fipService;
   renderCarrier('fedex-ip',fipBase,fipFuel,fuelFedEx,fipDemand,fipDemandPerKg,0,vatPct,
-    {zone:`FedEx Zone ${fipZone||'N/A'}`,weight:fedexWeightLabel,type:typeLabel},fipOC);
+    {zone:`FedEx Zone ${fipZone||'N/A'}`,weight:fedexWeightLabel,type:typeLabel},fipOC,fedexBillableWeight);
 
   // FedEx IE / IEF — xuất dùng fedexIERates, nhập dùng fedexIEImpRates
   const fieZone = useFedExFreight ? (zones.fedexIEF || zones.fedexIE) : zones.fedexIE;
@@ -2211,7 +2219,7 @@ function calculate() {
   document.getElementById('fedex-ie-name').textContent = fieLabel;
   document.getElementById('fedex-ie-service').textContent = fieService;
   renderCarrier('fedex-ie',fieBase,fieFuel,fuelFedEx,fieDemand,fieDemandPerKg,0,vatPct,
-    {zone:`FedEx Zone ${fieZone||'N/A'}`,weight:fedexWeightLabel,type:typeLabel},fieOC);
+    {zone:`FedEx Zone ${fieZone||'N/A'}`,weight:fedexWeightLabel,type:typeLabel},fieOC,fedexBillableWeight);
 
   // UPS: chỉ dùng Freight khi cân THỰC TẾ > 70kg (không tính dim weight)
   const upsFreightThreshold = parseFloat(document.getElementById('ups-freight-threshold').value) || 70;
@@ -3158,6 +3166,239 @@ async function loadNotices() {
 
 loadNotices();
 loadData();
+</script>
+
+<!-- ── MOBILE SIDEBAR MODAL ── -->
+<style>
+  /* Floating button - chỉ hiện trên mobile */
+  #mob-sidebar-btn {
+    display: none;
+    position: fixed;
+    bottom: 22px;
+    right: 18px;
+    z-index: 900;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    box-shadow: 0 4px 16px rgba(29,78,216,0.45);
+    border: none;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  #mob-sidebar-btn:active { transform: scale(0.92); }
+  #mob-sidebar-badge {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    padding: 0 4px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  @media (max-width: 1000px) {
+    #mob-sidebar-btn { display: flex; }
+  }
+
+  /* Overlay */
+  #mob-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 950;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  #mob-modal-overlay.open { display: block; }
+
+  /* Modal sheet */
+  #mob-modal-sheet {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: #f1f5f9;
+    border-radius: 20px 20px 0 0;
+    padding: 0 0 32px;
+    max-height: 82vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(0.32,0.72,0,1);
+  }
+  #mob-modal-overlay.open #mob-modal-sheet {
+    transform: translateY(0);
+  }
+
+  /* Handle bar */
+  .mob-handle {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 6px;
+    position: sticky;
+    top: 0;
+    background: #f1f5f9;
+    z-index: 1;
+  }
+  .mob-handle-bar {
+    width: 40px; height: 4px;
+    border-radius: 2px;
+    background: #cbd5e1;
+  }
+
+  /* Header */
+  .mob-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 18px 12px;
+    position: sticky;
+    top: 28px;
+    background: #f1f5f9;
+    z-index: 1;
+  }
+  .mob-modal-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+  }
+  .mob-close-btn {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 1.5px solid #e2e8f0;
+    background: white;
+    font-size: 16px;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Cards inside modal */
+  .mob-modal-sheet .sidebar-card {
+    margin: 0 14px 10px;
+  }
+</style>
+
+<!-- Floating button -->
+<button id="mob-sidebar-btn" onclick="openMobSidebar()" title="Thông báo & Fuel">
+  📢
+  <span id="mob-sidebar-badge"></span>
+</button>
+
+<!-- Modal overlay -->
+<div id="mob-modal-overlay" onclick="closeMobSidebarIfOutside(event)">
+  <div id="mob-modal-sheet">
+    <div class="mob-handle"><div class="mob-handle-bar"></div></div>
+    <div class="mob-modal-header">
+      <span class="mob-modal-title">Thông tin & Thông báo</span>
+      <button class="mob-close-btn" onclick="closeMobSidebar()">×</button>
+    </div>
+
+    <!-- Thông báo (clone nội dung từ sidebar) -->
+    <div class="sidebar-card">
+      <div class="sidebar-title"><span>📢</span> Thông báo <span id="mob-notices-status" style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0"></span></div>
+      <div id="mob-notices-container"><div class="notice-item"><div class="idot dot-blue"></div><div style="color:#9ca3af;font-style:italic">Đang tải...</div></div></div>
+    </div>
+
+    <!-- Fuel -->
+    <div class="sidebar-card">
+      <div class="sidebar-title"><span>⛽</span> Fuel Surcharge</div>
+      <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb dhl">DHL</span> Express</div><div id="mob-sb-fuel-dhl">–</div></div>
+      <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb fedex">FedEx</span> IP/IE</div><div id="mob-sb-fuel-fedex">–</div></div>
+      <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb ups">UPS</span> Saver/Exp</div><div id="mob-sb-fuel-ups">–</div></div>
+    </div>
+
+    <!-- Lịch sử -->
+    <div class="sidebar-card">
+      <div class="sidebar-title"><span>🕑</span> Lịch sử tính</div>
+      <div id="mob-sidebar-history"><div class="history-empty">Chưa có lần tính nào</div></div>
+    </div>
+
+    <!-- Mẹo -->
+    <div class="sidebar-card">
+      <div class="sidebar-title"><span>💡</span> Mẹo sử dụng</div>
+      <div class="notice-item"><div class="idot dot-blue"></div><div>Nhập đủ kích thước để tính cân thể tích chính xác hơn.</div></div>
+      <div class="notice-item"><div class="idot dot-blue"></div><div>Nhập thành phố/mã bưu chính để kiểm tra phụ phí vùng xa DHL &amp; FedEx ODA.</div></div>
+      <div class="notice-item"><div class="idot dot-blue"></div><div>Bấm vào kết quả từng hãng để xem chi tiết cước.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openMobSidebar() {
+  // Sync nội dung trước khi mở
+  syncMobSidebar();
+  document.getElementById('mob-modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeMobSidebar() {
+  document.getElementById('mob-modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeMobSidebarIfOutside(e) {
+  if (e.target === document.getElementById('mob-modal-overlay')) closeMobSidebar();
+}
+
+function syncMobSidebar() {
+  // Sync notices
+  const src = document.getElementById('notices-container');
+  const dst = document.getElementById('mob-notices-container');
+  if (src && dst) dst.innerHTML = src.innerHTML;
+
+  const srcStatus = document.getElementById('notices-status');
+  const dstStatus = document.getElementById('mob-notices-status');
+  if (srcStatus && dstStatus) dstStatus.textContent = srcStatus.textContent;
+
+  // Sync fuel
+  ['dhl','fedex','ups'].forEach(k => {
+    const s = document.getElementById('sb-fuel-' + k);
+    const d = document.getElementById('mob-sb-fuel-' + k);
+    if (s && d) d.textContent = s.textContent;
+  });
+
+  // Sync history
+  const sh = document.getElementById('sidebar-history');
+  const dh = document.getElementById('mob-sidebar-history');
+  if (sh && dh) dh.innerHTML = sh.innerHTML;
+
+  // Sync badge (số thông báo)
+  const badge = document.getElementById('mob-sidebar-badge');
+  const statusTxt = document.getElementById('notices-status')?.textContent || '';
+  const count = parseInt(statusTxt);
+  if (badge) {
+    if (count > 0) {
+      badge.textContent = count;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+
+// Tự động sync badge khi notices load xong
+const _origLoadNotices = loadNotices;
+// Patch notices-status update để sync badge
+const _noticesObserver = new MutationObserver(() => {
+  const badge = document.getElementById('mob-sidebar-badge');
+  const statusTxt = document.getElementById('notices-status')?.textContent || '';
+  const count = parseInt(statusTxt);
+  if (badge) {
+    if (count > 0) { badge.textContent = count; badge.style.display = 'flex'; }
+    else { badge.style.display = 'none'; }
+  }
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const statusEl = document.getElementById('notices-status');
+  if (statusEl) _noticesObserver.observe(statusEl, { childList: true, characterData: true, subtree: true });
+});
 </script>
 </body>
 </html>
