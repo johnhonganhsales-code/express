@@ -1141,9 +1141,9 @@ function updateZone() {
     const hasFedEx = countryData[c] && countryData[c].fedexIP;
     const showField = hasDHL || hasFedEx;
     document.getElementById('vsvx-field').style.display = showField ? 'block' : 'none';
-    // Load VSVX ngầm theo ISO
+    // Load VSVX ngầm theo ISO (CN-S / CNN → dùng CN để tra cùng dữ liệu)
     const iso = countryData[c] ? countryData[c].iso : null;
-    if (iso && hasDHL) loadVsvx(iso);
+    if (iso && hasDHL) loadVsvx(normalizeISOforVSVX(iso));
     // Load FedEx ODA ngầm theo ISO (bất kể có DHL hay không)
     if (iso) loadFedexOda(iso);
     // Chỉ reset VSVX khi thực sự đổi nước (không reset khi chỉ đổi chiều xuất/nhập)
@@ -2087,6 +2087,13 @@ function getCountryISO(country) {
   return (countryData[country] && countryData[country].iso) || '';
 }
 
+// CN-S (China South) và CNN (China North) dùng chung dữ liệu VSVX với CN
+function normalizeISOforVSVX(iso) {
+  if (!iso) return iso;
+  if (iso === 'CN-S' || iso === 'CNN' || /^CN[-_][A-Z0-9]+$/.test(iso)) return 'CN';
+  return iso;
+}
+
 function evalCondition(cond, carrier, weight, dims, country, type, isoList=[], actualWeight) {
   // actualWeight = cân thực tế (wt); weight = chargeWeight (max thực+dim) — dùng cho DHL dim>70
   // Nếu không truyền actualWeight, fallback = weight (tương thích ngược)
@@ -2100,10 +2107,14 @@ function evalCondition(cond, carrier, weight, dims, country, type, isoList=[], a
 
   // ISO-based match helper: check isoList (from Sheet col H) against country's ISO code only.
   // Đã bỏ fallback name-based vì gây false positive (VD: "SO" khớp "China South")
+  // CN-S / CNN được coi là CN khi tra isoList (China South + North dùng chung code CN)
   const isoMatch = () => {
     if (!isoList || !isoList.length) return false;
     const iso = getCountryISO(country);
-    return !!(iso && isoList.includes(iso));
+    if (!iso) return false;
+    if (isoList.includes(iso)) return true;
+    const norm = normalizeISOforVSVX(iso);
+    return norm !== iso && isoList.includes(norm);
   };
 
   switch(cond) {
@@ -2780,10 +2791,11 @@ function checkVsvxInput() {
     return;
   }
 
-  // Lấy ISO của nước đang chọn
+  // Lấy ISO của nước đang chọn (CN-S / CNN → chuẩn hoá thành CN để tra VSVX)
   const country = document.getElementById('country').value;
-  const iso = (countryData[country] && countryData[country].iso) ? countryData[country].iso : null;
-  if (!iso) return;
+  const isoRaw = (countryData[country] && countryData[country].iso) ? countryData[country].iso : null;
+  if (!isoRaw) return;
+  const iso = normalizeISOforVSVX(isoRaw);
 
   const data = vsvxMemCache[iso];
   if (!data) {
@@ -2795,6 +2807,19 @@ function checkVsvxInput() {
     resultEl.style.opacity = '1'; resultEl.style.pointerEvents = '';
     syncOdaRow();
     loadVsvx(iso); // loadVsvx sẽ tự gọi checkVsvxInput khi có data
+    return;
+  }
+
+  // Quốc gia không có vùng VSVX → không cần tra postcode
+  if (data.noVsvx || !vsvxIsValid(data)) {
+    window._vsvxMatched = false;
+    resultEl.textContent = '✅ Quốc gia này không bị VSVX';
+    resultEl.style.background = '#f0fdf4';
+    resultEl.style.border = '1px solid #86efac';
+    resultEl.style.color = '#166534';
+    resultEl.style.opacity = '1'; resultEl.style.pointerEvents = '';
+    inputEl.style.borderColor = '#22c55e';
+    syncOdaRow();
     return;
   }
 
@@ -2900,26 +2925,46 @@ function vsvxLoadLocal(iso) {
   }
 }
 
+const VSVX_CDN = 'https://raw.githubusercontent.com/johnhonganhsales-code/vsvx-data/main/vsvx';
+
 async function fetchVsvxFromServer(iso) {
-  // Thử fetch với cache-buster trước, fallback không có cache-buster
-  const urls = [
-    `${PROXY}?vsvx=${iso}&t=${Date.now()}`,
-    `${PROXY}?vsvx=${iso}`,
-  ];
-  let lastErr;
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, { cache: 'no-store', redirect: 'follow' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      if (data && data.error) throw new Error(data.error);
-      return data;
-    } catch(e) {
-      lastErr = e;
-      console.warn('[VSVX] fetch failed:', url, e.message);
+  // Fetch DHL + FedEx song song từ GitHub static files – không cold start
+  const [dhlRes, fedexRes] = await Promise.allSettled([
+    fetch(`${VSVX_CDN}/dhl/${iso}.json`),
+    fetch(`${VSVX_CDN}/fedex/${iso}.json`),
+  ]);
+
+  const dhlData   = (dhlRes.status   === 'fulfilled' && dhlRes.value.ok)
+    ? await dhlRes.value.json().catch(() => null) : null;
+  const fedexData = (fedexRes.status === 'fulfilled' && fedexRes.value.ok)
+    ? await fedexRes.value.json().catch(() => null) : null;
+
+  // Nếu cả 2 đều không có data:
+  // - Nếu cả 2 đều là 404 (file không tồn tại) → quốc gia không có VSVX → trả về rỗng (không throw)
+  // - Nếu có lỗi mạng thật sự (network error, không phải HTTP error) → throw để catch hiện cảnh báo
+  if (!dhlData && !fedexData) {
+    const dhl404   = dhlRes.status   === 'fulfilled' && dhlRes.value.status === 404;
+    const fedex404 = fedexRes.status === 'fulfilled' && fedexRes.value.status === 404;
+    const dhlNet   = dhlRes.status   === 'rejected';
+    const fedexNet = fedexRes.status === 'rejected';
+    // Nếu ít nhất 1 bên thực sự fetch được (200 hoặc 404) → coi là "không có VSVX"
+    if (dhl404 || fedex404 || (!dhlNet && !fedexNet)) {
+      return { cities: [], ranges: [], noVsvx: true };
     }
+    // Cả 2 đều lỗi mạng → throw để hiện cảnh báo
+    throw new Error('Không có data VSVX cho ' + iso);
   }
-  throw lastErr;
+
+  // Merge: cities/ranges từ cả 2 nguồn, loại trùng
+  const cities = [...new Set([
+    ...(dhlData?.cities  || []),
+    ...(fedexData?.cities || []),
+  ])];
+  const ranges = [
+    ...(dhlData?.ranges  || []),
+    ...(fedexData?.ranges || []),
+  ];
+  return { cities, ranges, _dhl: dhlData, _fedex: fedexData };
 }
 
 async function loadVsvx(iso) {
@@ -2964,15 +3009,18 @@ async function loadVsvx(iso) {
       // Recheck badge kết quả nếu user đang nhập và vẫn chọn nước này
       const curVal = (document.getElementById('vsvx-input')?.value || '').trim();
       const curCountry = document.getElementById('country')?.value;
-      const curIso = (countryData[curCountry] && countryData[curCountry].iso) ? countryData[curCountry].iso : null;
-      if (curVal && curIso === iso) checkVsvxInput();
+      const curIsoRaw = (countryData[curCountry] && countryData[curCountry].iso) ? countryData[curCountry].iso : null;
+      if (curVal && normalizeISOforVSVX(curIsoRaw) === iso) checkVsvxInput();
     } else {
-      // Server trả về rỗng (GAS cache miss hoặc ISO không có trong file)
-      // KHÔNG lưu vào cache để lần sau có thể thử lại
-      console.warn('[VSVX] Server trả về rỗng cho', iso, '– có thể GAS cache chưa warm');
-      // Vẫn hiển thị ô nhập nhưng không có badge thống kê
+      // Server trả về rỗng → quốc gia này không có vùng VSVX
+      // Lưu sentinel để không fetch lại liên tục trong session
+      vsvxMemCache[iso] = { cities: [], ranges: [], noVsvx: true };
       badge.classList.remove('vsvx-badge-loading');
-      badge.style.display = 'none';
+      badge.textContent = '✅ Quốc gia này không bị VSVX';
+      badge.style.background = '#f0fdf4';
+      badge.style.border = '1px solid #86efac';
+      badge.style.color = '#166534';
+      badge.style.display = 'block';
     }
   } catch(e) {
     vsvxFetching[iso] = false;
@@ -2990,7 +3038,12 @@ function renderVsvxBadge(iso, data) {
   const badge = document.getElementById('vsvx-badge');
   badge.classList.remove('vsvx-badge-loading');
   if (!vsvxIsValid(data)) {
-    badge.style.display = 'none';
+    // Không có vùng VSVX nào cho quốc gia này
+    badge.textContent = '✅ Quốc gia này không bị VSVX';
+    badge.style.background = '#f0fdf4';
+    badge.style.border = '1px solid #86efac';
+    badge.style.color = '#166534';
+    badge.style.display = 'block';
     return;
   }
   const cities = data.cities?.length || 0;
