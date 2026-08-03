@@ -178,6 +178,19 @@
   .status-refresh { margin-left: auto; cursor: pointer; color: #6b7280; font-size: 11px; text-decoration: underline; }
   .status-progress { position: absolute; left: 0; top: 0; height: 100%; background: rgba(34,197,94,0.35); width: 0%; transition: width 0.3s ease; border-radius: 10px; pointer-events: none; }
 
+  /* Loading shimmer cho badge kiểm tra vùng DHL */
+  @keyframes vsvxShimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  .vsvx-badge-loading {
+    background: linear-gradient(90deg, #dcfce7 25%, #86efac 50%, #dcfce7 75%) !important;
+    background-size: 200% 100% !important;
+    animation: vsvxShimmer 1.4s ease-in-out infinite !important;
+    border: 1px solid #4ade80 !important;
+    color: #166534 !important;
+  }
+
   /* ── RESULTS ── */
   .results-section { display: none; }
   .results-section.show { display: block; }
@@ -516,14 +529,19 @@
 .piece-count-wrap { display: flex; align-items: center; gap: 8px; }
 .profit-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 @media (max-width: 480px) {
-  .piece-footer { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 12px; }
-  /* Hàng 1: Số kiện + ctrl nằm ngang như cũ */
-  .piece-count-wrap { flex-direction: row; justify-content: flex-start; gap: 8px; }
-  /* Hàng 2: Profit full width */
-  .profit-wrap { margin-left: 0; justify-content: space-between; width: 100%; }
-  .profit-wrap .piece-count-label { flex-shrink: 0; }
-  .profit-input-wrap { flex: 1; justify-content: flex-end; }
-  #profit-input { width: 90px !important; }
+  .piece-footer {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  /* Số kiện bên trái */
+  .piece-count-wrap { flex-direction: row; align-items: center; gap: 8px; flex-shrink: 0; }
+  /* Profit kéo ngay sang phải số kiện */
+  .profit-wrap { margin-left: 0; gap: 6px; flex-shrink: 0; }
+  .profit-input-wrap { gap: 4px; }
+  #profit-input { width: 80px !important; }
 }
 .profit-input-wrap { display: flex; align-items: center; gap: 5px; }
 .profit-mode-toggle { display: flex; border: 1.5px solid #2563eb; border-radius: 6px; overflow: hidden; }
@@ -2598,16 +2616,8 @@ async function loadData(forceRefresh=false) {
   errBanner.classList.remove('show');
   if (forceRefresh) {
     clearCache();
-    // Xóa toàn bộ VSVX cache (localStorage + memory) để force re-fetch từ GAS
-    try {
-      const keys = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith('vsvx_')) keys.push(k);
-      }
-      keys.forEach(k => localStorage.removeItem(k));
-    } catch(e) {}
-    Object.keys(vsvxMemCache).forEach(k => delete vsvxMemCache[k]);
+    // KHÔNG xóa VSVX cache – data VSVX chỉ đổi theo quý, TTL 7 ngày tự lo.
+    // Chỉ clear vsvxFetching để cho phép retry nếu lần trước bị lỗi network.
     Object.keys(vsvxFetching).forEach(k => delete vsvxFetching[k]);
   }
 
@@ -2667,9 +2677,27 @@ async function loadData(forceRefresh=false) {
   dot.className = 'status-dot loading';
   clearCache();
 
+  // Pre-fetch VSVX song song: lấy ISO nước đang chọn (nếu chưa có cache)
+  const _prefetchCountry = document.getElementById('country').value;
+  const _prefetchIso = (_prefetchCountry && countryData[_prefetchCountry])
+    ? countryData[_prefetchCountry].iso : null;
+  const _vsvxAlreadyCached = _prefetchIso && (vsvxMemCache[_prefetchIso] || vsvxLoadLocal(_prefetchIso));
+  const _vsvxPrefetch = (_prefetchIso && !_vsvxAlreadyCached && !vsvxFetching[_prefetchIso])
+    ? fetchVsvxFromServer(_prefetchIso).catch(() => null)
+    : Promise.resolve(null);
+
   try {
     pbShow(60);
-    const fetched = await fetchAllData(() => { pbShow(80); });
+    // Tải sheet data và VSVX cùng 1 lúc → chỉ 1 lần GAS warm-up
+    const [fetched, _vsvxResult] = await Promise.all([
+      fetchAllData(() => { pbShow(80); }),
+      _vsvxPrefetch,
+    ]);
+    // Lưu VSVX vào cache nếu prefetch thành công
+    if (_prefetchIso && _vsvxResult && vsvxIsValid(_vsvxResult)) {
+      vsvxMemCache[_prefetchIso] = _vsvxResult;
+      vsvxSaveLocal(_prefetchIso, _vsvxResult);
+    }
 
     const setting = parseSetting(fetched.Setting);
     const cd      = parseCountries(fetched.Countries);
@@ -2824,7 +2852,7 @@ function checkVsvxInput() {
 }
 const vsvxMemCache = {}; // session cache: iso -> data (chỉ lưu data hợp lệ có cities/ranges)
 const vsvxFetching = {}; // tránh gọi song song cùng 1 ISO
-const VSVX_CACHE_TTL = 6 * 60 * 60 * 1000; // 6h (khớp GAS CacheService TTL)
+const VSVX_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 ngày – VSVX data chỉ đổi theo quý
 
 function vsvxIsValid(data) {
   return data && ((data.cities && data.cities.length > 0) || (data.ranges && data.ranges.length > 0));
@@ -2916,10 +2944,11 @@ async function loadVsvx(iso) {
   if (vsvxFetching[iso]) return;
   vsvxFetching[iso] = true;
 
-  badge.textContent = '⏳ Đang kiểm tra vùng phủ DHL...';
-  badge.style.background = '#f0fdf4';
-  badge.style.border = '1px solid #86efac';
-  badge.style.color = '#166534';
+  badge.textContent = '🔍 Đang kiểm tra vùng phủ DHL...';
+  badge.classList.add('vsvx-badge-loading');
+  badge.style.background = '';
+  badge.style.border = '';
+  badge.style.color = '';
   badge.style.display = 'block';
 
   try {
@@ -2930,6 +2959,7 @@ async function loadVsvx(iso) {
       // Data hợp lệ → lưu và hiển thị
       vsvxMemCache[iso] = data;
       vsvxSaveLocal(iso, data);
+      badge.classList.remove('vsvx-badge-loading');
       renderVsvxBadge(iso, data);
       // Recheck badge kết quả nếu user đang nhập và vẫn chọn nước này
       const curVal = (document.getElementById('vsvx-input')?.value || '').trim();
@@ -2941,11 +2971,13 @@ async function loadVsvx(iso) {
       // KHÔNG lưu vào cache để lần sau có thể thử lại
       console.warn('[VSVX] Server trả về rỗng cho', iso, '– có thể GAS cache chưa warm');
       // Vẫn hiển thị ô nhập nhưng không có badge thống kê
+      badge.classList.remove('vsvx-badge-loading');
       badge.style.display = 'none';
     }
   } catch(e) {
     vsvxFetching[iso] = false;
     console.warn('[VSVX] Lỗi load', iso, e.message);
+    badge.classList.remove('vsvx-badge-loading');
     badge.textContent = '⚠️ Không tải được vùng phủ DHL – nhập thủ công vẫn được';
     badge.style.background = '#fef9c3';
     badge.style.border = '1px solid #fde047';
@@ -2956,6 +2988,7 @@ async function loadVsvx(iso) {
 
 function renderVsvxBadge(iso, data) {
   const badge = document.getElementById('vsvx-badge');
+  badge.classList.remove('vsvx-badge-loading');
   if (!vsvxIsValid(data)) {
     badge.style.display = 'none';
     return;
