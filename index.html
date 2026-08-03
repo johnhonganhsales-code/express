@@ -223,6 +223,8 @@
   .detail-row.provider-row { background: #fffbeb; border-radius: 6px; margin-bottom: 6px; padding: 6px 8px !important; border-bottom: 1px solid #fde68a !important; }
   .detail-row.provider-row span:first-child { font-size: 11px; font-weight: 600; color: #92400e; text-transform: uppercase; letter-spacing: 0.06em; }
   .detail-row.provider-row span:last-child { font-size: 13px; font-weight: 700; color: #ffffff !important; background: #d97706; padding: 3px 10px; border-radius: 4px; letter-spacing: 0.03em; }
+  .detail-row.profit-row { color: #1d4ed8 !important; background: #eff6ff; border-radius: 5px; padding: 5px 8px !important; border-bottom: 1px solid #bfdbfe !important; }
+  .detail-row.profit-row span:last-child { color: #1d4ed8 !important; font-weight: 700; }
   .detail-row.other-charge { color: #7c3aed; }
   .detail-row.other-charge span:last-child { color: #7c3aed; font-weight: 500; }
   .other-charges-header { font-size: 11px; font-weight: 600; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 0 2px; opacity: 0.8; }
@@ -342,14 +344,14 @@
 
   <div class="card">
     <div class="card-title">Thông tin lô hàng</div>
-    <div class="field">
+    <div class="field" style="margin-bottom:18px;">
       <label>Loại hàng</label>
       <div class="type-toggle">
         <button class="type-btn active" id="btn-doc" onclick="setType('document')">📄 Document</button>
         <button class="type-btn" id="btn-nondoc" onclick="setType('non-document')">📦 Non-Document</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-bottom:14px;">
       <div>
         <label style="display:block;font-size:14px;font-weight:500;color:var(--dark);margin-bottom:6px;">Quốc gia đến</label>
         <div class="select-wrap">
@@ -361,6 +363,13 @@
       <div class="field" id="vsvx-field" style="display:none;margin:0;">
         <label>Postcode </label>
         <input type="text" id="vsvx-input" placeholder=" " oninput="checkVsvxInput()" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;color:var(--dark);background:white;outline:none;transition:border-color 0.15s;">
+      </div>
+      <!-- Nút Tra hotline -->
+      <div style="display:flex;align-items:flex-end;">
+        <button id="hotline-btn" onclick="openHotlinePanel()" title="Tra hotline 3 hãng theo nước đã chọn"
+          style="white-space:nowrap;padding:11px 14px;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(29,78,216,0.35);transition:all 0.2s;letter-spacing:0.01em;display:flex;align-items:center;gap:6px;">
+          📞 Tra hotline
+        </button>
       </div>
     </div>
     <div id="vsvx-oda-row" style="display:none;flex-direction:row;gap:6px;margin-top:6px;">
@@ -403,6 +412,18 @@
             <button class="piece-count-btn" onclick="removePieceRow()">−</button>
             <span id="piece-count-display">1</span>
             <button class="piece-count-btn" onclick="addPieceRow()">+</button>
+          </div>
+        </div>
+        <div class="profit-wrap">
+          <label class="piece-count-label" style="white-space:nowrap">💰 Profit</label>
+          <div class="profit-input-wrap">
+            <input type="text" id="profit-input" inputmode="decimal" placeholder="0"
+              oninput="formatProfitInput(this)"
+              style="width:110px;padding:5px 8px;border:1.5px solid #2563eb;border-radius:7px;font-size:13px;font-family:inherit;color:#1d4ed8;font-weight:700;text-align:right;background:#eff6ff;outline:none;">
+            <div class="profit-mode-toggle">
+              <button class="profit-mode-btn active" id="profit-btn-vnd" onclick="setProfitMode('vnd')">₫</button>
+              <button class="profit-mode-btn" id="profit-btn-pct" onclick="setProfitMode('pct')">%</button>
+            </div>
           </div>
         </div>
         <div class="vol-badge" id="vol-badge"></div>
@@ -493,6 +514,24 @@
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
 }
 .piece-count-wrap { display: flex; align-items: center; gap: 8px; }
+.profit-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+@media (max-width: 480px) {
+  .piece-footer { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 12px; }
+  /* Hàng 1: Số kiện + ctrl nằm ngang như cũ */
+  .piece-count-wrap { flex-direction: row; justify-content: flex-start; gap: 8px; }
+  /* Hàng 2: Profit full width */
+  .profit-wrap { margin-left: 0; justify-content: space-between; width: 100%; }
+  .profit-wrap .piece-count-label { flex-shrink: 0; }
+  .profit-input-wrap { flex: 1; justify-content: flex-end; }
+  #profit-input { width: 90px !important; }
+}
+.profit-input-wrap { display: flex; align-items: center; gap: 5px; }
+.profit-mode-toggle { display: flex; border: 1.5px solid #2563eb; border-radius: 6px; overflow: hidden; }
+.profit-mode-btn {
+  padding: 4px 9px; font-size: 12px; font-weight: 700; border: none; cursor: pointer;
+  background: transparent; color: #2563eb; font-family: inherit; transition: background 0.15s, color 0.15s;
+}
+.profit-mode-btn.active { background: #2563eb; color: white; }
 .piece-count-label { font-size: 12px; font-weight: 600; color: #475569; }
 .piece-count-ctrl { display: flex; align-items: center; gap: 0; border: 1.5px solid #2563eb; border-radius: 7px; overflow: hidden; }
 .piece-count-btn {
@@ -658,6 +697,45 @@ function calcTotalRoundedByCarrier(carrier) {
 }
 
 document.addEventListener('DOMContentLoaded', () => { initPieces(); });
+
+let profitMode = 'vnd'; // 'vnd' | 'pct'
+
+function setProfitMode(mode) {
+  profitMode = mode;
+  document.getElementById('profit-btn-vnd').classList.toggle('active', mode === 'vnd');
+  document.getElementById('profit-btn-pct').classList.toggle('active', mode === 'pct');
+  // Clear input when switching mode
+  document.getElementById('profit-input').value = '';
+  // Update inputmode attribute
+  document.getElementById('profit-input').setAttribute('inputmode', mode === 'pct' ? 'decimal' : 'numeric');
+}
+
+function formatProfitInput(el) {
+  if (profitMode === 'pct') {
+    // Allow numbers and single decimal point, max 2 decimal places
+    let val = el.value.replace(/[^\d.]/g, '');
+    const parts = val.split('.');
+    if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+    if (parts[1] && parts[1].length > 2) val = parts[0] + '.' + parts[1].slice(0, 2);
+    el.value = val;
+  } else {
+    // VND: thousand separator
+    const raw = el.value.replace(/\D/g, '');
+    el.value = raw ? parseInt(raw, 10).toLocaleString('vi-VN') : '';
+  }
+}
+
+// Returns profit in VND given the cost (subtotal+vat+otherTotal) for markup %
+function getProfitVND(cost) {
+  const el = document.getElementById('profit-input');
+  if (!el) return 0;
+  if (profitMode === 'pct') {
+    const pct = parseFloat(el.value) || 0;
+    return cost * pct / 100; // markup: profit = cost × pct%
+  } else {
+    return parseInt((el.value || '').replace(/\D/g, ''), 10) || 0;
+  }
+}
 </script>
   </div>
 
@@ -709,7 +787,8 @@ document.addEventListener('DOMContentLoaded', () => { initPieces(); });
         <div class="detail-row" id="dhl-demand-row" style="display:none"><span id="dhl-demand-lbl">Demand</span><span id="dhl-demand">—</span></div>
         <div class="detail-row"><span id="dhl-vat-lbl">VAT</span><span id="dhl-vat">—</span></div>
         <div id="dhl-other-charges"></div>
-        <div class="detail-row total-row"><span>Tổng cộng</span><span id="dhl-grand">—</span></div>
+        <div class="detail-row profit-row" id="dhl-profit-row" style="display:none"><span>💰 Profit</span><span id="dhl-profit-display">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="dhl-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="dhl-zone-tag">—</span>
           <span class="meta-tag" id="dhl-w-tag">—</span>
@@ -739,7 +818,8 @@ document.addEventListener('DOMContentLoaded', () => { initPieces(); });
         <div class="detail-row" id="dhl-sin-demand-row" style="display:none"><span id="dhl-sin-demand-lbl">Demand</span><span id="dhl-sin-demand">—</span></div>
         <div class="detail-row"><span id="dhl-sin-vat-lbl">VAT</span><span id="dhl-sin-vat">—</span></div>
         <div id="dhl-sin-other-charges"></div>
-        <div class="detail-row total-row"><span>Tổng cộng</span><span id="dhl-sin-grand">—</span></div>
+        <div class="detail-row profit-row" id="dhl-sin-profit-row" style="display:none"><span>💰 Profit</span><span id="dhl-sin-profit-display">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="dhl-sin-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="dhl-sin-zone-tag">—</span>
           <span class="meta-tag" id="dhl-sin-w-tag">—</span>
@@ -769,7 +849,8 @@ document.addEventListener('DOMContentLoaded', () => { initPieces(); });
         <div class="detail-row" id="fedex-ip-demand-row" style="display:none"><span id="fedex-ip-demand-lbl">Demand</span><span id="fedex-ip-demand">—</span></div>
         <div class="detail-row"><span id="fedex-ip-vat-lbl">VAT</span><span id="fedex-ip-vat">—</span></div>
         <div id="fedex-ip-other-charges"></div>
-        <div class="detail-row total-row"><span>Tổng cộng</span><span id="fedex-ip-grand">—</span></div>
+        <div class="detail-row profit-row" id="fedex-ip-profit-row" style="display:none"><span>💰 Profit</span><span id="fedex-ip-profit-display">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="fedex-ip-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="fedex-ip-zone-tag">—</span>
           <span class="meta-tag" id="fedex-ip-w-tag">—</span>
@@ -799,7 +880,8 @@ document.addEventListener('DOMContentLoaded', () => { initPieces(); });
         <div class="detail-row" id="fedex-ie-demand-row" style="display:none"><span id="fedex-ie-demand-lbl">Demand</span><span id="fedex-ie-demand">—</span></div>
         <div class="detail-row"><span id="fedex-ie-vat-lbl">VAT</span><span id="fedex-ie-vat">—</span></div>
         <div id="fedex-ie-other-charges"></div>
-        <div class="detail-row total-row"><span>Tổng cộng</span><span id="fedex-ie-grand">—</span></div>
+        <div class="detail-row profit-row" id="fedex-ie-profit-row" style="display:none"><span>💰 Profit</span><span id="fedex-ie-profit-display">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="fedex-ie-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="fedex-ie-zone-tag">—</span>
           <span class="meta-tag" id="fedex-ie-w-tag">—</span>
@@ -829,7 +911,8 @@ document.addEventListener('DOMContentLoaded', () => { initPieces(); });
         <div class="detail-row" id="ups-saver-demand-row" style="display:none"><span id="ups-saver-demand-lbl">Demand</span><span id="ups-saver-demand">—</span></div>
         <div class="detail-row"><span id="ups-saver-vat-lbl">VAT</span><span id="ups-saver-vat">—</span></div>
         <div id="ups-saver-other-charges"></div>
-        <div class="detail-row total-row"><span>Tổng cộng</span><span id="ups-saver-grand">—</span></div>
+        <div class="detail-row profit-row" id="ups-saver-profit-row" style="display:none"><span>💰 Profit</span><span id="ups-saver-profit-display">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="ups-saver-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="ups-saver-zone-tag">—</span>
           <span class="meta-tag" id="ups-saver-w-tag">—</span>
@@ -859,7 +942,8 @@ document.addEventListener('DOMContentLoaded', () => { initPieces(); });
         <div class="detail-row" id="ups-exp-demand-row" style="display:none"><span id="ups-exp-demand-lbl">Demand</span><span id="ups-exp-demand">—</span></div>
         <div class="detail-row"><span id="ups-exp-vat-lbl">VAT</span><span id="ups-exp-vat">—</span></div>
         <div id="ups-exp-other-charges"></div>
-        <div class="detail-row total-row"><span>Tổng cộng</span><span id="ups-exp-grand">—</span></div>
+        <div class="detail-row profit-row" id="ups-exp-profit-row" style="display:none"><span>💰 Profit</span><span id="ups-exp-profit-display">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="ups-exp-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="ups-exp-zone-tag">—</span>
           <span class="meta-tag" id="ups-exp-w-tag">—</span>
@@ -1027,6 +1111,13 @@ function updateZone() {
     }
     zd.textContent = '📍 ' + parts.join(' · ');
     zd.classList.add('show');
+    // Cập nhật trạng thái nút Tra hotline
+    const hlBtn = document.getElementById('hotline-btn');
+    if (hlBtn) {
+      const hasHotline = d.hotlineDHL || d.hotlineFedEx || d.hotlineUPS;
+      hlBtn.style.opacity = '1';
+      hlBtn.title = hasHotline ? `Hotline cho ${c}` : 'Tra hotline (chưa cập nhật cho nước này)';
+    }
     // Hiện ô nhập ngay lập tức nếu nước có DHL hoặc FedEx (không đợi VSVX/ODA)
     const hasDHL   = countryData[c] && countryData[c].dhl;
     const hasFedEx = countryData[c] && countryData[c].fedexIP;
@@ -1119,13 +1210,15 @@ async function fetchAllData(onProgress) {
 // Cols: 0=name,1=ISO,2=DHL,3=UPS Saver,4=UPS Exp,5=UPS Freight,
 //       6=UPS Saver Import,7=UPS Exp Import,8=UPS Freight Import,
 //       9=FedEx IP,10=FedEx IE,11=FedEx IPF,12=FedEx IEF,13=DHL SIN
+//       + Auto-detect: Hotline DHL, Hotline FedEx, Hotline UPS
 // ============================================================
 function parseCountries(rows) {
   const result = {};
   let dataStart = 3;
   let dhlsinColIdx = -1; // -1 = chưa tìm thấy
+  let hotlineDHLIdx = -1, hotlineFedExIdx = -1, hotlineUPSIdx = -1;
 
-  // Quét toàn bộ rows đầu để tìm header và col DHL SIN
+  // Quét toàn bộ rows đầu để tìm header, col DHL SIN và cols hotline
   for (let i=0;i<Math.min(10,rows.length);i++) {
     const row = rows[i];
     const rowStr = row.map(v=>String(v||'').toLowerCase().trim());
@@ -1140,6 +1233,21 @@ function parseCountries(rows) {
         v === 'zone sin' || v === 'sin zone'
       );
       if (idx > 0) { dhlsinColIdx = idx; console.log('[Countries] DHL SIN col at index', idx, '| header:', rowStr[idx]); }
+    }
+    // Detect cột hotline DHL
+    if (hotlineDHLIdx < 0) {
+      const idx = rowStr.findIndex(v => v.includes('hotline') && (v.includes('dhl') || v === 'hotline dhl'));
+      if (idx >= 0) { hotlineDHLIdx = idx; console.log('[Countries] Hotline DHL col at index', idx); }
+    }
+    // Detect cột hotline FedEx
+    if (hotlineFedExIdx < 0) {
+      const idx = rowStr.findIndex(v => v.includes('hotline') && (v.includes('fedex') || v.includes('fed')));
+      if (idx >= 0) { hotlineFedExIdx = idx; console.log('[Countries] Hotline FedEx col at index', idx); }
+    }
+    // Detect cột hotline UPS
+    if (hotlineUPSIdx < 0) {
+      const idx = rowStr.findIndex(v => v.includes('hotline') && v.includes('ups'));
+      if (idx >= 0) { hotlineUPSIdx = idx; console.log('[Countries] Hotline UPS col at index', idx); }
     }
   }
 
@@ -1176,6 +1284,10 @@ function parseCountries(rows) {
     const fedexIE    = String(row[10]||'').trim().toUpperCase();
     const fedexIPF   = String(row[11]||'').trim().toUpperCase();  // col L = FedEx IPF zone
     const fedexIEF   = String(row[12]||'').trim().toUpperCase();  // col M = FedEx IEF zone
+    // cols hotline (đọc từ col đã detect, hoặc '' nếu không có)
+    const hotlineDHL   = hotlineDHLIdx   >= 0 ? String(row[hotlineDHLIdx]  ||'').trim() : '';
+    const hotlineFedEx = hotlineFedExIdx >= 0 ? String(row[hotlineFedExIdx]||'').trim() : '';
+    const hotlineUPS   = hotlineUPSIdx   >= 0 ? String(row[hotlineUPSIdx]  ||'').trim() : '';
     // col DHL SIN = dhlsinColIdx (tự detect từ header, hoặc default 13)
     const dhlsinRaw  = String(row[dhlsinColIdx]||'').trim().toUpperCase();
     const dhlsinZone = (() => {
@@ -1204,6 +1316,9 @@ function parseCountries(rows) {
       fedexIPF: (fedexIPF && fedexIPF!='0') ? fedexIPF : null,
       fedexIEF: (fedexIEF && fedexIEF!='0') ? fedexIEF : null,
       dhlsin:   dhlsinZone,
+      hotlineDHL:   hotlineDHL   || null,
+      hotlineFedEx: hotlineFedEx || null,
+      hotlineUPS:   hotlineUPS   || null,
     };
   }
   return result;
@@ -1616,17 +1731,13 @@ function parseOtherCharges(rows) {
 
     // ── Demand rows ─────────────────────────────────────────
     if (condL.includes('demand')) {
-      // Debug: log toàn bộ row để xác định index của per_kg
-      console.log(`[DEMAND DEBUG] row ${i}:`, JSON.stringify(row.slice(0,12)));
-      // Thử cả col J (idx 9) và các col lân cận
-      const perKgJ = num(row[9]);
-      const perKgK = num(row[10]);
-      const perKgI = num(row[8]);
-      console.log(`[DEMAND DEBUG]  → carrier=${carrier} isoRaw="${isoRaw}" perKg[8]=${perKgI} perKg[9]=${perKgJ} perKg[10]=${perKgK}`);
-      const perKg = perKgJ || perKgK || perKgI;
-      if (perKg <= 0) continue;
+      // Col J (idx 9) = per_kg_export, Col K (idx 10) = per_kg_import
+      const perKgExport = num(row[9]);  // J: per_kg_export
+      const perKgImport = num(row[10]); // K: per_kg_import
+      // Bỏ qua row nếu cả hai đều = 0
+      if (perKgExport <= 0 && perKgImport <= 0) continue;
       if (!demand[carrier]) demand[carrier] = [];
-      demand[carrier].push({ isoList, perKg });
+      demand[carrier].push({ isoList, perKgExport, perKgImport });
       continue; // không push vào charges[]
     }
 
@@ -1654,19 +1765,23 @@ function parseOtherCharges(rows) {
 }
 
 // Lookup demand VND/kg cho carrier + ISO quốc gia đến
+// isImport=true → dùng per_kg_import (col K), false → dùng per_kg_export (col J)
 // Ưu tiên: match ISO trước → fallback isoList rỗng (all-countries, dùng cho DHL)
-function getDemandPerKg(carrier, countryISO) {
+function getDemandPerKg(carrier, countryISO, isImport) {
   const entries = demandRates[carrier];
   if (!entries || !entries.length) return 0;
+  const pickRate = (e) => isImport
+    ? (e.perKgImport || 0)
+    : (e.perKgExport || e.perKg || 0);
   // 1) Tìm match ISO cụ thể trước
   if (countryISO) {
     for (const e of entries) {
-      if (e.isoList.length > 0 && e.isoList.includes(countryISO)) return e.perKg;
+      if (e.isoList.length > 0 && e.isoList.includes(countryISO)) return pickRate(e);
     }
   }
   // 2) Fallback: entry không có ISO = áp dụng tất cả (DHL)
   for (const e of entries) {
-    if (e.isoList.length === 0) return e.perKg;
+    if (e.isoList.length === 0) return pickRate(e);
   }
   return 0;
 }
@@ -1824,11 +1939,34 @@ function renderCarrier(id, base, fuel, fuelPct, demand, demandPct, vat, vatPct, 
   // Theo yêu cầu: demandWithVAT = demandWithFuel × (1+VAT%) — phù hợp khi tính VAT trên subtotal.
   const subtotal = base + fuel + demand;
   const vatAmt   = subtotal * vatPct / 100;
-  const grand    = subtotal + vatAmt + otherTotal;
+  const cost     = subtotal + vatAmt + otherTotal;
+  const profitVND = getProfitVND(cost);
+  const grand    = cost + profitVND;
+
+  // Show/hide profit row
+  const profitRowEl = document.getElementById(id+'-profit-row');
+  const profitDisplayEl = document.getElementById(id+'-profit-display');
+  const profitInput = document.getElementById('profit-input');
+  if (profitRowEl && profitDisplayEl) {
+    const hasProfit = profitMode === 'pct'
+      ? (parseFloat(profitInput?.value) || 0) > 0
+      : (parseInt((profitInput?.value||'').replace(/\D/g,''),10)||0) > 0;
+    if (hasProfit) {
+      const pctLabel = profitMode === 'pct' ? ` (${parseFloat(profitInput.value)||0}% markup)` : '';
+      profitDisplayEl.textContent = fmt(profitVND) + pctLabel;
+      profitRowEl.style.display = 'flex';
+    } else {
+      profitRowEl.style.display = 'none';
+    }
+  }
 
   document.getElementById(id+'-total').textContent=fmt(grand);
   document.getElementById(id+'-total').className='carrier-total';
-  document.getElementById(id+'-sub').textContent='đã VAT';
+  const profitInputEl = document.getElementById('profit-input');
+  const hasAnyProfit = profitMode === 'pct'
+    ? (parseFloat(profitInputEl?.value)||0) > 0
+    : (parseInt((profitInputEl?.value||'').replace(/\D/g,''),10)||0) > 0;
+  document.getElementById(id+'-sub').textContent = hasAnyProfit ? 'đã VAT + Profit' : 'đã VAT';
   document.getElementById(id+'-grand').textContent=fmt(grand);
   document.getElementById(id+'-base').textContent=fmt(base);
 
@@ -2126,12 +2264,16 @@ function calculate() {
   // Resolve ISO for demand lookup
   const countryISO = getCountryISO(country);
 
+  // Xác định hướng nhập/xuất — khai báo trước calcDemand để isImport có giá trị đúng
+  const isImport = currentDirection === 'import';
+
   // Helper: tính demand amount từ sheet Demand
   // demandAmt = perKg × chargeWeight (làm tròn lên 0.5)
   // demandWithFuel = demandAmt × (1 + fuel%)
   // (VAT tính trong renderCarrier trên subtotal bao gồm demand)
+  // isImport → dùng per_kg_import (col K), export → per_kg_export (col J)
   function calcDemand(carrier, fuel) {
-    const perKg = getDemandPerKg(carrier, countryISO);
+    const perKg = getDemandPerKg(carrier, countryISO, isImport);
     if (!perKg) return { amt: 0, perKg: 0 };
     // Dùng weight đúng theo từng hãng cho demand
     const rw = (carrier === 'FedEx') ? roundedWeightFedEx
@@ -2145,9 +2287,6 @@ function calculate() {
   document.getElementById('dhl-service').textContent      = `Worldwide Express · ${countryShort}`;
   document.getElementById('fedex-ip-service').textContent = `IP Package · ${countryShort}`;
   document.getElementById('fedex-ie-service').textContent = `IE Package · ${countryShort}`;
-
-  // Xác định hướng nhập/xuất sớm để DHL/FedEx biết có ẩn không
-  const isImport = currentDirection === 'import';
 
   // DHL — chỉ hiện khi hàng xuất (chưa có bảng giá nhập)
   const dhlBase = (!isImport && zones.dhl) ? getDHLRate(roundedWeightDHL,zones.dhl) : 0;
@@ -2412,6 +2551,8 @@ function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFr
   if (setting.dhlFuel!==undefined)   document.getElementById('fuel-dhl').value   = setting.dhlFuel.toFixed(2);
   if (setting.fedexFuel!==undefined) document.getElementById('fuel-fedex').value = setting.fedexFuel.toFixed(2);
   if (setting.upsFuel!==undefined)   document.getElementById('fuel-ups').value   = setting.upsFuel.toFixed(2);
+  // Sync sidebar fuel display ngay sau khi ghi giá trị từ sheet
+  if (typeof syncSidebarFuel === 'function') syncSidebarFuel();
   if (setting.upsFreightThreshold!==undefined) document.getElementById('ups-freight-threshold').value = setting.upsFreightThreshold;
   if (setting.fedexFreightWeight!==undefined) document.getElementById('fedex-freight-weight').value = setting.fedexFreightWeight;
   if (setting.fedexFreightGirth!==undefined)  document.getElementById('fedex-freight-girth').value  = setting.fedexFreightGirth;
@@ -3210,6 +3351,32 @@ loadData();
     #mob-sidebar-btn { display: flex; }
   }
 
+  /* ── NÚT BONG BÓNG HOTLINE MOBILE ── */
+  #mob-hotline-fab {
+    display: none;
+    position: fixed;
+    bottom: 84px; /* ngay trên nút loa */
+    right: 18px;
+    z-index: 900;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    box-shadow: 0 4px 16px rgba(14,165,233,0.5);
+    border: none;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  #mob-hotline-fab:active { transform: scale(0.92); }
+  @media (max-width: 1000px) {
+    #mob-hotline-fab { display: flex; }
+    /* Ẩn nút Tra hotline inline trên mobile */
+    #hotline-btn { display: none !important; }
+  }
+
   /* Overlay */
   #mob-modal-overlay {
     display: none;
@@ -3285,7 +3452,270 @@ loadData();
   .mob-modal-sheet .sidebar-card {
     margin: 0 14px 10px;
   }
+
+  /* ── HOTLINE PANEL ── */
+  /* ── HOTLINE NOTIFICATION POPUP ── */
+  #hotline-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 2000;
+    pointer-events: none;
+  }
+  #hotline-overlay.open { display: block; }
+  #hotline-panel {
+    pointer-events: all;
+    margin: 14px auto 0;
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    transform: translateY(-120%);
+    opacity: 0;
+    transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.22s ease;
+  }
+  #hotline-overlay.open #hotline-panel {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  /* Mobile: panel nổi từ góc dưới phải như bong bóng thông báo */
+  @media (max-width: 1000px) {
+    #hotline-overlay {
+      top: auto; bottom: 90px; right: 12px; left: auto;
+      width: auto;
+    }
+    #hotline-panel {
+      margin: 0;
+      width: 300px;
+      max-width: calc(100vw - 24px);
+      border-radius: 16px;
+      transform: scale(0.7) translateY(30px);
+      transform-origin: bottom right;
+    }
+    #hotline-overlay.open #hotline-panel {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+  #hotline-header {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    padding: 13px 16px 11px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #hotline-header-left { display: flex; align-items: center; gap: 10px; }
+  #hotline-icon { font-size: 22px; line-height: 1; }
+  #hotline-title { font-size: 13px; font-weight: 700; color: white; letter-spacing: 0.01em; }
+  #hotline-country-name { font-size: 11px; color: rgba(255,255,255,0.72); margin-top: 1px; }
+  #hotline-close {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.12);
+    color: white; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; line-height: 1;
+  }
+  #hotline-close:hover { background: rgba(255,255,255,0.25); }
+  /* Progress bar tự đóng */
+  #hotline-progress-bar {
+    height: 3px; background: rgba(255,255,255,0.25);
+    position: relative; overflow: hidden;
+  }
+  #hotline-progress-fill {
+    height: 100%; width: 100%;
+    background: rgba(255,255,255,0.7);
+    transform-origin: left;
+    transform: scaleX(1);
+    transition: none;
+  }
+  #hotline-body { padding: 12px 14px 14px; }
+  .hotline-carrier-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px;
+    margin-bottom: 6px;
+    border: 1.5px solid #f1f5f9;
+    background: #fafbfc;
+  }
+  .hotline-carrier-row:last-child { margin-bottom: 0; }
+  .hotline-badge { display: flex; align-items: center; justify-content: center; width: 44px; height: 26px; border-radius: 5px; flex-shrink: 0; }
+  .hotline-badge.dhl { background: #FFCC00; }
+  .hotline-badge.dhl span { font-weight: 800; font-size: 11px; color: #D40511; }
+  .hotline-badge.fedex { background: white; border: 1.5px solid #e5e7eb; }
+  .hotline-badge.fedex .fe { font-weight: 800; font-size: 11px; color: #4D148C; }
+  .hotline-badge.fedex .ex { font-weight: 800; font-size: 11px; color: #FF6200; }
+  .hotline-badge.ups { background: #351C15; }
+  .hotline-badge.ups span { font-weight: 800; font-size: 10px; color: #FFB500; }
+  .hotline-info { flex: 1; min-width: 0; }
+  .hotline-carrier-name { font-size: 11px; font-weight: 600; color: #6b7280; }
+  .hotline-number {
+    font-size: 14px; font-weight: 700; color: #111827; margin-top: 1px;
+    letter-spacing: 0.02em;
+  }
+  .hotline-number.na { font-size: 12px; color: #9ca3af; font-weight: 400; }
+  .hotline-copy-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: none; background: #eff6ff;
+    color: #2563eb; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.15s, transform 0.12s;
+    position: relative;
+  }
+  .hotline-copy-btn:hover { background: #dbeafe; transform: scale(1.1); }
+  .hotline-copy-btn.na { background: #f8fafc; color: #d1d5db; pointer-events: none; }
+  .hotline-copy-btn.copied { background: #f0fdf4; color: #16a34a; }
+  .copy-tooltip {
+    position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+    background: #111827; color: white; font-size: 10px; font-weight: 600;
+    padding: 3px 7px; border-radius: 5px; white-space: nowrap;
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  }
+  .hotline-copy-btn.copied .copy-tooltip { opacity: 1; }
+  #hotline-no-country {
+    text-align: center; padding: 16px 0 6px;
+    font-size: 13px; color: #9ca3af; font-style: italic;
+  }
 </style>
+
+<!-- ── HOTLINE PANEL ── -->
+<div id="hotline-overlay">
+  <div id="hotline-panel">
+    <div id="hotline-header">
+      <div id="hotline-header-left">
+        <div id="hotline-icon">📞</div>
+        <div>
+          <div id="hotline-title">Hotline hãng vận chuyển</div>
+          <div id="hotline-country-name"></div>
+        </div>
+      </div>
+      <button id="hotline-close" onclick="closeHotlinePanel()">×</button>
+    </div>
+    <div id="hotline-progress-bar"><div id="hotline-progress-fill"></div></div>
+    <div id="hotline-body">
+      <div id="hotline-no-country">Vui lòng chọn quốc gia trước.</div>
+      <div id="hotline-rows" style="display:none">
+        <!-- DHL -->
+        <div class="hotline-carrier-row">
+          <div class="hotline-badge dhl"><span>DHL</span></div>
+          <div class="hotline-info">
+            <div class="hotline-carrier-name">DHL Express</div>
+            <div class="hotline-number" id="hl-dhl">—</div>
+          </div>
+          <button class="hotline-copy-btn" id="hl-dhl-copy" onclick="copyHotline('hl-dhl','hl-dhl-copy')" title="Copy số">📋<span class="copy-tooltip">Đã copy!</span></button>
+        </div>
+        <!-- FedEx -->
+        <div class="hotline-carrier-row">
+          <div class="hotline-badge fedex"><span class="fe">Fed</span><span class="ex">Ex</span></div>
+          <div class="hotline-info">
+            <div class="hotline-carrier-name">FedEx</div>
+            <div class="hotline-number" id="hl-fedex">—</div>
+          </div>
+          <button class="hotline-copy-btn" id="hl-fedex-copy" onclick="copyHotline('hl-fedex','hl-fedex-copy')" title="Copy số">📋<span class="copy-tooltip">Đã copy!</span></button>
+        </div>
+        <!-- UPS -->
+        <div class="hotline-carrier-row">
+          <div class="hotline-badge ups"><span>UPS</span></div>
+          <div class="hotline-info">
+            <div class="hotline-carrier-name">UPS</div>
+            <div class="hotline-number" id="hl-ups">—</div>
+          </div>
+          <button class="hotline-copy-btn" id="hl-ups-copy" onclick="copyHotline('hl-ups','hl-ups-copy')" title="Copy số">📋<span class="copy-tooltip">Đã copy!</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let _hotlineTimer = null;
+
+function openHotlinePanel() {
+  const c = document.getElementById('country').value;
+  const noCountry = document.getElementById('hotline-no-country');
+  const rows = document.getElementById('hotline-rows');
+  const nameEl = document.getElementById('hotline-country-name');
+
+  if (!c || !countryData[c]) {
+    noCountry.style.display = 'block';
+    rows.style.display = 'none';
+    nameEl.textContent = '';
+  } else {
+    const d = countryData[c];
+    nameEl.textContent = '🌍 ' + c;
+    noCountry.style.display = 'none';
+    rows.style.display = 'block';
+
+    function fillHotline(elId, btnId, number) {
+      const el = document.getElementById(elId);
+      const btn = document.getElementById(btnId);
+      if (number && number.trim() && number.trim() !== '' && number.trim() !== '0') {
+        el.textContent = number.trim();
+        el.classList.remove('na');
+        btn.classList.remove('na');
+      } else {
+        el.textContent = 'Chưa cập nhật';
+        el.classList.add('na');
+        btn.classList.add('na');
+      }
+    }
+    fillHotline('hl-dhl',   'hl-dhl-copy',   d.hotlineDHL   || '');
+    fillHotline('hl-fedex', 'hl-fedex-copy', d.hotlineFedEx || '');
+    fillHotline('hl-ups',   'hl-ups-copy',   d.hotlineUPS   || '');
+  }
+
+  // Hiện panel (slide-down từ trên)
+  const overlay = document.getElementById('hotline-overlay');
+  overlay.classList.add('open');
+
+  // Chạy progress bar → tự đóng sau 8s
+  const fill = document.getElementById('hotline-progress-fill');
+  fill.style.transition = 'none';
+  fill.style.transform = 'scaleX(1)';
+  fill.offsetWidth; // force reflow
+  fill.style.transition = 'transform 8s linear';
+  fill.style.transform = 'scaleX(0)';
+
+  if (_hotlineTimer) clearTimeout(_hotlineTimer);
+  _hotlineTimer = setTimeout(() => closeHotlinePanel(), 8000);
+}
+
+function copyHotline(elId, btnId) {
+  const el = document.getElementById(elId);
+  const btn = document.getElementById(btnId);
+  if (!el || btn.classList.contains('na')) return;
+  const number = el.textContent.trim();
+  navigator.clipboard.writeText(number).then(() => {
+    _showCopied(btn);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = number;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    _showCopied(btn);
+  });
+}
+function _showCopied(btn) {
+  btn.classList.add('copied');
+  btn.innerHTML = '✓<span class="copy-tooltip">Đã copy!</span>';
+  setTimeout(() => {
+    btn.classList.remove('copied');
+    btn.innerHTML = '📋<span class="copy-tooltip">Đã copy!</span>';
+  }, 1500);
+}
+
+function closeHotlinePanel() {
+  if (_hotlineTimer) { clearTimeout(_hotlineTimer); _hotlineTimer = null; }
+  document.getElementById('hotline-overlay').classList.remove('open');
+}
+</script>
+
+<!-- Nút bong bóng hotline (chỉ mobile) -->
+<button id="mob-hotline-fab" onclick="openHotlinePanel()" title="Tra hotline">
+  📞
+</button>
 
 <!-- Floating button -->
 <button id="mob-sidebar-btn" onclick="openMobSidebar()" title="Thông báo & Fuel">
