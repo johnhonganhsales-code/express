@@ -410,6 +410,7 @@ body.dark .other-charges-header { color: #c4b5fd; }
 #dark-toggle:hover { background: #334155; transform: translateY(-2px); }
 body.dark #dark-toggle { background: #f1f5f9; color: #1e293b; border-color: #e2e8f0; }
 body.dark #dark-toggle:hover { background: #e2e8f0; }
+@media (max-width: 1000px) { #dark-toggle { display: none !important; } }
 
 /* Tooltip phím tắt */
 .shortcut-hint {
@@ -3656,34 +3657,119 @@ loadData();
     line-height: 1;
   }
   @media (max-width: 1000px) {
-    #mob-sidebar-btn { display: flex; }
+    #mob-sidebar-btn { display: none !important; }
   }
 
-  /* ── NÚT BONG BÓNG HOTLINE MOBILE ── */
-  #mob-hotline-fab {
-    display: none;
-    position: fixed;
-    bottom: 84px; /* ngay trên nút loa */
-    right: 18px;
-    z-index: 900;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #0ea5e9, #0284c7);
-    box-shadow: 0 4px 16px rgba(14,165,233,0.5);
-    border: none;
-    cursor: pointer;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  #mob-hotline-fab:active { transform: scale(0.92); }
+  /* ── NÚT BONG BÓNG HOTLINE MOBILE — ẩn, thay bằng Options FAB ── */
+  #mob-hotline-fab { display: none !important; }
   @media (max-width: 1000px) {
-    #mob-hotline-fab { display: flex; }
     /* Ẩn nút Tra hotline inline trên mobile */
     #hotline-btn { display: none !important; }
   }
+
+  /* ── OPTIONS FAB (Speed Dial) ── */
+  #options-fab-wrap {
+    display: none;
+    position: fixed;
+    bottom: 22px;
+    right: 18px;
+    z-index: 910;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  @media (max-width: 1000px) { #options-fab-wrap { display: flex; } }
+
+  /* Main FAB button */
+  #options-fab-main {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    box-shadow: 0 4px 16px rgba(29,78,216,0.45);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+    position: relative; z-index: 2;
+  }
+  #options-fab-main:active { transform: scale(0.92); }
+  #options-fab-wrap.open #options-fab-main { transform: rotate(45deg); background: linear-gradient(135deg,#374151,#1f2937); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+
+  /* Speed dial items container */
+  #options-fab-items {
+    display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 10px;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease;
+  }
+  #options-fab-wrap.open #options-fab-items {
+    max-height: 400px;
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* Each speed dial item */
+  .fab-item {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; border: none; background: none; padding: 0; font-family: inherit;
+    animation: none;
+    opacity: 0;
+    transform: translateY(12px) scale(0.85);
+    transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  #options-fab-wrap.open .fab-item {
+    opacity: 1; transform: translateY(0) scale(1);
+  }
+  #options-fab-wrap.open .fab-item:nth-child(1) { transition-delay: 0.04s; }
+  #options-fab-wrap.open .fab-item:nth-child(2) { transition-delay: 0.08s; }
+  #options-fab-wrap.open .fab-item:nth-child(3) { transition-delay: 0.12s; }
+
+  .fab-item-label {
+    background: #1e293b; color: #f1f5f9;
+    font-size: 12px; font-weight: 600;
+    padding: 5px 11px; border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  body.dark .fab-item-label { background: #f1f5f9; color: #1e293b; }
+
+  .fab-item-icon {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+    transition: transform 0.15s; flex-shrink: 0;
+    border: none; cursor: pointer;
+  }
+  .fab-item:active .fab-item-icon { transform: scale(0.9); }
+
+  .fab-item-icon.dark-icon {
+    background: #1e293b; color: #cbd5e1;
+    border: 1.5px solid #334155;
+  }
+  body.dark .fab-item-icon.dark-icon { background: #f1f5f9; color: #1e293b; border-color: #e2e8f0; }
+
+  .fab-item-icon.hotline-icon { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+  .fab-item-icon.notice-icon { background: linear-gradient(135deg, #1d4ed8, #1e40af); position: relative; }
+
+  /* Badge on notice icon */
+  .fab-notice-badge {
+    position: absolute; top: -2px; right: -2px;
+    background: #ef4444; color: white;
+    font-size: 9px; font-weight: 700;
+    min-width: 15px; height: 15px;
+    border-radius: 8px; padding: 0 3px;
+    display: none; align-items: center; justify-content: center; line-height: 1;
+  }
+
+  /* Backdrop to close FAB on outside tap */
+  #options-fab-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 905;
+  }
+  #options-fab-wrap.open ~ #options-fab-backdrop { display: block; }
 
   /* Overlay */
   #mob-modal-overlay {
@@ -4224,5 +4310,76 @@ document.addEventListener('keydown', function(e) {
 
 <!-- Nút Dark Mode floating -->
 <button id="dark-toggle" onclick="toggleDark()" title="Dark mode (Alt+D)">🌙 Dark</button>
+
+<!-- ── OPTIONS SPEED DIAL (chỉ mobile) ── -->
+<div id="options-fab-wrap">
+  <!-- Speed dial items (thứ tự: bottom → top khi hiện) -->
+  <div id="options-fab-items">
+    <!-- Dark mode -->
+    <button class="fab-item" onclick="toggleDark(); closeOptionsFab();" id="fab-dark-item">
+      <span class="fab-item-label" id="fab-dark-label">🌙 Dark</span>
+      <span class="fab-item-icon dark-icon" id="fab-dark-icon">🌙</span>
+    </button>
+    <!-- Hotline -->
+    <button class="fab-item" onclick="openHotlinePanel(); closeOptionsFab();">
+      <span class="fab-item-label">📞 Hotline</span>
+      <span class="fab-item-icon hotline-icon">📞</span>
+    </button>
+    <!-- Thông báo -->
+    <button class="fab-item" onclick="openMobSidebar(); closeOptionsFab();">
+      <span class="fab-item-label">📢 Thông báo</span>
+      <span class="fab-item-icon notice-icon">
+        📢
+        <span class="fab-notice-badge" id="fab-notice-badge"></span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Main FAB -->
+  <button id="options-fab-main" onclick="toggleOptionsFab()" title="Tùy chọn">⚙️</button>
+</div>
+<!-- Backdrop -->
+<div id="options-fab-backdrop" onclick="closeOptionsFab()"></div>
+
+<script>
+function toggleOptionsFab() {
+  document.getElementById('options-fab-wrap').classList.toggle('open');
+}
+function closeOptionsFab() {
+  document.getElementById('options-fab-wrap').classList.remove('open');
+}
+
+// Sync dark label inside FAB
+function syncFabDarkLabel() {
+  const isDark = document.body.classList.contains('dark');
+  const lbl = document.getElementById('fab-dark-label');
+  const icon = document.getElementById('fab-dark-icon');
+  if (lbl) lbl.textContent = isDark ? '☀️ Light' : '🌙 Dark';
+  if (icon) icon.textContent = isDark ? '☀️' : '🌙';
+}
+
+// Patch toggleDark to also update FAB label
+const _origToggleDark = toggleDark;
+window.toggleDark = function() {
+  _origToggleDark();
+  syncFabDarkLabel();
+};
+
+// Sync notice badge to FAB badge
+const _fabBadgeObserver = new MutationObserver(() => {
+  const src = document.getElementById('mob-sidebar-badge');
+  const dst = document.getElementById('fab-notice-badge');
+  if (!src || !dst) return;
+  dst.textContent = src.textContent;
+  dst.style.display = (src.style.display === 'flex') ? 'flex' : 'none';
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const srcBadge = document.getElementById('mob-sidebar-badge');
+  if (srcBadge) _fabBadgeObserver.observe(srcBadge, { attributes: true, childList: true, characterData: true, subtree: true });
+  // Also init dark label state
+  syncFabDarkLabel();
+  if (localStorage.getItem('darkMode') === '1') syncFabDarkLabel();
+});
+</script>
 </body>
 </html>
