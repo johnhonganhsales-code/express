@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="color-scheme" content="light only">
+<meta name="color-scheme" content="light dark">
 <title>Hồng Anh Express Quốc tế</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -310,6 +310,105 @@
   /* Button grid gap */
   .btn-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:0; }
 
+
+/* ── DARK MODE ── */
+body.dark {
+  --light: #0f172a;
+  --white: #1e293b;
+  --border: #334155;
+  --dark: #f1f5f9;
+  --gray: #94a3b8;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+  --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.25);
+  --accent-light: #1e3a5f;
+  color-scheme: dark;
+}
+body.dark { background: var(--light); color: var(--dark); }
+body.dark .card,
+body.dark .carrier-card,
+body.dark .sidebar-card { background: #1e293b; border-color: #334155; }
+body.dark select,
+body.dark input[type=number],
+body.dark input[type=text] {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  border-color: #334155;
+}
+body.dark .piece-input {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+body.dark .status-bar { background: #1e293b; border-color: #334155; }
+body.dark .carrier-summary:hover { background: #0f172a; }
+body.dark .carrier-detail { background: #162032; border-color: #334155; }
+body.dark .detail-row { border-color: #1e293b; color: #cbd5e1; }
+body.dark .detail-row span:last-child { color: #f1f5f9; }
+body.dark .detail-row.total-row { border-color: #334155; color: #f1f5f9; }
+body.dark .meta-tag { background: #0f172a; border-color: #334155; color: #94a3b8; }
+body.dark .reset-btn { background: transparent; border-color: #334155; color: #94a3b8; }
+body.dark .reset-btn:hover { background: #0f172a; border-color: #475569; color: #f1f5f9; }
+body.dark .type-toggle { background: #0f172a; border-color: #334155; }
+body.dark .type-btn:first-child { border-color: #334155; }
+body.dark .type-btn:not(.active) { color: #64748b; }
+body.dark .type-btn:not(.active):hover { background: #1e293b; color: #f1f5f9; }
+body.dark .vol-badge { background: #0f2d1a; border-color: #166534; }
+body.dark .zone-badge { background: #0f2d1a; border-color: #166534; }
+body.dark .notice-item { color: #cbd5e1; border-color: #1e293b; }
+body.dark .fuel-row { border-color: #1e293b; }
+body.dark .fuel-lbl { color: #cbd5e1; }
+body.dark .history-item { background: #0f172a; border-color: #334155; color: #cbd5e1; }
+body.dark .history-item:hover { background: #0f2d1a; border-color: #166534; }
+body.dark .history-empty { color: #475569; }
+body.dark .error-banner { background: #2d1a1a; border-color: #7f1d1d; }
+body.dark footer { color: #475569; }
+body.dark .piece-details-header { background: linear-gradient(135deg,#1e3a8a,#1e3060); }
+body.dark .piece-head-row { background: #162032; border-color: #1e3a8a; }
+body.dark .piece-head-row > div { border-color: #1e3a8a; }
+body.dark .piece-row { background: #1e293b; border-color: #334155; }
+body.dark .piece-footer { background: #162032; border-color: #1e3a8a; }
+body.dark .piece-table-wrap { border-color: #1e3a8a; }
+body.dark .vsvx-input { background: #0f172a; }
+body.dark #profit-input { background: #162032 !important; color: #93c5fd !important; -webkit-text-fill-color:#93c5fd !important; }
+body.dark .detail-row.profit-row { background: #162032; border-color: #1e3a8a; }
+body.dark .detail-row.profit-row span:last-child { color: #93c5fd !important; }
+body.dark .detail-row.provider-row { background: #1c1a0a; border-color: #713f12; }
+body.dark .detail-row.other-charge span:last-child { color: #c4b5fd; }
+body.dark .other-charges-header { color: #c4b5fd; }
+
+/* Nút dark mode toggle */
+#dark-toggle {
+  margin-left: auto;
+  background: rgba(255,255,255,0.1);
+  border: 1.5px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  padding: 5px 13px;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+#dark-toggle:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.35); }
+
+/* Tooltip phím tắt */
+.shortcut-hint {
+  position: fixed;
+  bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px);
+  background: #1e293b; color: #f1f5f9;
+  padding: 8px 18px; border-radius: 20px;
+  font-size: 13px; font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  z-index: 9999; pointer-events: none;
+  opacity: 0; transition: opacity 0.2s, transform 0.2s;
+}
+.shortcut-hint.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+body.dark .shortcut-hint { background: #f1f5f9; color: #1e293b; }
 </style>
 </head>
 <body>
@@ -4015,5 +4114,88 @@ document.addEventListener('DOMContentLoaded', () => {
   if (statusEl) _noticesObserver.observe(statusEl, { childList: true, characterData: true, subtree: true });
 });
 </script>
+
+<div class="shortcut-hint" id="shortcut-hint"></div>
+
+<script>
+// ── DARK MODE ──
+function toggleDark() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('darkMode', isDark ? '1' : '0');
+  const btn = document.getElementById('dark-toggle');
+  if (btn) btn.innerHTML = isDark ? '☀️ Light' : '🌙 Dark';
+}
+// Khôi phục trạng thái
+(function() {
+  if (localStorage.getItem('darkMode') === '1') {
+    document.body.classList.add('dark');
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('dark-toggle');
+      if (btn) btn.innerHTML = '☀️ Light';
+    });
+  }
+})();
+
+// ── PHÍM TẮT ──
+function showHint(msg) {
+  const el = document.getElementById('shortcut-hint');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 1600);
+}
+
+document.addEventListener('keydown', function(e) {
+  // Bỏ qua khi đang gõ trong input/select/textarea
+  const tag = document.activeElement?.tagName;
+  const inInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
+
+  // Alt+D: toggle dark mode
+  if (e.altKey && e.key.toLowerCase() === 'd') {
+    e.preventDefault();
+    toggleDark();
+    const isDark = document.body.classList.contains('dark');
+    showHint(isDark ? '🌙 Dark mode bật' : '☀️ Light mode bật');
+    return;
+  }
+
+  if (inInput) return; // các phím tắt khác không hoạt động khi đang gõ
+
+  // Enter: tính cước xuất (nếu nút enabled)
+  if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+    const btn = document.getElementById('calc-btn');
+    if (btn && !btn.disabled) {
+      e.preventDefault();
+      setDirection('export');
+      calculate();
+      showHint('⌨️ Enter → Tính hàng xuất');
+    }
+    return;
+  }
+
+  // Shift+Enter: tính cước nhập
+  if (e.key === 'Enter' && e.shiftKey) {
+    const btn = document.getElementById('import-btn');
+    if (btn && !btn.disabled) {
+      e.preventDefault();
+      setDirection('import');
+      calculate();
+      showHint('⌨️ Shift+Enter → Tính hàng nhập');
+    }
+    return;
+  }
+
+  // Esc: reset
+  if (e.key === 'Escape') {
+    if (typeof reset === 'function') {
+      reset();
+      showHint('⌨️ Esc → Tính lại');
+    }
+    return;
+  }
+});
+</script>
+
 </body>
 </html>
