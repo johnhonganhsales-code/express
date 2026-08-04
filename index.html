@@ -281,6 +281,11 @@
   .history-empty { font-size: 12px; color: #9ca3af; text-align: center; padding: 8px 0; font-style: italic; }
   @media (max-width: 1000px) { .sidebar { display: none; } .page-layout { display: block; max-width: 700px; margin: 0 auto; padding: 0; } .container { padding: 20px 16px 40px; } }
 
+  /* ── RIGHT SIDEBAR ── */
+  .sidebar-right { width: 240px; flex-shrink: 0; padding: 20px 0 40px; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
+  @media (max-width: 1200px) { .sidebar-right { display: none; } }
+  .page-layout { max-width: 1400px; }
+
   /* Import button distinct style */
   .calc-btn.import-btn { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); box-shadow: 0 2px 8px rgba(30,64,175,0.35); }
   .calc-btn.import-btn:not(:disabled):hover { box-shadow: 0 6px 20px rgba(30,64,175,0.5); }
@@ -973,6 +978,17 @@ function getProfitVND(cost) {
     <button class="reset-btn" onclick="reset()">↺ Tính lại</button>
   </div>
 </div>
+
+<!-- RIGHT SIDEBAR: Tiện ích -->
+<aside class="sidebar-right">
+
+  <!-- Tiện ích: notices có link -->
+  <div class="sidebar-card">
+    <div class="sidebar-title"><span>🔧</span> Tiện ích <span id="utilities-status" style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0"></span></div>
+    <div id="utilities-container"><div class="notice-item"><div class="idot dot-blue"></div><div style="color:#9ca3af;font-style:italic">Đang tải...</div></div></div>
+  </div>
+
+</aside>
 </div><!-- end page-layout -->
 
 <footer id="footer-text">Design by Tiến Nguyễn</footer>
@@ -3359,29 +3375,51 @@ function sidebarPostCalc() {
   } catch(e) {}
 }
 
-// ── Sidebar: load Notices từ Google Sheet ──
+// ── Helper dùng chung: parse + lọc Notices theo cột E (Loại) ──
+// Cột sheet: A=màu, B=nội dung, C=hiển thị, D=link, E=loại
+// loai = 'thongbao' | 'tienich'
+// Nếu cột E bỏ trống → hiện ở CẢ HAI sidebar
+function parseNoticesData(data, loai) {
+  const items = [];
+  for (let i = 1; i < data.length; i++) {
+    const row     = data[i];
+    const mau     = row[0];
+    const noidung = row[1];
+    const hienthi = row[2];
+    const link    = row[3];
+    const loaicot = String(row[4] || '').toLowerCase().trim(); // cột E
+    if (!noidung || String(hienthi).toUpperCase() !== 'TRUE') continue;
+    // Bỏ trống = hiện cả 2 bên; có giá trị = chỉ hiện đúng loại
+    if (loaicot && loaicot !== loai) continue;
+    items.push({
+      color: String(mau || '').toLowerCase().trim() || 'blue',
+      text:  String(noidung).trim(),
+      link:  String(link || '').trim()
+    });
+  }
+  return items;
+}
+
+// Cache để 2 hàm dùng chung 1 lần fetch
+let _noticesRawCache = null;
+async function fetchNoticesRaw() {
+  if (_noticesRawCache) return _noticesRawCache;
+  const res = await fetch(`${GITHUB_RAW}/all.json`);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const raw = await res.json();
+  _noticesRawCache = raw['Notices'] || [];
+  return _noticesRawCache;
+}
+
+// ── Sidebar trái: Thông báo ──
 async function loadNotices() {
   const container = document.getElementById('notices-container');
   const statusEl  = document.getElementById('notices-status');
   if (!container) return;
 
   try {
-    const res = await fetch(`${GITHUB_RAW}/all.json`);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const raw = await res.json();
-    const data = raw['Notices'] || [];
-
-    // Parse: row[0]=màu, row[1]=nội dung, row[2]=hiển thị, row[3]=link
-    const notices = [];
-    for (let i = 1; i < data.length; i++) {
-      const [mau, noidung, hienthi, link] = data[i];
-      if (!noidung || String(hienthi).toUpperCase() !== 'TRUE') continue;
-      notices.push({
-        color: String(mau || '').toLowerCase().trim() || 'blue',
-        text:  String(noidung).trim(),
-        link:  String(link || '').trim()
-      });
-    }
+    const data    = await fetchNoticesRaw();
+    const notices = parseNoticesData(data, 'thongbao');
 
     if (!notices.length) {
       container.innerHTML = '<div class="notice-item"><div class="idot dot-green"></div><div>Không có thông báo mới.</div></div>';
@@ -3412,8 +3450,47 @@ async function loadNotices() {
   }
 }
 
+// ── Sidebar phải: Tiện ích ──
+async function loadUtilities() {
+  const container = document.getElementById('utilities-container');
+  const statusEl  = document.getElementById('utilities-status');
+  if (!container) return;
+
+  try {
+    const data  = await fetchNoticesRaw();
+    const items = parseNoticesData(data, 'tienich');
+
+    if (!items.length) {
+      container.innerHTML = '<div class="notice-item"><div class="idot dot-green"></div><div>Không có tiện ích.</div></div>';
+      return;
+    }
+
+    container.innerHTML = items.map(n => {
+      const color = ['red','yellow','green','blue'].includes(n.color) ? n.color : 'blue';
+      const inner = `<div class="idot dot-${color}"></div><div>${n.text}</div>`;
+      if (n.link) {
+        return `<a class="notice-item" href="${n.link}" target="_blank"
+          style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;"
+          onmouseover="this.style.background='#eff6ff'"
+          onmouseout="this.style.background='#f8fafc'">
+          ${inner}
+          <span style="font-size:11px;color:#2563eb;margin-left:auto;flex-shrink:0">↗</span>
+        </a>`;
+      }
+      return `<div class="notice-item">${inner}</div>`;
+    }).join('');
+
+    if (statusEl) statusEl.textContent = items.length + ' mục';
+
+  } catch (e) {
+    console.warn('[Utilities]', e.message);
+    container.innerHTML = '<div class="notice-item"><div class="idot dot-yellow"></div><div style="color:#92400e">Không tải được.</div></div>';
+    if (statusEl) statusEl.textContent = '⚠️ lỗi';
+  }
+}
 
 loadNotices();
+loadUtilities();
 loadData();
 </script>
 
