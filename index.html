@@ -3366,39 +3366,48 @@ async function loadNotices() {
   if (!container) return;
 
   try {
-    const res = await fetch(PROXY + '?notices=1&t=' + Date.now(), { cache: 'no-store' });
+    const res = await fetch(`${GITHUB_RAW}/all.json`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const raw = await res.json();
+    const data = raw['Notices'] || [];
 
-    if (data.error) throw new Error(data.error);
+    // Parse: row[0]=màu, row[1]=nội dung, row[2]=hiển thị, row[3]=link
+    const notices = [];
+    for (let i = 1; i < data.length; i++) {
+      const [mau, noidung, hienthi, link] = data[i];
+      if (!noidung || String(hienthi).toUpperCase() !== 'TRUE') continue;
+      notices.push({
+        color: String(mau || '').toLowerCase().trim() || 'blue',
+        text:  String(noidung).trim(),
+        link:  String(link || '').trim()
+      });
+    }
 
-    const notices = data.notices || [];
     if (!notices.length) {
       container.innerHTML = '<div class="notice-item"><div class="idot dot-green"></div><div>Không có thông báo mới.</div></div>';
       return;
     }
 
     container.innerHTML = notices.map(n => {
-  const color = ['red','yellow','green','blue'].includes(n.color) ? n.color : 'blue';
-  const inner = `<div class="idot dot-${color}"></div><div>${n.text}</div>`;
-  
-  if (n.link) {
-    return `<a class="notice-item" href="${n.link}" target="_blank"
-      style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;"
-      onmouseover="this.style.background='#f0fdf4'"
-      onmouseout="this.style.background='#f8fafc'">
-      ${inner}
-      <span style="font-size:11px;color:#2563eb;margin-left:auto;flex-shrink:0">↗</span>
-    </a>`;
-  }
-  return `<div class="notice-item">${inner}</div>`;
-}).join('');
+      const color = ['red','yellow','green','blue'].includes(n.color) ? n.color : 'blue';
+      const inner = `<div class="idot dot-${color}"></div><div>${n.text}</div>`;
+      if (n.link) {
+        return `<a class="notice-item" href="${n.link}" target="_blank"
+          style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;"
+          onmouseover="this.style.background='#f0fdf4'"
+          onmouseout="this.style.background='#f8fafc'">
+          ${inner}
+          <span style="font-size:11px;color:#2563eb;margin-left:auto;flex-shrink:0">↗</span>
+        </a>`;
+      }
+      return `<div class="notice-item">${inner}</div>`;
+    }).join('');
 
     if (statusEl) statusEl.textContent = notices.length + ' mục';
 
   } catch (e) {
     console.warn('[Notices]', e.message);
-    container.innerHTML = '<div class="notice-item"><div class="idot dot-yellow"></div><div style="color:#92400e">Không tải được thông báo – kiểm tra lại GAS.</div></div>';
+    container.innerHTML = '<div class="notice-item"><div class="idot dot-yellow"></div><div style="color:#92400e">Không tải được thông báo.</div></div>';
     if (statusEl) statusEl.textContent = '⚠️ lỗi';
   }
 }
