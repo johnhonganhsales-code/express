@@ -982,6 +982,7 @@ function getProfitVND(cost) {
 // CONFIG
 // ============================================================
 const PROXY = 'https://script.google.com/macros/s/AKfycbxdhRfqIi--qboVNnCL9HlNJEKPJH4gOAxzGBpaX0vVZJq3Ho6gG5cql0lOcTwBXjOBzw/exec';
+const GITHUB_RAW = 'https://raw.githubusercontent.com/johnhonganhsales-code/honganh-rates/main';
 const GIDS = {
   Setting:          618066130,
   Countries:        1582348584,
@@ -1202,25 +1203,28 @@ const DATA_KEYS = [
 // 1) Ưu tiên gộp 1 request (?all=1) nếu Apps Script đã hỗ trợ -> nhanh nhất
 // 2) Nếu chưa hỗ trợ (lỗi/không đúng định dạng) -> fallback tải song song 7 sheet bằng Promise.all()
 async function fetchAllData(onProgress) {
-  try {
-    if (onProgress) onProgress('Đang tải toàn bộ dữ liệu...', 'gộp 1 request');
-    const res = await fetch(`${PROXY}?all=1`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && !data.error && DATA_KEYS.every(([k]) => data[k] !== undefined)) {
-        return data; // Apps Script đã hỗ trợ chế độ gộp -> dùng luôn (nhanh nhất)
-      }
-    }
-  } catch (e) {
-    // im lặng, rơi xuống fallback bên dưới
-  }
+  if (onProgress) onProgress('Đang tải dữ liệu từ GitHub...', '1 request');
+  const res = await fetch(`${GITHUB_RAW}/all.json?t=${Date.now()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const raw = await res.json();
 
-  // Fallback: tải song song 7 sheet (Promise.all) thay vì tuần tự
-  if (onProgress) onProgress('Đang tải dữ liệu (song song)...', '7 sheet cùng lúc');
-  const results = await Promise.all(DATA_KEYS.map(([, gid]) => fetchSheet(gid)));
-  const fetched = {};
-  DATA_KEYS.forEach(([k], i) => fetched[k] = results[i]);
-  return fetched;
+  return {
+    Setting:          raw['Settings']               || [],
+    Countries:        raw['Countries']              || [],
+    Cost_DHL:         raw['Cost_DHL']               || [],
+    Cost_DHLSIN:      raw['Cost_DHLSIN']            || [],
+    UPS_Saver:        raw['Cost_UPS_Saver_Exp']     || [],
+    UPS_Exp:          raw['Cost_UPS_EXPEDITED_Exp'] || [],
+    UPS_Freight_Exp:  raw['Cost_UPS_Freight_Exp']   || [],
+    UPS_Saver_Imp:    raw['Cost_UPS_Saver_Imp']     || [],
+    UPS_Exp_Imp:      raw['Cost_UPS_EXPEDITED_Imp'] || [],
+    UPS_Freight_Imp:  raw['Cost_UPS_Freight_Imp']   || [],
+    FedEx_IP:         raw['Cost_FedEx_IP_Exp']      || [],
+    FedEx_IE:         raw['Cost_FedEx_IE_Exp']      || [],
+    FedEx_IP_Imp:     raw['Cost_FedEx_IP_Imp']      || [],
+    FedEx_IE_Imp:     raw['Cost_FedEx_IE_Imp']      || [],
+    Other_Charges:    raw['Other_Charges']          || [],
+  };
 }
 
 // ============================================================
@@ -2499,11 +2503,9 @@ function clearCache() {
 
 // Gọi ?version=1 – chỉ lấy giá trị version, rất nhẹ
 async function fetchVersion() {
-  const res = await fetch(`${PROXY}?version=1&t=${Date.now()}`, { cache: 'no-store' });
+  const res = await fetch(`${GITHUB_RAW}/version.json?t=${Date.now()}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
-  if (data && data.error) throw new Error(data.error);
-  // Apps Script trả về { version: "202607291015" } hoặc { version: 202607291015 }
   return String(data.version || '');
 }
 
