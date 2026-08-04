@@ -49,8 +49,7 @@
   .logo-fedex .ex { color: var(--fedex-orange); }
   .logo-ups { background: var(--ups-brown); padding: 4px 10px; border-radius: 4px; font-weight: 800; font-size: 14px; color: var(--ups-gold); }
   .header-sep { color: #334155; font-size: 18px; }
-  header h1 { color: #cbd5e1; font-size: 13px; font-weight: 500; margin-left: 4px; letter-spacing: 0.01em; flex: 1; }
-  #dark-toggle { flex-shrink: 0; }
+  header h1 { color: #cbd5e1; font-size: 13px; font-weight: 500; margin-left: 4px; letter-spacing: 0.01em; }
 
   /* ── LAYOUT ── */
   .page-layout { display: flex; align-items: flex-start; max-width: 1160px; margin: 0 auto; padding: 0 20px; gap: 20px; }
@@ -379,23 +378,28 @@ body.dark .detail-row.provider-row { background: #1c1a0a; border-color: #713f12;
 body.dark .detail-row.other-charge span:last-child { color: #c4b5fd; }
 body.dark .other-charges-header { color: #c4b5fd; }
 
-/* Nút dark mode toggle */
+/* Nút dark mode - floating */
 #dark-toggle {
-  margin-left: auto;
-  background: rgba(255,255,255,0.1);
-  border: 1.5px solid rgba(255,255,255,0.2);
+  position: fixed;
+  bottom: 22px; left: 18px;
+  z-index: 900;
+  background: #1e293b;
+  border: 1.5px solid #334155;
   border-radius: 20px;
-  padding: 5px 13px;
+  padding: 7px 14px;
   color: #cbd5e1;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.2s, border-color 0.2s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  transition: background 0.2s, transform 0.15s;
   display: flex; align-items: center; gap: 6px;
   white-space: nowrap;
 }
-#dark-toggle:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.35); }
+#dark-toggle:hover { background: #334155; transform: translateY(-2px); }
+body.dark #dark-toggle { background: #f1f5f9; color: #1e293b; border-color: #e2e8f0; }
+body.dark #dark-toggle:hover { background: #e2e8f0; }
 
 /* Tooltip phím tắt */
 .shortcut-hint {
@@ -4198,5 +4202,8 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
+
+<!-- Nút Dark Mode floating -->
+<button id="dark-toggle" onclick="toggleDark()" title="Dark mode (Alt+D)">🌙 Dark</button>
 </body>
 </html>
