@@ -3307,9 +3307,9 @@ function syncSidebarFuel() {
   const dhl = document.getElementById('fuel-dhl');
   const fedex = document.getElementById('fuel-fedex');
   const ups = document.getElementById('fuel-ups');
-  if (dhl) document.getElementById('sb-fuel-dhl').textContent = parseFloat(dhl.value).toFixed(1) + '%';
-  if (fedex) document.getElementById('sb-fuel-fedex').textContent = parseFloat(fedex.value).toFixed(1) + '%';
-  if (ups) document.getElementById('sb-fuel-ups').textContent = parseFloat(ups.value).toFixed(1) + '%';
+  if (dhl) document.getElementById('sb-fuel-dhl').textContent = parseFloat(dhl.value).toFixed(2) + '%';
+  if (fedex) document.getElementById('sb-fuel-fedex').textContent = parseFloat(fedex.value).toFixed(2) + '%';
+  if (ups) document.getElementById('sb-fuel-ups').textContent = parseFloat(ups.value).toFixed(2) + '%';
 }
 
 // ── Sidebar: lịch sử tính ──
