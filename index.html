@@ -3379,9 +3379,20 @@ async function loadNotices() {
     }
 
     container.innerHTML = notices.map(n => {
-      const color = ['red','yellow','green','blue'].includes(n.color) ? n.color : 'blue';
-      return `<div class="notice-item"><div class="idot dot-${color}"></div><div>${n.text}</div></div>`;
-    }).join('');
+  const color = ['red','yellow','green','blue'].includes(n.color) ? n.color : 'blue';
+  const inner = `<div class="idot dot-${color}"></div><div>${n.text}</div>`;
+  
+  if (n.link) {
+    return `<a class="notice-item" href="${n.link}" target="_blank"
+      style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;"
+      onmouseover="this.style.background='#f0fdf4'"
+      onmouseout="this.style.background='#f8fafc'">
+      ${inner}
+      <span style="font-size:11px;color:#2563eb;margin-left:auto;flex-shrink:0">↗</span>
+    </a>`;
+  }
+  return `<div class="notice-item">${inner}</div>`;
+}).join('');
 
     if (statusEl) statusEl.textContent = notices.length + ' mục';
 
