@@ -1112,6 +1112,17 @@ function getProfitVND(cost) {
     <div id="utilities-container"><div class="notice-item"><div class="idot dot-blue"></div><div style="color:#9ca3af;font-style:italic">Đang tải...</div></div></div>
   </div>
 
+  <!-- PDF Tools card -->
+  <div class="sidebar-card">
+    <div class="sidebar-title"><span>📄</span> PDF Tools</div>
+    <a class="notice-item pdf-tool-btn" onclick="openPdfModal('merge')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+      <div class="idot dot-blue"></div><div>🗂️ Ghép PDF</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
+    </a>
+    <a class="notice-item pdf-tool-btn" onclick="openPdfModal('split')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+      <div class="idot dot-yellow"></div><div>✂️ Cắt PDF</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
+    </a>
+  </div>
+
 </aside>
 </div><!-- end page-layout -->
 
@@ -3725,6 +3736,9 @@ loadData();
   #options-fab-wrap.open .fab-item:nth-child(1) { transition-delay: 0.04s; }
   #options-fab-wrap.open .fab-item:nth-child(2) { transition-delay: 0.08s; }
   #options-fab-wrap.open .fab-item:nth-child(3) { transition-delay: 0.12s; }
+  #options-fab-wrap.open .fab-item:nth-child(4) { transition-delay: 0.16s; }
+
+  .fab-item-icon.util-icon { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
 
   .fab-item-label {
     background: #1e293b; color: #f1f5f9;
@@ -4146,6 +4160,23 @@ function closeHotlinePanel() {
       <div id="mob-sidebar-history"><div class="history-empty">Chưa có lần tính nào</div></div>
     </div>
 
+    <!-- Tiện ích -->
+    <div class="sidebar-card">
+      <div class="sidebar-title"><span>🔧</span> Tiện ích <span id="mob-utilities-status" style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0"></span></div>
+      <div id="mob-utilities-container"><div class="notice-item"><div class="idot dot-blue"></div><div style="color:#9ca3af;font-style:italic">Đang tải...</div></div></div>
+    </div>
+
+    <!-- PDF Tools mobile -->
+    <div class="sidebar-card">
+      <div class="sidebar-title"><span>📄</span> PDF Tools</div>
+      <a class="notice-item" onclick="closeMobSidebar();openPdfModal('merge')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+        <div class="idot dot-blue"></div><div>🗂️ Ghép PDF</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
+      </a>
+      <a class="notice-item" onclick="closeMobSidebar();openPdfModal('split')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+        <div class="idot dot-yellow"></div><div>✂️ Cắt PDF</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
+      </a>
+    </div>
+
     <!-- Mẹo -->
     <div class="sidebar-card">
       <div class="sidebar-title"><span>💡</span> Mẹo sử dụng</div>
@@ -4158,10 +4189,18 @@ function closeHotlinePanel() {
 
 <script>
 function openMobSidebar() {
-  // Sync nội dung trước khi mở
   syncMobSidebar();
   document.getElementById('mob-modal-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+}
+function openMobSidebarTo(targetId) {
+  syncMobSidebar();
+  document.getElementById('mob-modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => {
+    const el = document.getElementById(targetId);
+    if (el) el.closest('.sidebar-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 360);
 }
 function closeMobSidebar() {
   document.getElementById('mob-modal-overlay').classList.remove('open');
@@ -4192,6 +4231,14 @@ function syncMobSidebar() {
   const sh = document.getElementById('sidebar-history');
   const dh = document.getElementById('mob-sidebar-history');
   if (sh && dh) dh.innerHTML = sh.innerHTML;
+
+  // Sync utilities
+  const su = document.getElementById('utilities-container');
+  const du = document.getElementById('mob-utilities-container');
+  if (su && du) du.innerHTML = su.innerHTML;
+  const suStatus = document.getElementById('utilities-status');
+  const duStatus = document.getElementById('mob-utilities-status');
+  if (suStatus && duStatus) duStatus.textContent = suStatus.textContent;
 
   // Sync badge (số thông báo)
   const badge = document.getElementById('mob-sidebar-badge');
@@ -4308,6 +4355,730 @@ document.addEventListener('keydown', function(e) {
 </script>
 
 
+<!-- ── PDF TOOLS MODAL ── -->
+<style>
+/* Overlay */
+#pdf-modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(3px);
+  align-items: center; justify-content: center; padding: 16px;
+}
+#pdf-modal-overlay.open { display: flex; }
+
+/* Modal box */
+#pdf-modal {
+  background: white; border-radius: 18px; width: 100%; max-width: 580px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+  display: flex; flex-direction: column;
+  animation: pdfModalIn 0.22s ease;
+}
+@keyframes pdfModalIn {
+  from { opacity:0; transform: scale(0.94) translateY(12px); }
+  to   { opacity:1; transform: scale(1) translateY(0); }
+}
+
+/* Header */
+#pdf-modal-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 20px 0; flex-shrink: 0;
+}
+#pdf-modal-title { font-size: 16px; font-weight: 700; color: #111827; flex: 1; }
+#pdf-modal-close {
+  width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid #e2e8f0;
+  background: white; font-size: 18px; color: #6b7280; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; line-height: 1;
+}
+#pdf-modal-close:hover { background: #f1f5f9; border-color: #94a3b8; color: #111827; }
+
+/* Tab bar */
+#pdf-tab-bar {
+  display: flex; gap: 6px; padding: 14px 20px 0; flex-shrink: 0;
+}
+.pdf-tab {
+  flex: 1; padding: 9px 0; font-size: 13px; font-weight: 600;
+  border: 1.5px solid #e2e8f0; border-radius: 10px; background: #f8fafc;
+  color: #6b7280; cursor: pointer; font-family: inherit;
+  transition: all 0.15s; text-align: center;
+}
+.pdf-tab.active {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  border-color: transparent; color: white;
+  box-shadow: 0 2px 8px rgba(29,78,216,0.35);
+}
+.pdf-tab:not(.active):hover { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+
+/* Body */
+#pdf-modal-body { padding: 18px 20px 20px; flex: 1; }
+
+/* Drop zone */
+.pdf-dropzone {
+  border: 2px dashed #bfdbfe; border-radius: 12px;
+  background: #f8fafc; padding: 28px 20px;
+  text-align: center; cursor: pointer;
+  transition: all 0.2s; position: relative; margin-bottom: 14px;
+}
+.pdf-dropzone:hover, .pdf-dropzone.dragover {
+  border-color: #2563eb; background: #eff6ff;
+}
+.pdf-dropzone input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  background: transparent !important; color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+.pdf-dropzone-icon { font-size: 32px; margin-bottom: 8px; }
+.pdf-dropzone-text { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+.pdf-dropzone-sub { font-size: 12px; color: #9ca3af; }
+
+/* File list */
+.pdf-file-list { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+.pdf-file-item {
+  display: flex; align-items: center; gap: 10px;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9px; padding: 9px 12px;
+  transition: box-shadow 0.15s, opacity 0.15s; user-select: none;
+}
+.pdf-file-item.dragging { opacity: 0.35; box-shadow: 0 4px 16px rgba(37,99,235,0.18); }
+.pdf-file-item.drag-over { border-color: #2563eb; background: #eff6ff; box-shadow: 0 0 0 2px rgba(37,99,235,0.25); }
+.pdf-drag-handle {
+  cursor: grab; color: #cbd5e1; font-size: 15px; flex-shrink: 0;
+  padding: 0 2px; line-height: 1; transition: color 0.15s; touch-action: none;
+}
+.pdf-drag-handle:active { cursor: grabbing; }
+.pdf-file-item:hover .pdf-drag-handle { color: #6b7280; }
+.pdf-file-idx {
+  width: 20px; height: 20px; border-radius: 50%; background: #dbeafe; color: #1d4ed8;
+  font-size: 10.5px; font-weight: 700; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.pdf-file-icon { font-size: 16px; flex-shrink: 0; }
+.pdf-file-name { font-size: 13px; font-weight: 500; color: #374151; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdf-file-size { font-size: 11px; color: #9ca3af; flex-shrink: 0; }
+.pdf-file-del {
+  width: 24px; height: 24px; border-radius: 50%; border: none; background: #fee2e2;
+  color: #ef4444; cursor: pointer; font-size: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+  transition: background 0.15s;
+}
+.pdf-file-del:hover { background: #fca5a5; }
+
+/* Merge order hint */
+.pdf-order-hint {
+  font-size: 11.5px; color: #6b7280; background: #f0fdf4; border: 1px solid #86efac;
+  border-radius: 8px; padding: 7px 11px; margin-bottom: 12px; display: none;
+}
+.pdf-order-hint.show { display: block; }
+
+body.dark .pdf-drag-handle { color: #334155; }
+body.dark .pdf-file-item:hover .pdf-drag-handle { color: #94a3b8; }
+body.dark .pdf-file-idx { background: #1e3a8a; color: #93c5fd; }
+body.dark .pdf-file-item.drag-over { border-color: #2563eb; background: #162032; }
+
+/* Split options */
+.pdf-split-opts { margin-bottom: 14px; }
+.pdf-split-opts label { font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 8px; }
+.pdf-radio-group { display: flex; flex-direction: column; gap: 7px; }
+.pdf-radio-label {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 13px; color: #374151; cursor: pointer; padding: 9px 12px;
+  border: 1.5px solid #e2e8f0; border-radius: 9px; background: #f8fafc;
+  transition: all 0.15s;
+}
+.pdf-radio-label:hover { border-color: #bfdbfe; background: #eff6ff; }
+.pdf-radio-label input[type=radio] { accent-color: #2563eb; width: 15px; height: 15px; }
+.pdf-radio-label.selected { border-color: #2563eb; background: #eff6ff; }
+
+/* Page range input */
+.pdf-range-wrap { margin-top: 10px; display: none; }
+.pdf-range-wrap.show { display: block; }
+.pdf-range-wrap input[type=text] {
+  width: 100%; padding: 10px 13px; border: 1.5px solid #bfdbfe;
+  border-radius: 9px; font-size: 14px; font-family: inherit;
+  color: #111827 !important; background: white !important;
+  -webkit-text-fill-color: #111827 !important;
+  outline: none; transition: border-color 0.15s;
+}
+.pdf-range-wrap input[type=text]:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.pdf-range-hint { font-size: 11.5px; color: #6b7280; margin-top: 5px; }
+
+/* Progress bar */
+.pdf-progress { display: none; margin-bottom: 12px; }
+.pdf-progress.show { display: block; }
+.pdf-progress-bar {
+  height: 6px; background: #e2e8f0; border-radius: 99px; overflow: hidden;
+}
+.pdf-progress-fill {
+  height: 100%; width: 0%; border-radius: 99px;
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  transition: width 0.3s ease;
+}
+.pdf-progress-text { font-size: 12px; color: #6b7280; margin-top: 5px; text-align: center; }
+
+/* Action button */
+.pdf-action-btn {
+  width: 100%; padding: 13px; color: white; border: none;
+  border-radius: 11px; font-size: 14px; font-weight: 700; font-family: inherit;
+  cursor: pointer; background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 2px 8px rgba(29,78,216,0.35);
+  transition: all 0.15s; letter-spacing: 0.01em;
+}
+.pdf-action-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(29,78,216,0.45); filter: brightness(1.1); }
+.pdf-action-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* Result area */
+.pdf-result {
+  display: none; margin-top: 12px; padding: 12px 14px;
+  background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px;
+  text-align: center;
+}
+.pdf-result.show { display: block; }
+.pdf-result.error { background: #fef2f2; border-color: #fca5a5; }
+.pdf-result-text { font-size: 13px; color: #166534; font-weight: 600; margin-bottom: 8px; }
+.pdf-result.error .pdf-result-text { color: #b91c1c; }
+.pdf-download-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 20px; background: linear-gradient(135deg,#059669,#047857);
+  color: white; border-radius: 9px; font-size: 13px; font-weight: 700;
+  text-decoration: none; border: none; cursor: pointer; font-family: inherit;
+  transition: all 0.15s; box-shadow: 0 2px 8px rgba(5,150,105,0.35);
+}
+.pdf-download-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+
+/* Dark mode */
+body.dark #pdf-modal { background: #1e293b; }
+body.dark #pdf-modal-title { color: #f1f5f9; }
+body.dark #pdf-modal-close { background: #1e293b; border-color: #334155; color: #94a3b8; }
+body.dark #pdf-modal-close:hover { background: #334155; color: #f1f5f9; }
+body.dark .pdf-tab { background: #0f172a; border-color: #334155; color: #64748b; }
+body.dark .pdf-tab.active { background: linear-gradient(135deg,#1d4ed8,#1e40af); color: white; border-color: transparent; }
+body.dark .pdf-tab:not(.active):hover { background: #162032; border-color: #1e3a8a; color: #93c5fd; }
+body.dark .pdf-dropzone { background: #0f172a; border-color: #1e3a8a; }
+body.dark .pdf-dropzone:hover, body.dark .pdf-dropzone.dragover { background: #162032; border-color: #2563eb; }
+body.dark .pdf-dropzone-text { color: #cbd5e1; }
+body.dark .pdf-file-item { background: #0f172a; border-color: #334155; }
+body.dark .pdf-file-name { color: #cbd5e1; }
+body.dark .pdf-radio-label { background: #0f172a; border-color: #334155; color: #cbd5e1; }
+body.dark .pdf-radio-label:hover, body.dark .pdf-radio-label.selected { background: #162032; border-color: #2563eb; }
+body.dark .pdf-range-wrap input[type=text] { background: #0f172a !important; border-color: #1e3a8a; color: #f1f5f9 !important; -webkit-text-fill-color: #f1f5f9 !important; }
+body.dark .pdf-result { background: #0f2d1a; border-color: #166534; }
+body.dark .pdf-result.error { background: #2d1a1a; border-color: #7f1d1d; }
+body.dark .pdf-result-text { color: #4ade80; }
+body.dark .pdf-result.error .pdf-result-text { color: #f87171; }
+body.dark .pdf-order-hint { background: #0f2d1a; border-color: #166534; color: #86efac; }
+body.dark .pdf-progress-text { color: #94a3b8; }
+body.dark .pdf-split-opts label { color: #cbd5e1; }
+
+/* Page numbering checkbox */
+.pdf-pagenum-label {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 12px; margin-bottom: 10px;
+  border: 1.5px solid #e2e8f0; border-radius: 10px;
+  background: #f8fafc; cursor: pointer;
+  transition: all 0.15s; user-select: none;
+}
+.pdf-pagenum-label:hover { border-color: #bfdbfe; background: #eff6ff; }
+.pdf-pagenum-label input[type=checkbox] { display: none; }
+.pdf-pagenum-box {
+  width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
+  border: 2px solid #d1d5db; background: white;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; position: relative;
+}
+.pdf-pagenum-label input:checked ~ .pdf-pagenum-box {
+  background: #2563eb; border-color: #2563eb;
+}
+.pdf-pagenum-label input:checked ~ .pdf-pagenum-box::after {
+  content: ''; position: absolute;
+  width: 5px; height: 9px;
+  border: 2px solid white; border-top: none; border-left: none;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.pdf-pagenum-text { font-size: 13px; font-weight: 600; color: #374151; flex: 1; }
+.pdf-pagenum-sub {
+  font-size: 11px; color: #9ca3af;
+  background: #e2e8f0; padding: 2px 7px; border-radius: 99px;
+}
+.pdf-pagenum-label:has(input:checked) { border-color: #2563eb; background: #eff6ff; }
+.pdf-pagenum-label:has(input:checked) .pdf-pagenum-text { color: #1d4ed8; }
+body.dark .pdf-pagenum-label { background: #0f172a; border-color: #334155; }
+body.dark .pdf-pagenum-label:hover { background: #162032; border-color: #1e3a8a; }
+body.dark .pdf-pagenum-box { background: #1e293b; border-color: #475569; }
+body.dark .pdf-pagenum-text { color: #cbd5e1; }
+body.dark .pdf-pagenum-sub { background: #334155; color: #94a3b8; }
+body.dark .pdf-pagenum-label:has(input:checked) { background: #162032; border-color: #2563eb; }
+body.dark .pdf-pagenum-label:has(input:checked) .pdf-pagenum-text { color: #93c5fd; }
+</style>
+
+<!-- Modal HTML -->
+<div id="pdf-modal-overlay" onclick="if(event.target===this)closePdfModal()">
+  <div id="pdf-modal">
+    <div id="pdf-modal-header">
+      <span style="font-size:22px">📄</span>
+      <div id="pdf-modal-title">PDF Tools</div>
+      <button id="pdf-modal-close" onclick="closePdfModal()">✕</button>
+    </div>
+
+    <div id="pdf-tab-bar">
+      <button class="pdf-tab active" id="pdf-tab-merge" onclick="switchPdfTab('merge')">🗂️ Ghép PDF</button>
+      <button class="pdf-tab" id="pdf-tab-split" onclick="switchPdfTab('split')">✂️ Cắt PDF</button>
+    </div>
+
+    <div id="pdf-modal-body">
+
+      <!-- ── MERGE TAB ── -->
+      <div id="pdf-panel-merge">
+        <div class="pdf-dropzone" id="pdf-merge-drop"
+          ondragover="pdfDragOver(event,'pdf-merge-drop')"
+          ondragleave="pdfDragLeave('pdf-merge-drop')"
+          ondrop="pdfDrop(event,'merge')">
+          <input type="file" id="pdf-merge-input" accept=".pdf" multiple onchange="pdfFilesAdded(this.files,'merge')">
+          <div class="pdf-dropzone-icon">📂</div>
+          <div class="pdf-dropzone-text">Kéo thả file PDF vào đây</div>
+          <div class="pdf-dropzone-sub">hoặc bấm để chọn nhiều file cùng lúc</div>
+        </div>
+        <div class="pdf-order-hint" id="pdf-merge-hint">
+          💡 Kéo ⠿ để đổi thứ tự. Thứ tự ghép = thứ tự file bên dưới. Bấm ✕ để xóa.
+        </div>
+        <div class="pdf-file-list" id="pdf-merge-list"></div>
+        <div class="pdf-progress" id="pdf-merge-progress">
+          <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdf-merge-fill"></div></div>
+          <div class="pdf-progress-text" id="pdf-merge-progress-text">Đang xử lý...</div>
+        </div>
+        <!-- Page numbering option -->
+        <label class="pdf-pagenum-label" id="pdf-pagenum-wrap" style="display:none">
+          <input type="checkbox" id="pdf-pagenum-chk">
+          <span class="pdf-pagenum-box"></span>
+          <span class="pdf-pagenum-text">Đánh số trang sau khi ghép</span>
+          <span class="pdf-pagenum-sub">vd: 1 / 12</span>
+        </label>
+        <button class="pdf-action-btn" id="pdf-merge-btn" onclick="doMergePdf()" disabled>🗂️ Ghép PDF</button>
+        <div class="pdf-result" id="pdf-merge-result">
+          <div class="pdf-result-text" id="pdf-merge-result-text"></div>
+          <a class="pdf-download-btn" id="pdf-merge-download">⬇️ Tải file đã ghép</a>
+        </div>
+      </div>
+
+      <!-- ── SPLIT TAB ── -->
+      <div id="pdf-panel-split" style="display:none">
+        <div class="pdf-dropzone" id="pdf-split-drop"
+          ondragover="pdfDragOver(event,'pdf-split-drop')"
+          ondragleave="pdfDragLeave('pdf-split-drop')"
+          ondrop="pdfDrop(event,'split')">
+          <input type="file" id="pdf-split-input" accept=".pdf" onchange="pdfFilesAdded(this.files,'split')">
+          <div class="pdf-dropzone-icon">📂</div>
+          <div class="pdf-dropzone-text">Kéo thả 1 file PDF vào đây</div>
+          <div class="pdf-dropzone-sub">hoặc bấm để chọn file</div>
+        </div>
+        <div class="pdf-file-list" id="pdf-split-list"></div>
+
+        <div class="pdf-split-opts" id="pdf-split-opts" style="display:none">
+          <label>Cách cắt:</label>
+          <div class="pdf-radio-group">
+            <label class="pdf-radio-label selected" id="pdf-split-lbl-all">
+              <input type="radio" name="pdf-split-mode" value="all" checked onchange="pdfSplitModeChange(this)">
+              Tách từng trang (mỗi trang = 1 file)
+            </label>
+            <label class="pdf-radio-label" id="pdf-split-lbl-range">
+              <input type="radio" name="pdf-split-mode" value="range" onchange="pdfSplitModeChange(this)">
+              Cắt theo khoảng trang tùy chọn
+            </label>
+          </div>
+          <div class="pdf-range-wrap" id="pdf-range-wrap">
+            <input type="text" id="pdf-range-input" placeholder="Ví dụ: 1-3, 5, 7-9"
+              style="width:100%;padding:10px 13px;border:1.5px solid #bfdbfe;border-radius:9px;font-size:14px;font-family:inherit;">
+            <div class="pdf-range-hint">Nhập số trang hoặc khoảng, cách nhau bằng dấu phẩy. Ví dụ: <b>1-3, 5, 8-10</b></div>
+          </div>
+        </div>
+
+        <div class="pdf-progress" id="pdf-split-progress">
+          <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdf-split-fill"></div></div>
+          <div class="pdf-progress-text" id="pdf-split-progress-text">Đang xử lý...</div>
+        </div>
+        <button class="pdf-action-btn" id="pdf-split-btn" onclick="doSplitPdf()" disabled>✂️ Cắt PDF</button>
+        <div class="pdf-result" id="pdf-split-result">
+          <div class="pdf-result-text" id="pdf-split-result-text"></div>
+          <div id="pdf-split-downloads" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:4px;"></div>
+        </div>
+      </div>
+
+    </div><!-- end modal body -->
+  </div>
+</div>
+
+<!-- pdf-lib CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+<script>
+// ── PDF TOOLS STATE ──
+const pdfState = { mergeFiles: [], splitFile: null };
+
+// ── OPEN / CLOSE MODAL ──
+function openPdfModal(tab) {
+  document.getElementById('pdf-modal-overlay').classList.add('open');
+  switchPdfTab(tab || 'merge');
+}
+function closePdfModal() {
+  document.getElementById('pdf-modal-overlay').classList.remove('open');
+}
+
+// ── TAB SWITCH ──
+function switchPdfTab(tab) {
+  ['merge','split'].forEach(t => {
+    document.getElementById('pdf-tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('pdf-panel-' + t).style.display = t === tab ? '' : 'none';
+  });
+  document.getElementById('pdf-modal-title').textContent = tab === 'merge' ? '🗂️ Ghép PDF' : '✂️ Cắt PDF';
+}
+
+// ── DRAG & DROP ──
+function pdfDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('dragover'); }
+function pdfDragLeave(id) { document.getElementById(id).classList.remove('dragover'); }
+function pdfDrop(e, mode) {
+  e.preventDefault();
+  const id = 'pdf-' + mode + '-drop';
+  document.getElementById(id).classList.remove('dragover');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+  if (files.length) pdfFilesAdded(files, mode);
+}
+
+// ── FILE ADDED ──
+function pdfFilesAdded(files, mode) {
+  files = Array.from(files);
+  if (mode === 'merge') {
+    pdfState.mergeFiles.push(...files);
+    renderMergeList();
+  } else {
+    pdfState.splitFile = files[0];
+    renderSplitFile();
+  }
+}
+
+// ── FORMAT FILE SIZE ──
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(2) + ' MB';
+}
+
+// ── RENDER MERGE LIST (with drag-to-reorder) ──
+let _pdfDragSrcIdx = null;
+
+function renderMergeList() {
+  const list = document.getElementById('pdf-merge-list');
+  const hint = document.getElementById('pdf-merge-hint');
+  const btn  = document.getElementById('pdf-merge-btn');
+  const res  = document.getElementById('pdf-merge-result');
+
+  res.className = 'pdf-result';
+
+  if (!pdfState.mergeFiles.length) {
+    list.innerHTML = '';
+    hint.classList.remove('show');
+    btn.disabled = true;
+    return;
+  }
+
+  hint.classList.toggle('show', pdfState.mergeFiles.length > 1);
+  btn.disabled = pdfState.mergeFiles.length < 2;
+  const pnWrap = document.getElementById('pdf-pagenum-wrap');
+  if (pnWrap) pnWrap.style.display = pdfState.mergeFiles.length >= 2 ? 'flex' : 'none';
+
+  // Build DOM nodes (not innerHTML) to attach events cleanly
+  list.innerHTML = '';
+  pdfState.mergeFiles.forEach((f, i) => {
+    const item = document.createElement('div');
+    item.className = 'pdf-file-item';
+    item.draggable = true;
+    item.dataset.idx = i;
+    item.innerHTML = `
+      <span class="pdf-drag-handle" title="Kéo để sắp xếp">⠿</span>
+      <span class="pdf-file-idx">${i + 1}</span>
+      <span class="pdf-file-icon">📄</span>
+      <span class="pdf-file-name" title="${f.name}">${f.name}</span>
+      <span class="pdf-file-size">${fmtSize(f.size)}</span>
+      <button class="pdf-file-del" title="Xóa">✕</button>
+    `;
+
+    // Delete button
+    item.querySelector('.pdf-file-del').addEventListener('click', () => {
+      pdfState.mergeFiles.splice(i, 1);
+      renderMergeList();
+    });
+
+    // ── Drag events ──
+    item.addEventListener('dragstart', e => {
+      _pdfDragSrcIdx = i;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', i); // required for Firefox
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      list.querySelectorAll('.pdf-file-item').forEach(el => el.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      list.querySelectorAll('.pdf-file-item').forEach(el => el.classList.remove('drag-over'));
+      if (i !== _pdfDragSrcIdx) item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (_pdfDragSrcIdx === null || _pdfDragSrcIdx === i) return;
+      // Reorder array
+      const moved = pdfState.mergeFiles.splice(_pdfDragSrcIdx, 1)[0];
+      pdfState.mergeFiles.splice(i, 0, moved);
+      _pdfDragSrcIdx = null;
+      renderMergeList();
+    });
+
+    list.appendChild(item);
+  });
+}
+
+function pdfRemoveMerge(idx) {
+  pdfState.mergeFiles.splice(idx, 1);
+  renderMergeList();
+}
+
+// ── RENDER SPLIT FILE ──
+function renderSplitFile() {
+  const list = document.getElementById('pdf-split-list');
+  const opts = document.getElementById('pdf-split-opts');
+  const btn  = document.getElementById('pdf-split-btn');
+  const res  = document.getElementById('pdf-split-result');
+  res.className = 'pdf-result';
+
+  if (!pdfState.splitFile) {
+    list.innerHTML = '';
+    opts.style.display = 'none';
+    btn.disabled = true;
+    return;
+  }
+  const f = pdfState.splitFile;
+  list.innerHTML = `
+    <div class="pdf-file-item">
+      <span class="pdf-file-icon">📄</span>
+      <span class="pdf-file-name" title="${f.name}">${f.name}</span>
+      <span class="pdf-file-size">${fmtSize(f.size)}</span>
+      <button class="pdf-file-del" onclick="pdfState.splitFile=null;renderSplitFile()" title="Xóa">✕</button>
+    </div>`;
+  opts.style.display = '';
+  btn.disabled = false;
+}
+
+// ── SPLIT MODE ──
+function pdfSplitModeChange(radio) {
+  document.getElementById('pdf-range-wrap').classList.toggle('show', radio.value === 'range');
+  document.querySelectorAll('.pdf-radio-label').forEach(lbl => lbl.classList.remove('selected'));
+  radio.closest('.pdf-radio-label').classList.add('selected');
+}
+
+// ── PROGRESS HELPERS ──
+function pdfSetProgress(mode, pct, text) {
+  const prog = document.getElementById('pdf-' + mode + '-progress');
+  const fill = document.getElementById('pdf-' + mode + '-fill');
+  const txt  = document.getElementById('pdf-' + mode + '-progress-text');
+  if (pct === null) { prog.classList.remove('show'); return; }
+  prog.classList.add('show');
+  fill.style.width = pct + '%';
+  if (txt) txt.textContent = text || '';
+}
+
+// ── READ FILE AS ARRAY BUFFER ──
+function readFile(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Không đọc được file'));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+// ── MERGE PDF ──
+async function doMergePdf() {
+  const btn = document.getElementById('pdf-merge-btn');
+  const res = document.getElementById('pdf-merge-result');
+  const resTxt = document.getElementById('pdf-merge-result-text');
+  const dlBtn  = document.getElementById('pdf-merge-download');
+
+  btn.disabled = true;
+  res.className = 'pdf-result';
+  pdfSetProgress('merge', 5, 'Đang chuẩn bị...');
+
+  try {
+    const { PDFDocument } = PDFLib;
+    const merged = await PDFDocument.create();
+    const total = pdfState.mergeFiles.length;
+
+    for (let i = 0; i < total; i++) {
+      pdfSetProgress('merge', Math.round(10 + (i / total) * 80), `Đang xử lý file ${i+1}/${total}...`);
+      const buf  = await readFile(pdfState.mergeFiles[i]);
+      const doc  = await PDFDocument.load(buf, { ignoreEncryption: true });
+      const pages = await merged.copyPages(doc, doc.getPageIndices());
+      pages.forEach(p => merged.addPage(p));
+    }
+
+    pdfSetProgress('merge', 95, 'Đang tạo file...');
+
+    // ── Đánh số trang (nếu tick) ──
+    const doPageNum = document.getElementById('pdf-pagenum-chk')?.checked;
+    if (doPageNum) {
+      pdfSetProgress('merge', 96, 'Đang đánh số trang...');
+      const totalPages = merged.getPageCount();
+      const { rgb, degrees } = PDFLib;
+      for (let pi = 0; pi < totalPages; pi++) {
+        const page = merged.getPage(pi);
+        const { width, height } = page.getSize();
+        const label = `${pi + 1} / ${totalPages}`;
+        const fontSize = 9;
+        const textW = label.length * fontSize * 0.52;
+        const x = (width - textW) / 2;
+        const y = 16;
+        // White background pill
+        page.drawRectangle({
+          x: x - 6, y: y - 4,
+          width: textW + 12, height: fontSize + 8,
+          color: rgb(1, 1, 1), opacity: 0.85,
+          borderColor: rgb(0.8, 0.8, 0.85), borderWidth: 0.5,
+          borderOpacity: 0.6,
+        });
+        page.drawText(label, {
+          x, y: y + 1,
+          size: fontSize,
+          color: rgb(0.3, 0.3, 0.35),
+        });
+      }
+    }
+
+    const bytes = await merged.save();
+    const blob  = new Blob([bytes], { type: 'application/pdf' });
+    const url   = URL.createObjectURL(blob);
+
+    dlBtn.href = url;
+    dlBtn.download = 'merged_' + Date.now() + '.pdf';
+    resTxt.textContent = `✅ Ghép thành công ${total} file — ${fmtSize(blob.size)}` + (doPageNum ? ' (có đánh số trang)' : '');
+    res.classList.add('show');
+    pdfSetProgress('merge', 100, 'Xong!');
+    setTimeout(() => pdfSetProgress('merge', null), 1200);
+  } catch(e) {
+    res.classList.add('show', 'error');
+    resTxt.textContent = '❌ Lỗi: ' + e.message;
+    pdfSetProgress('merge', null);
+  }
+  btn.disabled = pdfState.mergeFiles.length < 2;
+}
+
+// ── SPLIT PDF ──
+async function doSplitPdf() {
+  const btn    = document.getElementById('pdf-split-btn');
+  const res    = document.getElementById('pdf-split-result');
+  const resTxt = document.getElementById('pdf-split-result-text');
+  const dlWrap = document.getElementById('pdf-split-downloads');
+  const mode   = document.querySelector('input[name="pdf-split-mode"]:checked').value;
+
+  btn.disabled = true;
+  res.className = 'pdf-result';
+  dlWrap.innerHTML = '';
+  pdfSetProgress('split', 5, 'Đang đọc file...');
+
+  try {
+    const { PDFDocument } = PDFLib;
+    const buf = await readFile(pdfState.splitFile);
+    const src = await PDFDocument.load(buf, { ignoreEncryption: true });
+    const totalPages = src.getPageCount();
+
+    // Build page groups
+    let groups = []; // each group is array of 0-based page indices
+    if (mode === 'all') {
+      groups = Array.from({ length: totalPages }, (_, i) => [i]);
+    } else {
+      // Parse range string
+      const raw = document.getElementById('pdf-range-input').value.trim();
+      if (!raw) throw new Error('Vui lòng nhập khoảng trang cần cắt');
+      const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+      for (const part of parts) {
+        if (part.includes('-')) {
+          const [a, b] = part.split('-').map(n => parseInt(n.trim()));
+          if (isNaN(a) || isNaN(b) || a < 1 || b > totalPages || a > b)
+            throw new Error(`Khoảng trang không hợp lệ: "${part}" (file có ${totalPages} trang)`);
+          const idxs = [];
+          for (let i = a; i <= b; i++) idxs.push(i - 1);
+          groups.push(idxs);
+        } else {
+          const n = parseInt(part);
+          if (isNaN(n) || n < 1 || n > totalPages)
+            throw new Error(`Số trang không hợp lệ: "${part}" (file có ${totalPages} trang)`);
+          groups.push([n - 1]);
+        }
+      }
+      if (!groups.length) throw new Error('Không có trang nào được chọn');
+    }
+
+    const urls = [];
+    for (let g = 0; g < groups.length; g++) {
+      pdfSetProgress('split', Math.round(10 + (g / groups.length) * 85), `Đang tạo file ${g+1}/${groups.length}...`);
+      const newDoc = await PDFDocument.create();
+      const copied = await newDoc.copyPages(src, groups[g]);
+      copied.forEach(p => newDoc.addPage(p));
+      const bytes = await newDoc.save();
+      const blob  = new Blob([bytes], { type: 'application/pdf' });
+      urls.push({ url: URL.createObjectURL(blob), size: blob.size, pages: groups[g] });
+    }
+
+    pdfSetProgress('split', 100, 'Xong!');
+    setTimeout(() => pdfSetProgress('split', null), 1200);
+
+    resTxt.textContent = `✅ Đã tạo ${urls.length} file PDF`;
+    res.classList.add('show');
+
+    // Single file: direct download button
+    if (urls.length === 1) {
+      const a = document.createElement('a');
+      a.className = 'pdf-download-btn';
+      a.href = urls[0].url;
+      a.download = 'split_trang_' + (urls[0].pages.map(p=>p+1).join('-')) + '.pdf';
+      a.textContent = '⬇️ Tải file (' + fmtSize(urls[0].size) + ')';
+      dlWrap.appendChild(a);
+    } else if (urls.length <= 20) {
+      // Multiple files ≤20: individual buttons
+      urls.forEach((u, i) => {
+        const label = groups[i].length === 1
+          ? `Trang ${groups[i][0]+1}`
+          : `Trang ${groups[i][0]+1}-${groups[i][groups[i].length-1]+1}`;
+        const a = document.createElement('a');
+        a.className = 'pdf-download-btn';
+        a.href = u.url; a.download = 'split_' + label.replace(/\s/g,'_') + '.pdf';
+        a.style.cssText = 'font-size:12px;padding:7px 14px;';
+        a.textContent = '⬇️ ' + label;
+        dlWrap.appendChild(a);
+      });
+    } else {
+      // Many files: download all sequentially
+      const btn2 = document.createElement('button');
+      btn2.className = 'pdf-download-btn';
+      btn2.textContent = '⬇️ Tải tất cả ' + urls.length + ' file';
+      btn2.onclick = () => {
+        urls.forEach((u, i) => {
+          setTimeout(() => {
+            const a = document.createElement('a');
+            a.href = u.url; a.download = 'split_trang_' + (u.pages[0]+1) + '.pdf';
+            a.click();
+          }, i * 300);
+        });
+      };
+      dlWrap.appendChild(btn2);
+    }
+  } catch(e) {
+    res.classList.add('show', 'error');
+    resTxt.textContent = '❌ Lỗi: ' + e.message;
+    pdfSetProgress('split', null);
+  }
+  btn.disabled = false;
+}
+</script>
+
 <!-- Nút Dark Mode floating -->
 <button id="dark-toggle" onclick="toggleDark()" title="Dark mode (Alt+D)">🌙 Dark</button>
 
@@ -4315,6 +5086,11 @@ document.addEventListener('keydown', function(e) {
 <div id="options-fab-wrap">
   <!-- Speed dial items (thứ tự: bottom → top khi hiện) -->
   <div id="options-fab-items">
+    <!-- Tiện ích -->
+    <button class="fab-item" onclick="openMobSidebarTo('mob-utilities-container'); closeOptionsFab();" id="fab-util-item">
+      <span class="fab-item-label">🔧 Tiện ích</span>
+      <span class="fab-item-icon util-icon">🔧</span>
+    </button>
     <!-- Dark mode -->
     <button class="fab-item" onclick="toggleDark(); closeOptionsFab();" id="fab-dark-item">
       <span class="fab-item-label" id="fab-dark-label">🌙 Dark</span>
