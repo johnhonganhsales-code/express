@@ -153,6 +153,15 @@
   .calc-btn:not(:disabled):active { transform: translateY(0); box-shadow: 0 2px 8px rgba(29,78,216,0.2); }
   .calc-btn:disabled { opacity: 0.38; cursor: not-allowed; }
 
+  /* ── WATER BUTTON FX (Document/Non-Document, Hàng xuất/Hàng nhập) ── */
+  .type-btn, .calc-btn { isolation: isolate; }
+  .water-fx-canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block; pointer-events: none; z-index: 1;
+    mix-blend-mode: overlay; opacity: 0.95;
+  }
+  .btn-label { position: relative; z-index: 2; display: inline-block; }
+
   /* ── MISC ── */
   .dim-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
   .dim-row label { font-size: 12px; color: var(--gray); margin-bottom: 4px; }
@@ -255,7 +264,7 @@
   @media (max-width: 480px) { .carrier-total { font-size: 16px; } }
 
   /* ── SIDEBAR ── */
-  .sidebar { width: 270px; flex-shrink: 0; padding: 20px 0 40px; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
+  .sidebar { width: 270px; flex-shrink: 0; padding: 20px 0 40px; }
   .sidebar-card {
     background: white; border-radius: 14px; padding: 14px 16px;
     box-shadow: var(--card-shadow); margin-bottom: 12px;
@@ -282,7 +291,7 @@
   @media (max-width: 1000px) { .sidebar { display: none; } .page-layout { display: block; max-width: 700px; margin: 0 auto; padding: 0; } .container { padding: 20px 16px 40px; } }
 
   /* ── RIGHT SIDEBAR ── */
-  .sidebar-right { width: 240px; flex-shrink: 0; padding: 20px 0 40px; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
+  .sidebar-right { width: 240px; flex-shrink: 0; padding: 20px 0 40px; }
   @media (max-width: 1200px) { .sidebar-right { display: none; } }
   .page-layout { max-width: 1400px; }
 
@@ -379,6 +388,14 @@ body.dark .piece-head-row { background: #162032; border-color: #1e3a8a; }
 body.dark .piece-head-row > div { border-color: #1e3a8a; }
 body.dark .piece-row { background: #1e293b; border-color: #334155; }
 body.dark .piece-footer { background: #162032; border-color: #1e3a8a; }
+body.dark #piece-count-display { background: #0f172a; color: #93c5fd; }
+body.dark .piece-count-label { color: #94a3b8; }
+body.dark .piece-count-ctrl { border-color: #3b82f6; }
+body.dark .piece-count-btn { background: #1d4ed8; }
+body.dark .piece-count-btn:hover { background: #2563eb; }
+body.dark .profit-mode-toggle { border-color: #3b82f6; }
+body.dark .profit-mode-btn { color: #93c5fd; }
+body.dark .profit-mode-btn.active { background: #1d4ed8; color: white; }
 body.dark .piece-table-wrap { border-color: #1e3a8a; }
 body.dark .vsvx-input { background: #0f172a; }
 body.dark #profit-input { background: #162032 !important; color: #93c5fd !important; -webkit-text-fill-color:#93c5fd !important; }
@@ -389,7 +406,7 @@ body.dark .detail-row.other-charge span:last-child { color: #c4b5fd; }
 body.dark .other-charges-header { color: #c4b5fd; }
 
 /* Nút dark mode - floating */
-#dark-toggle {
+#dark-toggle { display: none !important; } #dark-toggle-DEAD {
   position: fixed;
   bottom: 22px; left: 18px;
   z-index: 900;
@@ -434,9 +451,16 @@ body.dark .sidebar-card a.notice-item {
 body.dark .sidebar-card a.notice-item span { color: #60a5fa !important; }
 
 body.dark .shortcut-hint { background: #f1f5f9; color: #1e293b; }
+
+/* ── GLITTER WRAP BG — hiệu ứng lấp lánh phủ khoảng trống ngoài các card ── */
+#glitter-bg-canvas {
+  position: fixed; inset: 0; width: 100vw; height: 100vh;
+  z-index: -1; pointer-events: none; display: block;
+}
 </style>
 </head>
 <body>
+<canvas id="glitter-bg-canvas" aria-hidden="true"></canvas>
 
 <header>
   <div class="header-logos">
@@ -446,8 +470,57 @@ body.dark .shortcut-hint { background: #f1f5f9; color: #1e293b; }
     <div class="header-sep">/</div>
     <div class="logo-ups">UPS</div>
   </div>
-  <h1>Hồng Anh Express Quốc tế</h1>
+  <h1 style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+    <span style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.01em;white-space:nowrap;">Hồng Anh</span>
+    <span id="rotating-badge" style="display:inline-flex;align-items:center;justify-content:center;overflow:hidden;background:#1d4ed8;border-radius:6px;padding:2px 10px;box-sizing:border-box;">
+      <span id="rotating-content" aria-hidden="true" style="display:inline-flex;white-space:nowrap;position:relative;font-size:13px;font-weight:700;color:#fff;letter-spacing:0.02em;"></span>
+    </span>
+  </h1>
 </header>
+
+<script>
+(function(){
+  var texts=['Express Quốc tế','DHL · FedEx · UPS','Giao hàng toàn cầu','270 quốc gia','Nhanh · Uy tín'];
+  var idx=0;
+  var badge=document.getElementById('rotating-badge');
+  var cont=document.getElementById('rotating-content');
+  function waitGsap(cb){if(typeof gsap!=='undefined'){cb();return;}var t=setInterval(function(){if(typeof gsap!=='undefined'){clearInterval(t);cb();}},50);}
+  function splitChars(text){
+    return text.split('').map(function(ch){
+      var s=document.createElement('span');
+      s.className='rchar';
+      s.style.cssText='display:inline-block;will-change:transform,opacity;';
+      s.textContent=ch===' '?' ':ch;
+      return s;
+    });
+  }
+  function showText(text,animate){
+    cont.innerHTML='';
+    var chars=splitChars(text);
+    chars.forEach(function(c){cont.appendChild(c);});
+    requestAnimationFrame(function(){
+      var w=cont.scrollWidth+20;
+      if(!animate){gsap.set(badge,{width:w});}
+      else{gsap.to(badge,{width:w,duration:0.35,ease:'power2.out'});}
+    });
+    if(animate){
+      gsap.fromTo(chars,{yPercent:100,opacity:0},{yPercent:0,opacity:1,duration:0.4,ease:'power2.out',stagger:{each:0.03,from:'random'}});
+    } else {
+      gsap.set(chars,{yPercent:0,opacity:1});
+    }
+  }
+  waitGsap(function(){
+    showText(texts[0],false);
+    setInterval(function(){
+      var chars=Array.from(cont.querySelectorAll('.rchar'));
+      gsap.to(chars,{yPercent:-120,opacity:0,duration:0.3,ease:'power2.in',
+        stagger:{each:0.025,from:'random'},
+        onComplete:function(){idx=(idx+1)%texts.length;showText(texts[idx],true);}
+      });
+    },2200);
+  });
+})();
+</script>
 
 <div class="page-layout">
 <aside class="sidebar">
@@ -1112,6 +1185,11 @@ function getProfitVND(cost) {
     <div id="utilities-container"><div class="notice-item"><div class="idot dot-blue"></div><div style="color:#9ca3af;font-style:italic">Đang tải...</div></div></div>
   </div>
 
+  <!-- Globe card -->
+  <div class="sidebar-card" style="padding:6px;overflow:hidden;border-radius:14px;">
+    <div id="globe-container" style="width:100%;aspect-ratio:1/1;position:relative;background:#000;border-radius:10px;overflow:hidden;"></div>
+  </div>
+
   <!-- PDF Tools card -->
   <div class="sidebar-card">
     <div class="sidebar-title"><span>📄</span> PDF Tools</div>
@@ -1121,6 +1199,45 @@ function getProfitVND(cost) {
     <a class="notice-item pdf-tool-btn" onclick="openPdfModal('split')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
       <div class="idot dot-yellow"></div><div>✂️ Cắt PDF</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
     </a>
+  </div>
+
+  <!-- Settings card -->
+  <div class="sidebar-card" id="desktop-settings-card">
+    <div class="sidebar-title"><span>⚙️</span> Cài đặt</div>
+    <div style="padding:4px 0 2px;">
+      <div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Giao diện</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 8px;border-bottom:1px dashed #f1f5f9;">
+        <span style="font-size:13px;font-weight:500;color:#374151;display:flex;align-items:center;gap:6px;">🌙 Chế độ tối</span>
+        <label class="sp-switch">
+          <input type="checkbox" id="sidebar-dark-toggle" onchange="spToggleDark(this.checked)">
+          <span class="sp-slider"></span>
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #f1f5f9;">
+        <span style="font-size:13px;font-weight:500;color:#374151;display:flex;align-items:center;gap:6px;">✨ Hiệu ứng nền lấp lánh</span>
+        <label class="sp-switch">
+          <input type="checkbox" class="glitterbg-toggle" onchange="spToggleGlitterBG(this.checked)">
+          <span class="sp-slider"></span>
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 4px;">
+        <span style="font-size:13px;font-weight:500;color:#374151;display:flex;align-items:center;gap:6px;">🖱️ Hiệu ứng chuột</span>
+        <label class="sp-switch">
+          <input type="checkbox" class="clickfx-toggle" onchange="toggleClickFxOn(this.checked)">
+          <span class="sp-slider"></span>
+        </label>
+      </div>
+      <div class="clickfx-panel" style="display:none;">
+        <div class="sp-effect-grid" style="grid-template-columns:1fr 1fr;">
+          <button class="sp-effect-btn" data-spmode="sniper">🎯 Sniper</button>
+          <button class="sp-effect-btn" data-spmode="rings">⭕ Rings</button>
+          <button class="sp-effect-btn" data-spmode="burst">💥 Burst</button>
+          <button class="sp-effect-btn" data-spmode="particles">✨ Particles</button>
+          <button class="sp-effect-btn" data-spmode="crosshair">➕ Crosshair</button>
+          <button class="sp-effect-btn" data-spmode="wavy">〰️ Wavy</button>
+        </div>
+      </div>
+    </div>
   </div>
 
 </aside>
@@ -2502,10 +2619,18 @@ function calculate() {
   const dimL2=parseFloat(document.getElementById('dim-l').value)||0;
   const dimW2=parseFloat(document.getElementById('dim-w').value)||0;
   const dimH2=parseFloat(document.getElementById('dim-h').value)||0;
-  const fedexGirth = (() => { const s=[dimL2,dimW2,dimH2].sort((a,b)=>a-b); return s[0]*2+s[1]*2+s[2]; })();
-  // Điều kiện Freight: cân thực tế >70kg HOẶC chu vi >330cm (chỉ tính khi có kích thước)
-  const useFedExFreight = wt > fedexFreightWeightThresh ||
-    (fedexGirth > 0 && fedexGirth > fedexFreightGirthThresh);
+  // Tính cân kiện nặng nhất (từng kiện, không phải tổng)
+  const _piecesForFreight = window._piecesKg || [];
+  const maxSinglePieceWeight = _piecesForFreight.length > 0
+    ? Math.max(..._piecesForFreight.map(p => p.wKg))
+    : wt;
+  // Tính chu vi kiện lớn nhất (kiện có chu vi lớn nhất)
+  const maxSinglePieceGirth = _piecesForFreight.length > 0
+    ? Math.max(..._piecesForFreight.map(p => { const s=[p.lCm,p.wCm,p.hCm].sort((a,b)=>a-b); return s[0]*2+s[1]*2+s[2]; }))
+    : (() => { const s=[dimL2,dimW2,dimH2].sort((a,b)=>a-b); return s[0]*2+s[1]*2+s[2]; })();
+  // Điều kiện Freight: kiện nặng nhất >70kg HOẶC kiện có chu vi lớn nhất >330cm
+  const useFedExFreight = maxSinglePieceWeight > fedexFreightWeightThresh ||
+    (maxSinglePieceGirth > 0 && maxSinglePieceGirth > fedexFreightGirthThresh);
 
   // FedEx: apply min billable weight if oversize (18kg min)
   const fedexBillableWeight = effectiveType==='document'
@@ -2544,9 +2669,9 @@ function calculate() {
   renderCarrier('fedex-ie',fieBase,fieFuel,fuelFedEx,fieDemand,fieDemandPerKg,0,vatPct,
     {zone:`FedEx Zone ${fieZone||'N/A'}`,weight:fedexWeightLabel,type:typeLabel},fieOC,fedexBillableWeight);
 
-  // UPS: chỉ dùng Freight khi cân THỰC TẾ > 70kg (không tính dim weight)
+  // UPS: chỉ dùng Freight khi cân THỰC TẾ kiện nặng nhất > 70kg (không tính dim weight, không cộng tổng)
   const upsFreightThreshold = parseFloat(document.getElementById('ups-freight-threshold').value) || 70;
-  const useUPSFreight = wt > upsFreightThreshold;
+  const useUPSFreight = maxSinglePieceWeight > upsFreightThreshold;
 
   // Zone cols: Export dùng upsSaver/upsExp/upsFreight, Import dùng upsSaverImp/upsExpImp/upsFreightImp
   // Countries có col riêng cho import: col6=UPS Saver Import, col7=UPS Exp Import, col8=UPS Freight Import
@@ -4177,6 +4302,42 @@ function closeHotlinePanel() {
       </a>
     </div>
 
+    <!-- Settings mobile -->
+    <div class="sidebar-card" id="mob-settings-card">
+      <div class="sidebar-title"><span>⚙️</span> Cài đặt</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 10px;border-bottom:1px dashed #f1f5f9;">
+        <span style="font-size:13px;font-weight:500;color:#374151;display:flex;align-items:center;gap:6px;">🌙 Chế độ tối</span>
+        <label class="sp-switch">
+          <input type="checkbox" id="mob-dark-toggle" onchange="spToggleDark(this.checked)">
+          <span class="sp-slider"></span>
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #f1f5f9;">
+        <span style="font-size:13px;font-weight:500;color:#374151;display:flex;align-items:center;gap:6px;">✨ Hiệu ứng nền lấp lánh</span>
+        <label class="sp-switch">
+          <input type="checkbox" class="glitterbg-toggle" onchange="spToggleGlitterBG(this.checked)">
+          <span class="sp-slider"></span>
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 4px;">
+        <span style="font-size:13px;font-weight:500;color:#374151;display:flex;align-items:center;gap:6px;">🖱️ Hiệu ứng chuột</span>
+        <label class="sp-switch">
+          <input type="checkbox" class="clickfx-toggle" onchange="toggleClickFxOn(this.checked)">
+          <span class="sp-slider"></span>
+        </label>
+      </div>
+      <div class="clickfx-panel" style="display:none;">
+        <div class="sp-effect-grid" style="grid-template-columns:1fr 1fr;">
+          <button class="sp-effect-btn" data-spmode="sniper">🎯 Sniper</button>
+          <button class="sp-effect-btn" data-spmode="rings">⭕ Rings</button>
+          <button class="sp-effect-btn" data-spmode="burst">💥 Burst</button>
+          <button class="sp-effect-btn" data-spmode="particles">✨ Particles</button>
+          <button class="sp-effect-btn" data-spmode="crosshair">➕ Crosshair</button>
+          <button class="sp-effect-btn" data-spmode="wavy">〰️ Wavy</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Mẹo -->
     <div class="sidebar-card">
       <div class="sidebar-title"><span>💡</span> Mẹo sử dụng</div>
@@ -5079,8 +5240,6 @@ async function doSplitPdf() {
 }
 </script>
 
-<!-- Nút Dark Mode floating -->
-<button id="dark-toggle" onclick="toggleDark()" title="Dark mode (Alt+D)">🌙 Dark</button>
 
 <!-- ── OPTIONS SPEED DIAL (chỉ mobile) ── -->
 <div id="options-fab-wrap">
@@ -5091,8 +5250,8 @@ async function doSplitPdf() {
       <span class="fab-item-label">🔧 Tiện ích</span>
       <span class="fab-item-icon util-icon">🔧</span>
     </button>
-    <!-- Dark mode -->
-    <button class="fab-item" onclick="toggleDark(); closeOptionsFab();" id="fab-dark-item">
+    <!-- Dark mode — đã chuyển vào Settings, ẩn -->
+    <button class="fab-item" id="fab-dark-item" style="display:none!important">
       <span class="fab-item-label" id="fab-dark-label">🌙 Dark</span>
       <span class="fab-item-icon dark-icon" id="fab-dark-icon">🌙</span>
     </button>
@@ -5101,8 +5260,8 @@ async function doSplitPdf() {
       <span class="fab-item-label">📞 Hotline</span>
       <span class="fab-item-icon hotline-icon">📞</span>
     </button>
-    <!-- Thông báo -->
-    <button class="fab-item" onclick="openMobSidebar(); closeOptionsFab();">
+    <!-- Thông báo — đã có trong popup chính, ẩn -->
+    <button class="fab-item" style="display:none!important">
       <span class="fab-item-label">📢 Thông báo</span>
       <span class="fab-item-icon notice-icon">
         📢
@@ -5157,5 +5316,1257 @@ document.addEventListener('DOMContentLoaded', () => {
   if (localStorage.getItem('darkMode') === '1') syncFabDarkLabel();
 });
 </script>
+<!-- ── MOUSE CLICK EFFECTS ── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+#click-effects-layer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 99999; overflow: hidden;
+}
+</style>
+
+<div id="click-effects-layer"></div>
+
+
+<script>
+(function() {
+  const LAYER = document.getElementById('click-effects-layer');
+  const COLOR = '#D54C40';
+  const STROKE = 1.5;
+  const SIZE = 75;
+  const DUR = 0.35;
+
+  let currentMode = localStorage.getItem('clickMode') || 'sniper';
+
+  // Expose setter for Settings popup
+  window._setClickMode = function(mode) {
+    currentMode = mode;
+    localStorage.setItem('clickMode', mode);
+    if (mode !== 'off') localStorage.setItem('clickModeLast', mode);
+    if (typeof window._syncClickFxUI === 'function') window._syncClickFxUI();
+  };
+
+  // Mode set externally via Settings popup
+
+  function svgEl(x, y) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.cssText = `position:fixed;left:${x - SIZE/2}px;top:${y - SIZE/2}px;width:${SIZE}px;height:${SIZE}px;pointer-events:none;overflow:visible;`;
+    LAYER.appendChild(svg);
+    return svg;
+  }
+
+  function cleanup(el, delay) {
+    setTimeout(() => el && el.parentNode && el.parentNode.removeChild(el), delay * 1000);
+  }
+
+  function doRings(x, y) {
+    const svg = svgEl(x, y);
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', SIZE/2); c.setAttribute('cy', SIZE/2); c.setAttribute('r', SIZE/4);
+    c.setAttribute('fill', 'none'); c.setAttribute('stroke', COLOR); c.setAttribute('stroke-width', STROKE);
+    svg.appendChild(c);
+    gsap.set(svg, { scale: 0.5, transformOrigin: 'center center' });
+    gsap.timeline()
+      .to(svg, { scale: 2, duration: DUR, ease: 'power3.out' }, 0)
+      .to(svg, { opacity: 0, duration: DUR * 0.2 }, DUR * 0.8);
+    cleanup(svg, DUR + 0.1);
+  }
+
+  function doBurst(x, y) {
+    const svg = svgEl(x, y);
+    const cx = SIZE/2, cy = SIZE/2;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * 45) * Math.PI / 180;
+      const len = SIZE * 0.25;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', cx); line.setAttribute('y1', cy);
+      line.setAttribute('x2', cx + len * Math.cos(angle));
+      line.setAttribute('y2', cy + len * Math.sin(angle));
+      line.setAttribute('stroke', COLOR); line.setAttribute('stroke-width', STROKE);
+      line.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(line);
+      gsap.from(line, { attr: { x2: cx, y2: cy }, duration: DUR, ease: 'power2.out' });
+      gsap.to(line, { opacity: 0, duration: DUR * 0.3, delay: DUR * 0.7 });
+    }
+    cleanup(svg, DUR + 0.1);
+  }
+
+  function doParticles(x, y) {
+    for (let i = 0; i < 8; i++) {
+      const angle = i * 45 * Math.PI / 180;
+      const dist = SIZE * 0.2 + Math.random() * SIZE * 0.3;
+      const dot = document.createElement('div');
+      dot.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:5px;height:5px;border-radius:50%;background:${COLOR};pointer-events:none;transform:translate(-50%,-50%);`;
+      LAYER.appendChild(dot);
+      gsap.to(dot, {
+        x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
+        opacity: 0, scale: 0.3, duration: DUR * 1.2, ease: 'power2.out',
+        onComplete: () => dot.parentNode && dot.parentNode.removeChild(dot)
+      });
+    }
+  }
+
+  function doCrosshair(x, y) {
+    const svg = svgEl(x, y);
+    const cx = SIZE/2, cy = SIZE/2;
+    const half = SIZE * 0.4;
+    const gap = SIZE * 0.08;
+    // 4 lines: top, bottom, left, right
+    const lines = [
+      [cx, cy - gap, cx, cy - half],
+      [cx, cy + gap, cx, cy + half],
+      [cx - gap, cy, cx - half, cy],
+      [cx + gap, cy, cx + half, cy],
+    ];
+    lines.forEach(([x1,y1,x2,y2]) => {
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',x1);line.setAttribute('y1',y1);
+      line.setAttribute('x2',x2);line.setAttribute('y2',y2);
+      line.setAttribute('stroke',COLOR);line.setAttribute('stroke-width',STROKE);
+      line.setAttribute('stroke-linecap','round');
+      svg.appendChild(line);
+    });
+    // circle
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',cx);circle.setAttribute('cy',cy);circle.setAttribute('r',gap);
+    circle.setAttribute('fill','none');circle.setAttribute('stroke',COLOR);circle.setAttribute('stroke-width',STROKE);
+    svg.appendChild(circle);
+    gsap.from(svg, { scale: 1.6, opacity: 0, transformOrigin: 'center center', duration: DUR*0.4, ease:'power3.out' });
+    gsap.to(svg, { opacity: 0, scale: 1.5, duration: DUR*0.4, delay: DUR*0.6, ease:'power2.in' });
+    cleanup(svg, DUR + 0.1);
+  }
+
+  function doWavy(x, y) {
+    const svg = svgEl(x, y);
+    const cx = SIZE/2, cy = SIZE/2;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * 45) * Math.PI / 180;
+      const r1 = SIZE * 0.1, r2 = SIZE * 0.5;
+      const sx = cx + r1 * Math.cos(angle), sy = cy + r1 * Math.sin(angle);
+      const ex = cx + r2 * Math.cos(angle), ey = cy + r2 * Math.sin(angle);
+      const mx = (sx+ex)/2, my = (sy+ey)/2;
+      const wo = SIZE * 0.06;
+      const cpx = mx + wo * Math.cos(angle + Math.PI/2);
+      const cpy = my + wo * Math.sin(angle + Math.PI/2);
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d',`M ${sx} ${sy} Q ${cpx} ${cpy} ${mx} ${my} T ${ex} ${ey}`);
+      path.setAttribute('stroke',COLOR);path.setAttribute('stroke-width',STROKE);
+      path.setAttribute('fill','none');path.setAttribute('stroke-linecap','round');
+      svg.appendChild(path);
+    }
+    gsap.from(svg, { scale: 0.3, opacity: 0, transformOrigin:'center center', duration: DUR*0.5, ease:'back.out(2)' });
+    gsap.to(svg, { opacity: 0, scale: 1.8, duration: DUR*0.5, delay: DUR*0.5, ease:'power2.in' });
+    cleanup(svg, DUR + 0.1);
+  }
+
+  function doSniper(x, y) {
+    const svg = svgEl(x, y);
+    const cx = SIZE/2, cy = SIZE/2;
+    const lineLen = SIZE * 0.2;
+    const gap = 5;
+    [0, 90, 180, 270].forEach((deg) => {
+      const angle = deg * Math.PI / 180;
+      const sx = cx + gap * Math.cos(angle);
+      const sy = cy + gap * Math.sin(angle);
+      const ex = cx + (gap + lineLen) * Math.cos(angle);
+      const ey = cy + (gap + lineLen) * Math.sin(angle);
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',sx);line.setAttribute('y1',sy);
+      line.setAttribute('x2',ex);line.setAttribute('y2',ey);
+      line.setAttribute('stroke',COLOR);line.setAttribute('stroke-width',STROKE);
+      line.setAttribute('stroke-linecap','square');
+      svg.appendChild(line);
+      gsap.timeline()
+        .to(line, { attr:{x1:ex,y1:ey}, translateX:(gap+lineLen)*Math.cos(angle), translateY:(gap+lineLen)*Math.sin(angle), duration:DUR, ease:'power2.out' })
+        .to(line, { attr:{'stroke-width':0}, duration:DUR*0.4 }, DUR*0.6);
+    });
+    // dots at diagonal angles
+    [Math.PI/3,(2*Math.PI)/3,(4*Math.PI)/3,(5*Math.PI)/3,Math.PI/6,(5*Math.PI)/6,(7*Math.PI)/6,(11*Math.PI)/6]
+      .forEach(angle => {
+        const dot = document.createElement('div');
+        dot.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:${STROKE*1.5}px;height:${STROKE*1.5}px;background:${COLOR};pointer-events:none;transform:translate(-50%,-50%);`;
+        LAYER.appendChild(dot);
+        gsap.timeline()
+          .to(dot, { x: Math.cos(angle)*SIZE*0.4, y: Math.sin(angle)*SIZE*0.4, duration:DUR, ease:'power2.out' })
+          .to(dot, { width:0, height:0, opacity:0, duration:DUR*0.4, onComplete: () => dot.parentNode && dot.parentNode.removeChild(dot) }, DUR*0.6);
+      });
+    cleanup(svg, DUR + 0.1);
+  }
+
+  document.addEventListener('click', function(e) {
+    if (currentMode === 'off') return;
+    // Bỏ qua click lên nút chọn mode
+    if (e.target.closest('#settings-popup') || e.target.closest('#settings-fab')) return;
+    const x = e.clientX, y = e.clientY;
+    if (currentMode === 'rings')      doRings(x, y);
+    else if (currentMode === 'burst') doBurst(x, y);
+    else if (currentMode === 'particles') doParticles(x, y);
+    else if (currentMode === 'crosshair') doCrosshair(x, y);
+    else if (currentMode === 'wavy')  doWavy(x, y);
+    else if (currentMode === 'sniper') doSniper(x, y);
+  });
+})();
+</script>
+
+<!-- ══ SETTINGS POPUP ══ -->
+<style>
+/* FAB button */
+#settings-fab {
+  position: fixed; bottom: 16px; right: 16px; z-index: 100001;
+  width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
+  background: linear-gradient(135deg,#1d4ed8 0%,#7c3aed 100%);
+  color: white; font-size: 20px;
+  box-shadow: 0 3px 12px rgba(29,78,216,0.45);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+/* Ẩn trên mobile (có trong sidebar) và desktop >= 1200px (có sidebar card) */
+@media (max-width: 1000px) { #settings-fab { display: none !important; } }
+@media (min-width: 1200px) { #settings-fab { display: none !important; } }
+#settings-fab:hover { transform: scale(1.1) rotate(30deg); box-shadow: 0 6px 20px rgba(29,78,216,0.55); }
+body.dark #settings-fab { box-shadow: 0 3px 12px rgba(124,58,237,0.5); }
+
+/* Backdrop */
+#settings-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 100002;
+  background: rgba(0,0,0,0.35); backdrop-filter: blur(3px);
+}
+#settings-backdrop.open { display: block; }
+
+/* Popup */
+#settings-popup {
+  display: none; position: fixed; z-index: 100003;
+  bottom: 72px; right: 16px;
+  width: 300px;
+  background: #fff; border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.07);
+  overflow: hidden;
+  transform-origin: bottom right;
+  animation: settingsPop 0.22s cubic-bezier(.34,1.56,.64,1);
+}
+#settings-popup.open { display: block; }
+@keyframes settingsPop {
+  from { opacity:0; transform: scale(0.85) translateY(12px); }
+  to   { opacity:1; transform: scale(1) translateY(0); }
+}
+body.dark #settings-popup { background: #1e293b; border-color: rgba(255,255,255,0.08); }
+
+/* Popup header */
+.sp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 0;
+}
+.sp-title { font-size: 14px; font-weight: 700; color: #111827; letter-spacing: 0.01em; }
+body.dark .sp-title { color: #f1f5f9; }
+.sp-close {
+  width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer;
+  background: #f1f5f9; color: #6b7280; font-size: 14px; display: flex;
+  align-items: center; justify-content: center; transition: background 0.15s;
+}
+.sp-close:hover { background: #e2e8f0; }
+body.dark .sp-close { background: #334155; color: #94a3b8; }
+body.dark .sp-close:hover { background: #475569; }
+
+/* Tabs */
+.sp-tabs {
+  display: flex; gap: 0; padding: 10px 16px 0; border-bottom: 1px solid #e2e8f0;
+}
+body.dark .sp-tabs { border-bottom-color: #334155; }
+.sp-tab {
+  padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  border: none; background: none; font-family: inherit; color: #6b7280;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s;
+}
+.sp-tab:hover { color: #1d4ed8; }
+.sp-tab.active { color: #1d4ed8; border-bottom-color: #1d4ed8; }
+body.dark .sp-tab { color: #94a3b8; }
+body.dark .sp-tab:hover { color: #93c5fd; }
+body.dark .sp-tab.active { color: #93c5fd; border-bottom-color: #93c5fd; }
+
+/* Tab panes */
+.sp-pane { display: none; padding: 14px 16px 16px; }
+.sp-pane.active { display: block; }
+
+/* Dark mode row */
+.sp-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px dashed #f1f5f9;
+}
+.sp-row:last-child { border-bottom: none; }
+body.dark .sp-row { border-bottom-color: #334155; }
+.sp-row-label { font-size: 13px; font-weight: 500; color: #374151; display: flex; align-items: center; gap: 7px; }
+body.dark .sp-row-label { color: #cbd5e1; }
+.sp-row-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+/* Toggle switch */
+.sp-switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.sp-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.sp-slider {
+  position: absolute; inset: 0; border-radius: 22px; cursor: pointer;
+  background: #d1d5db; transition: background 0.2s;
+}
+.sp-slider::before {
+  content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%;
+  left: 3px; top: 3px; background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+}
+.sp-switch input:checked + .sp-slider { background: #1d4ed8; }
+.sp-switch input:checked + .sp-slider::before { transform: translateX(18px); }
+
+/* Mouse effect grid */
+.sp-effect-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px;
+}
+.sp-effect-btn {
+  padding: 8px 6px; border-radius: 8px; border: 1.5px solid #e2e8f0;
+  font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+  background: white; color: #374151; transition: all 0.15s; text-align: center;
+}
+.sp-effect-btn:hover { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c3aed); color: white; border-color: transparent; box-shadow: 0 2px 8px rgba(29,78,216,0.3); }
+.sp-effect-btn.sp-off { color: #9ca3af; }
+.sp-effect-btn.sp-off.active { background: #6b7280; color: white; }
+body.dark .sp-effect-btn { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+body.dark .sp-effect-btn:hover { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c3aed); color: white; }
+</style>
+
+<!-- Backdrop -->
+<div id="settings-backdrop" onclick="closeSettings()"></div>
+
+<!-- Popup -->
+<div id="settings-popup">
+  <div class="sp-header">
+    <span class="sp-title">⚙️ Cài đặt</span>
+    <button class="sp-close" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="sp-tabs">
+    <button class="sp-tab active" onclick="spTab('appearance')">🌙 Giao diện</button>
+    <button class="sp-tab" onclick="spTab('effects')">✨ Hiệu ứng</button>
+  </div>
+  <!-- Appearance tab -->
+  <div class="sp-pane active" id="sp-appearance">
+    <div class="sp-row">
+      <div>
+        <div class="sp-row-label">🌙 Chế độ ban đêm</div>
+        <div class="sp-row-sub">Giao diện tối, dễ nhìn ban đêm</div>
+      </div>
+      <label class="sp-switch">
+        <input type="checkbox" id="sp-dark-toggle" onchange="spToggleDark(this.checked)">
+        <span class="sp-slider"></span>
+      </label>
+    </div>
+  </div>
+  <!-- Effects tab -->
+  <div class="sp-pane" id="sp-effects">
+    <div class="sp-row">
+      <div>
+        <div class="sp-row-label">✨ Hiệu ứng nền lấp lánh</div>
+        <div class="sp-row-sub">Bật/tắt hiệu ứng sao lấp lánh ở nền trang</div>
+      </div>
+      <label class="sp-switch">
+        <input type="checkbox" class="glitterbg-toggle" onchange="spToggleGlitterBG(this.checked)">
+        <span class="sp-slider"></span>
+      </label>
+    </div>
+    <div class="sp-row">
+      <div>
+        <div class="sp-row-label">🖱️ Hiệu ứng chuột</div>
+        <div class="sp-row-sub">Bật để chọn kiểu hiệu ứng khi click chuột</div>
+      </div>
+      <label class="sp-switch">
+        <input type="checkbox" class="clickfx-toggle" onchange="toggleClickFxOn(this.checked)">
+        <span class="sp-slider"></span>
+      </label>
+    </div>
+    <div class="clickfx-panel" style="display:none;padding-top:2px;">
+      <div class="sp-effect-grid">
+        <button class="sp-effect-btn" data-spmode="sniper">🎯 Sniper</button>
+        <button class="sp-effect-btn" data-spmode="rings">⭕ Rings</button>
+        <button class="sp-effect-btn" data-spmode="burst">💥 Burst</button>
+        <button class="sp-effect-btn" data-spmode="particles">✨ Particles</button>
+        <button class="sp-effect-btn" data-spmode="crosshair">➕ Crosshair</button>
+        <button class="sp-effect-btn" data-spmode="wavy">〰️ Wavy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button id="settings-fab" onclick="toggleSettings()" title="Cài đặt">⚙️</button>
+
+<script>
+(function(){
+  // ── Open/close ──
+  window.toggleSettings = function() {
+    const popup = document.getElementById('settings-popup');
+    const bd = document.getElementById('settings-backdrop');
+    const isOpen = popup.classList.contains('open');
+    if (isOpen) { popup.classList.remove('open'); bd.classList.remove('open'); }
+    else {
+      // Re-trigger animation
+      popup.classList.remove('open');
+      void popup.offsetWidth;
+      popup.classList.add('open');
+      bd.classList.add('open');
+      syncSettingsUI();
+    }
+  };
+  window.closeSettings = function() {
+    document.getElementById('settings-popup').classList.remove('open');
+    document.getElementById('settings-backdrop').classList.remove('open');
+  };
+
+  // ── Tab switching ──
+  window.spTab = function(tab) {
+    document.querySelectorAll('.sp-tab').forEach((t,i)=> t.classList.toggle('active', ['appearance','effects'][i]===tab));
+    document.getElementById('sp-appearance').classList.toggle('active', tab==='appearance');
+    document.getElementById('sp-effects').classList.toggle('active', tab==='effects');
+  };
+
+  // ── Dark mode ──
+  window.spToggleDark = function(on) {
+    if ((on && !document.body.classList.contains('dark')) ||
+        (!on && document.body.classList.contains('dark'))) {
+      toggleDark(); // call existing toggleDark
+    }
+  };
+
+  // ── Hiệu ứng nền lấp lánh (Glitter Wrap) ──
+  window.spToggleGlitterBG = function(on) {
+    localStorage.setItem('glitterBgOn', on ? '1' : '0');
+    document.querySelectorAll('.glitterbg-toggle').forEach(chk => { chk.checked = on; });
+    if (typeof window._setGlitterBG === 'function') window._setGlitterBG(on);
+  };
+
+  // ── Hiệu ứng chuột: On/Off + box cấu hình kiểu hiệu ứng ──
+  function syncClickFxUI() {
+    const mode = localStorage.getItem('clickMode') || 'sniper';
+    const isOn = mode !== 'off';
+    document.querySelectorAll('.clickfx-toggle').forEach(chk => { chk.checked = isOn; });
+    document.querySelectorAll('.clickfx-panel').forEach(panel => { panel.style.display = isOn ? '' : 'none'; });
+  }
+  window._syncClickFxUI = syncClickFxUI;
+
+  window.toggleClickFxOn = function(on) {
+    if (on) {
+      const last = localStorage.getItem('clickModeLast') || 'sniper';
+      if (typeof window._setClickMode === 'function') window._setClickMode(last);
+    } else {
+      const cur = localStorage.getItem('clickMode') || 'sniper';
+      if (cur !== 'off') localStorage.setItem('clickModeLast', cur);
+      if (typeof window._setClickMode === 'function') window._setClickMode('off');
+    }
+    syncClickFxUI();
+  };
+
+  // ── Sync UI state ──
+  function syncSettingsUI() {
+    // Dark toggle
+    document.querySelectorAll('#sp-dark-toggle,#sidebar-dark-toggle,#mob-dark-toggle').forEach(chk => {
+      if (chk) chk.checked = document.body.classList.contains('dark');
+    });
+    // Glitter BG toggle
+    const glitterStored = localStorage.getItem('glitterBgOn');
+    const glitterOn = glitterStored === '1';
+    document.querySelectorAll('.glitterbg-toggle').forEach(chk => { chk.checked = glitterOn; });
+    // Click effect On/Off + panel + active button
+    const mode = localStorage.getItem('clickMode') || 'sniper';
+    document.querySelectorAll('[data-spmode]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.spmode === mode);
+    });
+    syncClickFxUI();
+  }
+
+  // ── Effect buttons ──
+  document.querySelectorAll('[data-spmode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.spmode;
+      // Update global currentMode in the effects IIFE
+      if (typeof window._setClickMode === 'function') window._setClickMode(mode);
+      document.querySelectorAll('[data-spmode]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Patch toggleDark to sync settings UI
+  const _origTD = window.toggleDark;
+  window.toggleDark = function() {
+    if (_origTD) _origTD();
+    const chk = document.getElementById('sp-dark-toggle');
+    if (chk) chk.checked = document.body.classList.contains('dark');
+  };
+
+  // Init on load
+  document.addEventListener('DOMContentLoaded', syncSettingsUI);
+  syncSettingsUI();
+})();
+</script>
+
+<!-- ============================================================
+     WATER BUTTON FX — hiệu ứng nước (chuyển thể từ Originkit
+     Water Button) áp cho: Document / Non-Document / Hàng xuất / Hàng nhập
+     ============================================================ -->
+<script>
+(function(){
+  function parseColor(color){
+    var v = (color || '').trim();
+    var hex = v.replace('#', '');
+    if (/^[0-9a-f]{6}$/i.test(hex)) {
+      return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16), 1];
+    }
+    var m = v.match(/rgba?\(([^)]+)\)/i);
+    if (m) {
+      var p = m[1].split(',').map(function(x){ return parseFloat(x); });
+      return [p[0]||0, p[1]||0, p[2]||0, p[3]===undefined?1:p[3]];
+    }
+    return [255,255,255,0.9];
+  }
+  function shift(c, f){
+    return Math.round(Math.max(0, Math.min(255, c + (f > 0 ? (255-c)*f : c*f))));
+  }
+
+  function WaterButtonFX(btn, opts){
+    opts = opts || {};
+    this.btn = btn;
+    this.amount = Math.min(0.9, Math.max(0, (opts.waterAmount != null ? opts.waterAmount : 58) / 100));
+    this.color = opts.waterColor || 'rgba(255,255,255,0.85)';
+    this.columns = opts.columns || 26;
+    this.init();
+  }
+
+  WaterButtonFX.prototype.init = function(){
+    var btn = this.btn;
+    var cs = getComputedStyle(btn);
+    if (cs.position === 'static') btn.style.position = 'relative';
+    if (cs.overflow === 'visible') btn.style.overflow = 'hidden';
+
+    // Bọc nội dung hiện có (icon + chữ) vào 1 span để luôn nổi trên lớp nước
+    if (!btn.querySelector('.btn-label')) {
+      var label = document.createElement('span');
+      label.className = 'btn-label';
+      while (btn.firstChild) label.appendChild(btn.firstChild);
+      btn.appendChild(label);
+    }
+
+    var canvas = document.createElement('canvas');
+    canvas.className = 'water-fx-canvas';
+    btn.insertBefore(canvas, btn.firstChild);
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+
+    var COLUMNS = this.columns;
+    this.h = new Float32Array(COLUMNS);
+    this.u = new Float32Array(COLUMNS + 1);
+    this.flux = new Float32Array(COLUMNS + 1);
+    this.rest = 0; this.colW = 1;
+    this.hovering = false; this.asleep = true; this.quiet = 0;
+    this.pointer = { x: -9999, y: -9999, vx: 0, vy: 0 };
+    this.last = 0; this.raf = 0; this.W = 0; this.H = 0;
+
+    this.GRAVITY = 6000; this.VISC = 2.6;
+    this.CURSOR_REACH = 46; this.SWEEP = 3; this.DIP = 1.5; this.CLICK = 260; this.MAXKICK = 8;
+    this.STILL = 0.05; this.SLEEP_FRAMES = 20; this.SUBSTEPS = 5;
+
+    var col = parseColor(this.color);
+    this.cr = col[0]; this.cg = col[1]; this.cb = col[2]; this.ca = col[3];
+
+    this.build();
+    this.bindEvents();
+
+    var self = this;
+    if (typeof ResizeObserver !== 'undefined') {
+      this.ro = new ResizeObserver(function(){ self.build(); self.draw(); });
+      this.ro.observe(btn);
+    }
+
+    this._loop = this.loop.bind(this);
+    this.raf = requestAnimationFrame(this._loop);
+  };
+
+  WaterButtonFX.prototype.build = function(){
+    var btn = this.btn, canvas = this.canvas, ctx = this.ctx;
+    this.W = Math.max(2, btn.clientWidth);
+    this.H = Math.max(2, btn.clientHeight);
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(this.W * dpr);
+    canvas.height = Math.round(this.H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.colW = this.W / this.columns;
+    this.rest = this.H * this.amount;
+    this.h.fill(this.rest);
+    this.u.fill(0);
+    this.asleep = true; this.quiet = 0;
+  };
+
+  WaterButtonFX.prototype.drive = function(dt){
+    var reach = this.CURSOR_REACH;
+    var kx = Math.max(-this.MAXKICK, Math.min(this.MAXKICK, this.pointer.vx)) * 60;
+    var ky = Math.max(-this.MAXKICK, Math.min(this.MAXKICK, this.pointer.vy)) * 60;
+    var first = Math.max(1, Math.floor((this.pointer.x - reach) / this.colW));
+    var last = Math.min(this.columns - 1, Math.ceil((this.pointer.x + reach) / this.colW));
+    for (var i = first; i <= last; i++) {
+      var dx = i * this.colW - this.pointer.x;
+      var fall = 1 - Math.abs(dx) / reach;
+      if (fall <= 0) continue;
+      if (this.pointer.y < this.H - this.h[i] - reach) continue;
+      var bite = fall * dt;
+      this.u[i] += kx * this.SWEEP * bite;
+      this.u[i] += Math.sign(dx) * ky * this.DIP * bite;
+    }
+  };
+
+  WaterButtonFX.prototype.splash = function(px){
+    var reach = this.CURSOR_REACH;
+    var first = Math.max(1, Math.floor((px - reach) / this.colW));
+    var last = Math.min(this.columns - 1, Math.ceil((px + reach) / this.colW));
+    for (var i = first; i <= last; i++) {
+      var dx = i * this.colW - px;
+      var fall = 1 - Math.abs(dx) / reach;
+      if (fall <= 0) continue;
+      this.u[i] += Math.sign(dx || 1) * this.CLICK * fall;
+    }
+  };
+
+  WaterButtonFX.prototype.step = function(dt){
+    var sub = dt / this.SUBSTEPS;
+    var i;
+    for (var s = 0; s < this.SUBSTEPS; s++) {
+      if (this.hovering) this.drive(sub);
+      for (i = 1; i < this.columns; i++) {
+        this.u[i] += ((-this.GRAVITY * (this.h[i] - this.h[i-1])) / this.colW) * sub;
+        this.u[i] -= this.u[i] * Math.min(1, this.VISC * sub);
+      }
+      this.u[0] = 0; this.u[this.columns] = 0;
+      for (i = 1; i < this.columns; i++) {
+        this.flux[i] = (this.u[i] > 0 ? this.h[i-1] : this.h[i]) * this.u[i];
+      }
+      this.flux[0] = 0; this.flux[this.columns] = 0;
+      for (i = 0; i < this.columns; i++) {
+        this.h[i] -= ((this.flux[i+1] - this.flux[i]) / this.colW) * sub;
+        if (this.h[i] < 0) this.h[i] = 0;
+      }
+    }
+    var worst = 0;
+    for (i = 0; i < this.columns; i++) {
+      var off = Math.abs(this.h[i] - this.rest);
+      if (off > worst) worst = off;
+    }
+    return worst;
+  };
+
+  WaterButtonFX.prototype.draw = function(){
+    var ctx = this.ctx, W = this.W, H = this.H, colW = this.colW;
+    ctx.clearRect(0, 0, W, H);
+    var colX = function(i){ return (i + 0.5) * colW; };
+
+    ctx.beginPath();
+    ctx.moveTo(0, H - this.h[0]);
+    for (var i = 0; i < this.columns; i++) ctx.lineTo(colX(i), H - this.h[i]);
+    ctx.lineTo(W, H - this.h[this.columns - 1]);
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+
+    var cr = this.cr, cg = this.cg, cb = this.cb, ca = this.ca;
+    var grad = ctx.createLinearGradient(0, H - this.rest, 0, H);
+    grad.addColorStop(0, 'rgba(' + shift(cr,.4) + ',' + shift(cg,.4) + ',' + shift(cb,.4) + ',' + ca + ')');
+    grad.addColorStop(0.4, 'rgba(' + cr + ',' + cg + ',' + cb + ',' + (ca*0.7) + ')');
+    grad.addColorStop(1, 'rgba(' + shift(cr,-.3) + ',' + shift(cg,-.3) + ',' + shift(cb,-.3) + ',' + (ca*0.3) + ')');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(0, H - this.h[0]);
+    for (i = 0; i < this.columns; i++) ctx.lineTo(colX(i), H - this.h[i]);
+    ctx.lineTo(W, H - this.h[this.columns - 1]);
+    ctx.strokeStyle = 'rgba(' + shift(cr,.8) + ',' + shift(cg,.8) + ',' + shift(cb,.8) + ',' + Math.min(1, ca+0.15) + ')';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  };
+
+  WaterButtonFX.prototype.loop = function(now){
+    this.raf = requestAnimationFrame(this._loop);
+    var dt = this.last ? Math.min((now - this.last) / 1000, 1/30) : 1/60;
+    this.last = now;
+    this.pointer.vx *= 0.8; this.pointer.vy *= 0.8;
+    if (!this.asleep) {
+      var worst = this.step(dt);
+      this.draw();
+      if (!this.hovering && worst < this.STILL) this.quiet++; else this.quiet = 0;
+      if (this.quiet > this.SLEEP_FRAMES) {
+        this.h.fill(this.rest); this.u.fill(0);
+        this.asleep = true; this.quiet = 0;
+        this.draw();
+      }
+    }
+  };
+
+  WaterButtonFX.prototype.toLocal = function(e){
+    var rect = this.btn.getBoundingClientRect();
+    var sx = rect.width > 0 ? this.W / rect.width : 1;
+    var sy = rect.height > 0 ? this.H / rect.height : 1;
+    return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+  };
+
+  WaterButtonFX.prototype.wake = function(){ this.asleep = false; this.quiet = 0; };
+
+  WaterButtonFX.prototype.bindEvents = function(){
+    var self = this, btn = this.btn;
+    this._onEnter = function(e){
+      if (btn.disabled) return;
+      var p = self.toLocal(e);
+      self.hovering = true; self.pointer.x = p.x; self.pointer.y = p.y;
+      self.pointer.vx = 0; self.pointer.vy = 0;
+      self.wake();
+    };
+    this._onMove = function(e){
+      if (btn.disabled) return;
+      var p = self.toLocal(e);
+      self.pointer.vx = p.x - self.pointer.x; self.pointer.vy = p.y - self.pointer.y;
+      self.pointer.x = p.x; self.pointer.y = p.y;
+      self.wake();
+    };
+    this._onLeave = function(){
+      self.hovering = false; self.pointer.x = -9999; self.pointer.y = -9999;
+      self.pointer.vx = 0; self.pointer.vy = 0;
+      self.wake();
+    };
+    this._onDown = function(e){
+      if (btn.disabled) return;
+      var p = self.toLocal(e);
+      self.pointer.x = p.x; self.pointer.y = p.y;
+      self.splash(p.x);
+      self.wake();
+    };
+    btn.addEventListener('mouseenter', this._onEnter);
+    btn.addEventListener('mousemove', this._onMove);
+    btn.addEventListener('mouseleave', this._onLeave);
+    btn.addEventListener('pointerdown', this._onDown);
+  };
+
+  function initWaterButtons(){
+    var targets = [
+      { sel: '#btn-doc',    color: 'rgba(255,255,255,0.85)' },
+      { sel: '#btn-nondoc', color: 'rgba(255,255,255,0.85)' },
+      { sel: '#calc-btn',   color: 'rgba(147,197,253,0.9)'  },
+      { sel: '#import-btn', color: 'rgba(147,197,253,0.9)'  }
+    ];
+    targets.forEach(function(t){
+      var el = document.querySelector(t.sel);
+      if (el && !el._waterFx) {
+        el._waterFx = new WaterButtonFX(el, { waterColor: t.color, waterAmount: 58, columns: 26 });
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWaterButtons);
+  } else {
+    initWaterButtons();
+  }
+})();
+</script>
+
+<!-- ============================================================
+     GLITTER WRAP BG — starfield lấp lánh phủ khoảng trống ngoài
+     border các card/nút (chuyển thể từ Originkit Glitter Wrap)
+     ============================================================ -->
+<script>
+(function(){
+  function parseColor(input){
+    if (!input) return [255,255,255,1];
+    var s = input.trim();
+    if (s[0] === '#') {
+      var hex = s.slice(1);
+      if (hex.length === 3) hex = hex.split('').map(function(c){return c+c;}).join('');
+      var num = parseInt(hex, 16);
+      return [(num>>16)&255, (num>>8)&255, num&255, 1];
+    }
+    var m = s.match(/rgba?\(([^)]+)\)/i);
+    if (m) {
+      var p = m[1].split(',').map(function(x){ return parseFloat(x.trim()); });
+      return [p[0]||0, p[1]||0, p[2]||0, p[3]==null?1:p[3]];
+    }
+    return [255,255,255,1];
+  }
+
+  var DEFAULTS = {
+    particleCount: 500,
+    color1: '#ffffff',
+    color2: '#ffffff',
+    color3: '#ffffff',
+    speed: 1,
+    density: 100,
+    starSize: 20,
+    focalDepth: 8,
+    turbulence: 0,
+    brightness: 100,
+    glitterIntensity: 3,
+    trailAmount: 0,
+    reverse: false
+  };
+
+  function GlitterWrapBG(canvas, opts){
+    opts = opts || {};
+    this.cfg = {};
+    for (var k in DEFAULTS) this.cfg[k] = (opts[k] != null ? opts[k] : DEFAULTS[k]);
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.stars = [];
+    this.elapsed = 0;
+    this.last = 0;
+    this.w = 0; this.h = 0;
+    this.reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.parsed = [parseColor(this.cfg.color1), parseColor(this.cfg.color2), parseColor(this.cfg.color3)];
+    this.init();
+  }
+
+  GlitterWrapBG.prototype.derived = function(){
+    var c = this.cfg;
+    return {
+      reverse: c.reverse,
+      density: c.density,
+      stepZ: c.speed * 0.0008,
+      focalDepth: c.focalDepth / 100,
+      starScale: c.starSize * 0.15,
+      turbulence: c.turbulence * 0.2,
+      glitter: c.glitterIntensity * 0.1,
+      brightness: Math.min(1, c.brightness / 100),
+      trail: c.trailAmount / 100
+    };
+  };
+
+  GlitterWrapBG.prototype.makeStar = function(){
+    return { x:0, y:0, z:0, px:NaN, py:NaN, seed:0, vmul:1, colorIdx:0, flashUntil:0, nextFlash:0 };
+  };
+
+  GlitterWrapBG.prototype.resetStar = function(s, initial){
+    var d = this.derived();
+    var angle = Math.random() * Math.PI * 2;
+    var radius = (0.2 + Math.random()*0.8) * (d.density/15);
+    s.x = Math.cos(angle) * radius;
+    s.y = Math.sin(angle) * radius;
+    if (d.reverse) {
+      s.z = initial ? d.focalDepth + Math.random()*(1-d.focalDepth) : d.focalDepth;
+    } else {
+      s.z = initial ? Math.random() : 1.0;
+    }
+    s.px = NaN; s.py = NaN;
+    s.seed = Math.random()*1000;
+    s.vmul = 0.6 + Math.random()*0.8;
+    s.colorIdx = Math.floor(Math.random()*3);
+    s.flashUntil = 0;
+    s.nextFlash = this.elapsed + 1 + Math.random()*4*(1/Math.max(0.0001, d.glitter));
+  };
+
+  GlitterWrapBG.prototype.syncCount = function(){
+    var count = Math.max(1, Math.floor(this.cfg.particleCount));
+    if (this.stars.length === count) return;
+    if (this.stars.length > count) { this.stars.length = count; }
+    else {
+      while (this.stars.length < count) {
+        var s = this.makeStar();
+        this.resetStar(s, true);
+        this.stars.push(s);
+      }
+    }
+  };
+
+  GlitterWrapBG.prototype.resize = function(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = Math.max(1, window.innerWidth);
+    var h = Math.max(1, window.innerHeight);
+    if (this.w === w && this.h === h && this._dpr === dpr) return;
+    this.w = w; this.h = h; this._dpr = dpr;
+    this.canvas.width = Math.floor(w * dpr);
+    this.canvas.height = Math.floor(h * dpr);
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.ctx.clearRect(0, 0, w, h);
+  };
+
+  GlitterWrapBG.prototype.drawFrame = function(deltaSec){
+    var d = this.derived();
+    this.syncCount();
+    var ctx = this.ctx;
+    var palette = this.parsed;
+    var rgbStrs = [
+      'rgb(' + palette[0][0] + ',' + palette[0][1] + ',' + palette[0][2] + ')',
+      'rgb(' + palette[1][0] + ',' + palette[1][1] + ',' + palette[1][2] + ')',
+      'rgb(' + palette[2][0] + ',' + palette[2][1] + ',' + palette[2][2] + ')'
+    ];
+    var w = this.w, h = this.h;
+    var cx = w/2, cy = h/2;
+    var projScale = Math.min(w,h) * 0.9;
+    var dt = Math.max(0.001, Math.min(0.1, deltaSec)) * 60;
+
+    var keep = Math.pow(Math.min(0.98, Math.max(0, d.trail)), dt);
+    var trailAlpha = Math.max(0.02, 1 - keep);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0,0,0,' + trailAlpha + ')';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (var i = 0; i < this.stars.length; i++) {
+      var s = this.stars[i];
+      var vz = d.stepZ * s.vmul * dt;
+      if (d.reverse) {
+        s.z += vz;
+        if (s.z >= 1.0) { this.resetStar(s); continue; }
+      } else {
+        s.z -= vz;
+        if (s.z <= d.focalDepth) { this.resetStar(s); continue; }
+      }
+
+      var tx = s.x, ty = s.y;
+      if (d.turbulence > 0) {
+        var t = this.elapsed * 1.2 + s.seed;
+        var amp = d.turbulence * (1 - s.z) * 0.25;
+        tx += Math.sin(t + s.seed) * amp;
+        ty += Math.cos(t*1.13 + s.seed*0.7) * amp;
+      }
+
+      var persp = d.focalDepth / Math.max(s.z, 0.0001);
+      var sx = cx + tx * persp * projScale;
+      var sy = cy + ty * persp * projScale;
+
+      if (!d.reverse && (sx < -20 || sx > w+20 || sy < -20 || sy > h+20)) {
+        this.resetStar(s); continue;
+      }
+
+      var flashMult = 1;
+      if (d.glitter > 0) {
+        if (this.elapsed >= s.nextFlash && s.flashUntil < this.elapsed) {
+          s.flashUntil = this.elapsed + 0.04 + Math.random()*0.07;
+          s.nextFlash = this.elapsed + 1 + Math.random()*4*(1/Math.max(0.0001, d.glitter));
+        }
+        if (this.elapsed <= s.flashUntil) flashMult = 1 + 2.5*d.glitter;
+      }
+
+      var sizePersp = Math.min(2.5, (d.focalDepth / Math.max(s.z, 0.0001)) * 0.6);
+      var baseR = Math.max(0.25, d.starScale * (0.4 + sizePersp));
+      var maxR = 1 + d.starScale * 2.5;
+      var r = Math.min(baseR * flashMult, maxR);
+
+      var lifeT = d.reverse ? s.z : 1 - s.z;
+      var fadeIn = d.reverse ? Math.min(1, (s.z - d.focalDepth)/(1 - d.focalDepth)/0.12) : 1;
+      var a = Math.min(1, d.reverse ? 0.85 - lifeT*0.6 : lifeT*0.9 + 0.05) * fadeIn * d.brightness * (flashMult > 1 ? 1 : 0.85);
+
+      var colStr = rgbStrs[s.colorIdx];
+
+      if (!Number.isNaN(s.px) && !Number.isNaN(s.py)) {
+        ctx.globalAlpha = a * 0.5;
+        ctx.strokeStyle = colStr;
+        ctx.lineWidth = Math.max(0.4, r*0.4);
+        ctx.beginPath();
+        ctx.moveTo(s.px, s.py);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+      }
+
+      ctx.globalAlpha = a;
+      ctx.fillStyle = colStr;
+      ctx.fillRect(sx-r, sy-r, r*2, r*2);
+
+      if (flashMult > 1) {
+        var rf = Math.min(r*1.4, maxR*1.4);
+        ctx.globalAlpha = a*0.5;
+        ctx.fillRect(sx-rf, sy-rf, rf*2, rf*2);
+      }
+
+      s.px = sx; s.py = sy;
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    this.elapsed += Math.min(0.1, Math.max(0, deltaSec));
+  };
+
+  GlitterWrapBG.prototype._startLoop = function(){
+    var self = this;
+    this.last = performance.now();
+    var loop = function(t){
+      if (!self.enabled) { self.rafId = null; return; }
+      var deltaSec = (t - self.last) / 1000;
+      self.last = t;
+      self.drawFrame(deltaSec);
+      self.rafId = requestAnimationFrame(loop);
+    };
+    self.rafId = requestAnimationFrame(loop);
+  };
+
+  GlitterWrapBG.prototype.setEnabled = function(on){
+    on = !!on;
+    if (on === this.enabled) return;
+    this.enabled = on;
+    this.canvas.style.display = on ? 'block' : 'none';
+    if (on) {
+      if (this.reduced) {
+        for (var i = 0; i < 60; i++) this.drawFrame(1/60);
+      } else {
+        this._startLoop();
+      }
+    } else if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+  };
+
+  GlitterWrapBG.prototype.init = function(){
+    var self = this;
+    this.resize();
+    this.syncCount();
+    window.addEventListener('resize', function(){ self.resize(); });
+
+    var stored = localStorage.getItem('glitterBgOn');
+    this.enabled = stored === '1';
+    this.canvas.style.display = this.enabled ? 'block' : 'none';
+    this.rafId = null;
+
+    if (this.reduced) {
+      if (this.enabled) for (var i = 0; i < 60; i++) this.drawFrame(1/60);
+      return;
+    }
+
+    if (this.enabled) this._startLoop();
+  };
+
+  function initGlitterBG(){
+    var canvas = document.getElementById('glitter-bg-canvas');
+    if (canvas && !canvas._glitterFx) {
+      canvas._glitterFx = new GlitterWrapBG(canvas, {});
+      window._setGlitterBG = function(on){
+        if (canvas._glitterFx) canvas._glitterFx.setEnabled(on);
+      };
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGlitterBG);
+  } else {
+    initGlitterBG();
+  }
+})();
+</script>
+
+<!-- ── GLOBE (Three.js) ── -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+(async function initGlobe() {
+  const container = document.getElementById('globe-container');
+  if (!container) return;
+
+  const W = container.offsetWidth || 240;
+  const H = W; // square
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.set(0, 0, 3.6);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.domElement.style.cssText = 'display:block;width:100%;height:100%;';
+  container.appendChild(renderer.domElement);
+
+  // Ocean sphere
+  const globeGroup = new THREE.Group();
+  scene.add(globeGroup);
+
+  const oceanGeo = new THREE.SphereGeometry(1, 48, 48);
+  const oceanMat = new THREE.MeshBasicMaterial({ color: 0x0a0a1a });
+  globeGroup.add(new THREE.Mesh(oceanGeo, oceanMat));
+
+  // Graticule lines
+  function addLine(points, color = 0xffffff) {
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 });
+    globeGroup.add(new THREE.Line(geo, mat));
+  }
+
+  function latlng2v(lat, lng, r = 1.002) {
+    const phi = (90 - lat) * Math.PI / 180;
+    const theta = (lng + 180) * Math.PI / 180;
+    return new THREE.Vector3(
+      -r * Math.sin(phi) * Math.cos(theta),
+       r * Math.cos(phi),
+       r * Math.sin(phi) * Math.sin(theta)
+    );
+  }
+
+  // Graticule grid
+  for (let lat = -75; lat <= 75; lat += 15) {
+    const pts = [];
+    for (let lng = -180; lng <= 180; lng += 3) pts.push(latlng2v(lat, lng));
+    addLine(pts);
+  }
+  for (let lng = -180; lng < 180; lng += 15) {
+    const pts = [];
+    for (let lat = -90; lat <= 90; lat += 3) pts.push(latlng2v(lat, lng));
+    addLine(pts);
+  }
+
+  // Load land data and render dots
+  try {
+    const res = await fetch('https://raw.githubusercontent.com/martynafford/natural-earth-geojson/refs/heads/master/50m/physical/ne_50m_land.json');
+    const land = await res.json();
+
+    // Rasterise land to bitmap for fast isOnLand checks
+    const BW = 1024, BH = 512;
+    const off = document.createElement('canvas');
+    off.width = BW; off.height = BH;
+    const ctx = off.getContext('2d');
+
+    // Use d3-geo if available, else simple path
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, BW, BH);
+    ctx.fillStyle = '#fff';
+
+    land.features.forEach(f => {
+      const geo = f.geometry;
+      if (!geo || !geo.coordinates) return;
+      const drawRing = ring => {
+        ctx.beginPath();
+        ring.forEach(([lng, lat], i) => {
+          const x = ((lng + 180) / 360) * BW;
+          const y = ((90 - lat) / 180) * BH;
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fill();
+      };
+      if (geo.type === 'Polygon') drawRing(geo.coordinates[0]);
+      else if (geo.type === 'MultiPolygon') geo.coordinates.forEach(p => drawRing(p[0]));
+    });
+
+    const pixels = ctx.getImageData(0, 0, BW, BH).data;
+    const isLand = (lng, lat) => {
+      const x = Math.round(((lng + 180) / 360) * BW) % BW;
+      const y = Math.max(0, Math.min(BH - 1, Math.round(((90 - lat) / 180) * BH)));
+      return pixels[(y * BW + x) * 4] > 128;
+    };
+
+    // Build dot positions
+    const positions = [];
+    const STEP = 2.2;
+    for (let lat = -89; lat <= 89; lat += STEP) {
+      const cosLat = Math.cos(lat * Math.PI / 180);
+      const lngStep = cosLat > 0.05 ? STEP / cosLat : 360;
+      for (let lng = -180; lng < 180; lng += lngStep) {
+        if (isLand(lng, lat)) {
+          const v = latlng2v(lat, lng);
+          positions.push(v.x, v.y, v.z);
+        }
+      }
+    }
+
+    const dotGeo = new THREE.BufferGeometry();
+    dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const dotMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.016, sizeAttenuation: true });
+    globeGroup.add(new THREE.Points(dotGeo, dotMat));
+
+    // Continent outlines
+    const outlineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+    land.features.forEach(f => {
+      const geo = f.geometry;
+      if (!geo || !geo.coordinates) return;
+      const drawOutlineRing = ring => {
+        const pts = ring.map(([lng, lat]) => latlng2v(lat, lng, 1.003));
+        if (pts.length >= 2) {
+          const g = new THREE.BufferGeometry().setFromPoints(pts);
+          globeGroup.add(new THREE.Line(g, outlineMat));
+        }
+      };
+      if (geo.type === 'Polygon') drawOutlineRing(geo.coordinates[0]);
+      else if (geo.type === 'MultiPolygon') geo.coordinates.forEach(p => drawOutlineRing(p[0]));
+    });
+
+    // Ho Chi Minh City marker (Vietnam)
+    const hcmPos = latlng2v(10.8231, 106.6297, 1.015);
+    const markerGeo = new THREE.SphereGeometry(0.025, 8, 8);
+    const markerMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+    const marker = new THREE.Mesh(markerGeo, markerMat);
+    marker.position.copy(hcmPos);
+    globeGroup.add(marker);
+
+    // Pulse ring around marker
+    const ringGeo = new THREE.RingGeometry(0.03, 0.04, 16);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.copy(hcmPos);
+    ring.lookAt(0, 0, 0);
+    globeGroup.add(ring);
+
+  } catch (e) {
+    console.warn('[Globe] land data load failed:', e.message);
+  }
+
+  // Initial rotation to show Vietnam
+  globeGroup.rotation.y = -106.6 * Math.PI / 180;
+  globeGroup.rotation.x = -10.8 * Math.PI / 180;
+
+  // Drag interaction
+  let isDragging = false, lastX = 0, lastY = 0;
+  let velX = 0, velY = 0;
+  renderer.domElement.addEventListener('mousedown', e => {
+    isDragging = true; lastX = e.clientX; lastY = e.clientY; velX = 0; velY = 0;
+  });
+  document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    globeGroup.rotation.y += dx * 0.005;
+    globeGroup.rotation.x += dy * 0.005;
+    globeGroup.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, globeGroup.rotation.x));
+    velX = dx * 0.005; velY = dy * 0.005;
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  document.addEventListener('mouseup', () => { isDragging = false; });
+
+  // Animate
+  let hovered = false;
+  renderer.domElement.addEventListener('mouseenter', () => hovered = true);
+  renderer.domElement.addEventListener('mouseleave', () => hovered = false);
+
+  let pulseT = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    if (!isDragging) {
+      if (!hovered) globeGroup.rotation.y += 0.003;
+      velX *= 0.92; velY *= 0.92;
+      globeGroup.rotation.y += velX;
+      globeGroup.rotation.x += velY;
+    }
+    // Pulse ring
+    pulseT += 0.04;
+    const ringMesh = globeGroup.children.find(c => c.geometry && c.geometry.type === 'RingGeometry');
+    if (ringMesh) {
+      const s = 1 + 0.35 * Math.sin(pulseT);
+      ringMesh.scale.set(s, s, s);
+      ringMesh.material.opacity = 0.6 - 0.4 * Math.abs(Math.sin(pulseT));
+    }
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // Resize observer
+  new ResizeObserver(() => {
+    const w = container.offsetWidth;
+    renderer.setSize(w, w);
+  }).observe(container);
+
+})();
+</script>
+
 </body>
 </html>
