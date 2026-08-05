@@ -6411,18 +6411,16 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
   };
 
   WaterButtonFX.prototype.windDrive = function(dt){
-    // Kick velocity tại vài cột ngẫu nhiên theo nhịp — đơn giản, chắc chắn hoạt động
-    this.windT += dt;
-    // Mỗi ~0.18s kick 1 cột ngẫu nhiên
-    if (!this._windAccum) this._windAccum = 0;
-    this._windAccum += dt;
-    if (this._windAccum > 1) {
-      this._windAccum = 0;
-      // Kick 2 cột ngẫu nhiên với velocity mạnh
-      for (var k = 0; k < 2; k++) {
-        var ci = 1 + Math.floor(Math.random() * (this.columns - 2));
-        this.u[ci] += (Math.random() > 0.5 ? 1 : -1) * 300;
-      }
+    this.windT += dt * 1.5;
+    var cols = this.columns;
+    var amp = this.rest * 0.25; // 25% chiều cao nước
+    for (var i = 0; i < cols; i++) {
+      var frac = i / cols;
+      var target = this.rest
+        + Math.sin(frac * Math.PI * 2 - this.windT) * amp
+        + Math.sin(frac * Math.PI * 3.7 - this.windT * 0.8 + this.windPhase2) * amp * 0.4;
+      // Kéo h[i] dần về target — mượt, không giật
+      this.h[i] += (target - this.h[i]) * Math.min(1, dt * 4);
     }
   };
 
@@ -6431,7 +6429,6 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
     var i;
     for (var s = 0; s < this.SUBSTEPS; s++) {
       if (this.hovering) this.drive(sub);
-      else this.windDrive(sub);
       for (i = 1; i < this.columns; i++) {
         this.u[i] += ((-this.GRAVITY * (this.h[i] - this.h[i-1])) / this.colW) * sub;
         this.u[i] -= this.u[i] * Math.min(1, this.VISC * sub);
@@ -6446,6 +6443,8 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
         if (this.h[i] < 0) this.h[i] = 0;
       }
     }
+    // Áp sóng sin sau khi physics chạy xong — không bị flux ghi đè
+    if (!this.hovering) this.windDrive(dt);
     var worst = 0;
     for (i = 0; i < this.columns; i++) {
       var off = Math.abs(this.h[i] - this.rest);
@@ -6486,9 +6485,9 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
     ctx.quadraticCurveTo(-s * 1.0, s * 0.7, 0, s * 0.75);
     ctx.quadraticCurveTo(s * 1.0, s * 0.7, s * 1.2, 0);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillStyle = 'rgba(220,30,30,0.92)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.strokeStyle = 'rgba(255,80,80,0.6)';
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
