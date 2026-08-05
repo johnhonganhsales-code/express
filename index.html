@@ -152,6 +152,7 @@
   .calc-btn:not(:disabled):hover::before { left: 100%; }
   .calc-btn:not(:disabled):active { transform: translateY(0); box-shadow: 0 2px 8px rgba(29,78,216,0.2); }
   .calc-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+  .calc-btn.water-inactive { background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%) !important; box-shadow: 0 2px 8px rgba(59,130,246,0.4) !important; }
 
   /* ── WATER BUTTON FX (Document/Non-Document, Hàng xuất/Hàng nhập) ── */
   .type-btn, .calc-btn { isolation: isolate; }
@@ -1339,6 +1340,14 @@ function setType(t) {
   currentType = t;
   document.getElementById('btn-doc').classList.toggle('active', t==='document');
   document.getElementById('btn-nondoc').classList.toggle('active', t==='non-document');
+
+  // Đổi màu nước: active = xanh đậm, inactive = xanh nhạt
+  var ACTIVE = [37, 99, 235, 0.9];    // xanh đậm
+  var INACTIVE = [147, 197, 253, 0.75]; // xanh nhạt
+  var docFx = document.getElementById('btn-doc')._waterFx;
+  var ndFx  = document.getElementById('btn-nondoc')._waterFx;
+  if (docFx) { var c = t==='document' ? ACTIVE : INACTIVE; docFx.cr=c[0]; docFx.cg=c[1]; docFx.cb=c[2]; docFx.ca=c[3]; }
+  if (ndFx)  { var c = t==='non-document' ? ACTIVE : INACTIVE; ndFx.cr=c[0]; ndFx.cg=c[1]; ndFx.cb=c[2]; ndFx.ca=c[3]; }
 }
 
 function setDirection(dir) {
@@ -1350,7 +1359,18 @@ function setDirection(dir) {
   document.getElementById('calc-btn').style.opacity = isImp ? '0.55' : '1';
   document.getElementById('import-btn').style.background = '';
   document.getElementById('import-btn').style.opacity = isImp ? '1' : '0.55';
-  updateZone(); // cập nhật zone display khi đổi chiều
+
+  // Đổi màu nước: active = xanh đậm, inactive = xanh nhạt
+  var ACTIVE   = [37, 99, 235, 0.9];
+  var INACTIVE = [147, 197, 253, 0.5];
+  var exportFx = document.getElementById('calc-btn')._waterFx;
+  var importFx = document.getElementById('import-btn')._waterFx;
+  if (exportFx) { var c = isImp ? INACTIVE : ACTIVE; exportFx.cr=c[0]; exportFx.cg=c[1]; exportFx.cb=c[2]; exportFx.ca=c[3]; }
+  if (importFx) { var c = isImp ? ACTIVE : INACTIVE; importFx.cr=c[0]; importFx.cg=c[1]; importFx.cb=c[2]; importFx.ca=c[3]; }
+  document.getElementById('calc-btn').classList.toggle('water-inactive', isImp);
+  document.getElementById('import-btn').classList.toggle('water-inactive', !isImp);
+
+  updateZone();
 }
 
 
@@ -6343,11 +6363,25 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
     this.STILL = 0.05; this.SLEEP_FRAMES = 20; this.SUBSTEPS = 5;
 
     // Auto-wind (ambient animation khi không hover)
-    this.windT = Math.random() * Math.PI * 2; // phase offset ngẫu nhiên mỗi button
+    this.windT = Math.random() * Math.PI * 2;
     this.windPhase2 = Math.random() * Math.PI * 2;
-    this.WIND_SPEED = 1.8;   // tốc độ thay đổi pha sóng
-    this.WIND_AMP = 55;      // biên độ lực gió (đơn vị velocity/s)
-    this.WIND_COLS = 3.5;    // số chu kỳ sóng ngang button
+    this.WIND_SPEED = 1.8;
+    this.WIND_AMP = 55;
+    this.WIND_COLS = 3.5;
+
+    // Cá bơi
+    this._fish = [];
+    var numFish = 2 + Math.floor(Math.random() * 2); // 2-3 con
+    for (var f = 0; f < numFish; f++) {
+      this._fish.push({
+        x: Math.random(),        // 0..1 relative to W
+        depth: 0.3 + Math.random() * 0.5, // độ sâu bên dưới mặt nước
+        speed: (0.04 + Math.random() * 0.06) * (Math.random() > 0.5 ? 1 : -1),
+        size: 4 + Math.random() * 4,
+        tailT: Math.random() * Math.PI * 2,
+        color: ['rgba(255,200,50,0.7)','rgba(255,120,50,0.7)','rgba(100,200,255,0.65)'][f % 3]
+      });
+    }
 
     var col = parseColor(this.color);
     this.cr = col[0]; this.cg = col[1]; this.cb = col[2]; this.ca = col[3];
@@ -6413,7 +6447,7 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
   WaterButtonFX.prototype.windDrive = function(dt){
     this.windT += dt * 1.5;
     var cols = this.columns;
-    var amp = this.rest * 0.25; // 25% chiều cao nước
+    var amp = this.rest * 0.5; // 50% chiều cao nước
     for (var i = 0; i < cols; i++) {
       var frac = i / cols;
       var target = this.rest
@@ -6451,6 +6485,52 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
       if (off > worst) worst = off;
     }
     return worst;
+  };
+
+  WaterButtonFX.prototype.drawFish = function(ctx, W, H, dt){
+    var fish = this._fish;
+    for (var f = 0; f < fish.length; f++) {
+      var fi = fish[f];
+      fi.tailT += (dt || 0.016) * 6;
+      fi.x += fi.speed * (dt || 0.016);
+      if (fi.x > 1.1) fi.x = -0.1;
+      if (fi.x < -0.1) fi.x = 1.1;
+
+      var bx = fi.x * W;
+      var waterY = H - this.h[Math.max(0, Math.min(this.columns-1, Math.floor(fi.x * this.columns)))];
+      var by = waterY + fi.depth * (H - waterY);
+
+      var s = fi.size;
+      var dir = fi.speed > 0 ? 1 : -1;
+      var tailWag = Math.sin(fi.tailT) * 0.35;
+
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.scale(dir, 1);
+
+      // Thân cá (ellipse)
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s, s * 0.45, 0, 0, Math.PI * 2);
+      ctx.fillStyle = fi.color;
+      ctx.fill();
+
+      // Đuôi cá
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.8, 0);
+      ctx.lineTo(-s * 1.6, -s * 0.5 + tailWag * s);
+      ctx.lineTo(-s * 1.6,  s * 0.5 + tailWag * s);
+      ctx.closePath();
+      ctx.fillStyle = fi.color;
+      ctx.fill();
+
+      // Mắt
+      ctx.beginPath();
+      ctx.arc(s * 0.5, -s * 0.1, s * 0.15, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fill();
+
+      ctx.restore();
+    }
   };
 
   WaterButtonFX.prototype.drawBoat = function(ctx, W, H){
@@ -6505,7 +6585,7 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
     ctx.lineTo(s * 0.05, -s * 0.2);
     ctx.lineTo(-s * 1.1, -s * 0.6);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillStyle = 'rgba(220,30,30,0.75)';
     ctx.fill();
 
     ctx.restore();
@@ -6538,6 +6618,7 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
+    this.drawFish(ctx, W, H, this._lastDt || 0.016);
     this.drawBoat(ctx, W, H);
   };
 
@@ -6547,6 +6628,7 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
     this.last = now;
     this.pointer.vx *= 0.8; this.pointer.vy *= 0.8;
     // Luôn hoạt động — auto-wind giữ nước gợn sóng liên tục (không sleep)
+    this._lastDt = dt;
     this.step(dt);
     this.draw();
   };
@@ -6596,10 +6678,10 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
 
   function initWaterButtons(){
     var targets = [
-      { sel: '#btn-doc',    color: 'rgba(255,255,255,0.85)' },
-      { sel: '#btn-nondoc', color: 'rgba(255,255,255,0.85)' },
-      { sel: '#calc-btn',   color: 'rgba(147,197,253,0.9)'  },
-      { sel: '#import-btn', color: 'rgba(147,197,253,0.9)'  }
+      { sel: '#btn-doc',    color: 'rgba(147,197,253,0.75)' },
+      { sel: '#btn-nondoc', color: 'rgba(147,197,253,0.75)' },
+      { sel: '#calc-btn',   color: 'rgba(147,197,253,0.5)'  },
+      { sel: '#import-btn', color: 'rgba(147,197,253,0.5)'  }
     ];
     targets.forEach(function(t){
       var el = document.querySelector(t.sel);
@@ -6607,6 +6689,18 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
         el._waterFx = new WaterButtonFX(el, { waterColor: t.color, waterAmount: 58, columns: 26 });
       }
     });
+    // Lúc init: btn-doc active (xanh đậm), btn-nondoc inactive (xanh nhạt)
+    // calc-btn và import-btn đều chưa active → xanh nhạt
+    var docFx  = document.querySelector('#btn-doc')._waterFx;
+    var ndFx   = document.querySelector('#btn-nondoc')._waterFx;
+    var expFx  = document.querySelector('#calc-btn')._waterFx;
+    var impFx  = document.querySelector('#import-btn')._waterFx;
+    if (docFx)  { docFx.cr=37;  docFx.cg=99;  docFx.cb=235; docFx.ca=0.9; }  // active
+    if (ndFx)   { ndFx.cr=147;  ndFx.cg=197;  ndFx.cb=253; ndFx.ca=0.5; }    // inactive
+    if (expFx)  { expFx.cr=147; expFx.cg=197; expFx.cb=253; expFx.ca=0.5; }  // inactive
+    if (impFx)  { impFx.cr=147; impFx.cg=197; impFx.cb=253; impFx.ca=0.5; }  // inactive
+    document.querySelector('#calc-btn').classList.add('water-inactive');
+    document.querySelector('#import-btn').classList.add('water-inactive');
   }
 
   if (document.readyState === 'loading') {
