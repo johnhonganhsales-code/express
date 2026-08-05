@@ -3111,11 +3111,23 @@ function checkVsvxInput() {
   let matched = false;
 
   // Kiểm tra postcode theo ranges (chỉ thuần số sau normalize)
+  // Hỗ trợ cả 2 format: {from, to} (cũ) và [label, from, to] hoặc [from, to] (mới)
   if (/^\d+$/.test(valNorm) && data.ranges && data.ranges.length) {
     const valNum = parseInt(valNorm, 10);
     matched = data.ranges.some(r => {
-      const fromNum = parseInt(normalize(r.from), 10);
-      const toNum   = parseInt(normalize(r.to),   10);
+      let fromStr, toStr;
+      if (Array.isArray(r)) {
+        // Array format: [label?, from, to] — last 2 elements là from/to
+        fromStr = r.length >= 2 ? String(r[r.length - 2]) : '';
+        toStr   = r.length >= 2 ? String(r[r.length - 1]) : '';
+      } else {
+        fromStr = String(r.from || '');
+        toStr   = String(r.to   || '');
+      }
+      if (!fromStr.trim() || !toStr.trim()) return false;
+      const fromNum = parseInt(normalize(fromStr), 10);
+      const toNum   = parseInt(normalize(toStr),   10);
+      if (isNaN(fromNum) || isNaN(toNum)) return false;
       return valNum >= fromNum && valNum <= toNum;
     });
   }
@@ -5533,7 +5545,19 @@ async function doWatermarkPdf() {
     const { PDFDocument, rgb, degrees, StandardFonts } = PDFLib;
     const buf  = await readFile(pdfState.watermarkFile);
     const doc  = await PDFDocument.load(buf, { ignoreEncryption: true });
-    const font = await doc.embedFont(StandardFonts.HelveticaBold);
+
+    // Load font NotoSans để hỗ trợ tiếng Việt (Unicode)
+    let font;
+    try {
+      pdfSetProgress('wm', 8, 'Đang tải font tiếng Việt...');
+      const fontUrl = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans@5/files/noto-sans-vietnamese-400-normal.woff';
+      const fontResp = await fetch(fontUrl);
+      if (!fontResp.ok) throw new Error('font-fetch-fail');
+      const fontBytes = await fontResp.arrayBuffer();
+      font = await doc.embedFont(fontBytes, { subset: true });
+    } catch(_) {
+      font = await doc.embedFont(StandardFonts.HelveticaBold);
+    }
     const [r,g,b2] = _wmColorMap[_wmColor] || _wmColorMap.gray;
     const pages = doc.getPages();
     pages.forEach((page, pi) => {
