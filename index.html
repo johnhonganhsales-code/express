@@ -4520,7 +4520,7 @@ document.addEventListener('keydown', function(e) {
 <style>
 /* Overlay */
 #pdf-modal-overlay {
-  display: none; position: fixed; inset: 0; z-index: 2000;
+  display: none; position: fixed; inset: 0; z-index: 999999;
   background: rgba(0,0,0,0.55); backdrop-filter: blur(3px);
   align-items: center; justify-content: center; padding: 16px;
 }
@@ -4555,10 +4555,11 @@ document.addEventListener('keydown', function(e) {
 
 /* Tab bar */
 #pdf-tab-bar {
-  display: flex; gap: 6px; padding: 14px 20px 0; flex-shrink: 0;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 5px; padding: 12px 20px 0; flex-shrink: 0;
 }
 .pdf-tab {
-  flex: 1; padding: 9px 0; font-size: 13px; font-weight: 600;
+  flex: 1; padding: 8px 4px; font-size: 11.5px; font-weight: 600;
   border: 1.5px solid #e2e8f0; border-radius: 10px; background: #f8fafc;
   color: #6b7280; cursor: pointer; font-family: inherit;
   transition: all 0.15s; text-align: center;
@@ -4713,6 +4714,27 @@ body.dark #pdf-modal-close:hover { background: #334155; color: #f1f5f9; }
 body.dark .pdf-tab { background: #0f172a; border-color: #334155; color: #64748b; }
 body.dark .pdf-tab.active { background: linear-gradient(135deg,#1d4ed8,#1e40af); color: white; border-color: transparent; }
 body.dark .pdf-tab:not(.active):hover { background: #162032; border-color: #1e3a8a; color: #93c5fd; }
+/* ── Section label ── */
+.pdf-section-label { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+body.dark .pdf-section-label { color: #94a3b8; }
+
+/* ── Rotate angle buttons ── */
+.pdf-rotate-btn-group { display: flex; gap: 8px; margin-bottom: 12px; }
+.pdf-rotate-angle-btn {
+  flex: 1; padding: 9px 0; font-size: 14px; font-weight: 700;
+  border: 1.5px solid #e2e8f0; border-radius: 9px; background: #f8fafc;
+  color: #374151; cursor: pointer; font-family: inherit; transition: all 0.15s;
+}
+.pdf-rotate-angle-btn.active { background: linear-gradient(135deg,#1d4ed8,#1e40af); border-color: transparent; color: white; box-shadow: 0 2px 8px rgba(29,78,216,0.3); }
+.pdf-rotate-angle-btn:not(.active):hover { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+body.dark .pdf-rotate-angle-btn { background: #0f172a; border-color: #334155; color: #cbd5e1; }
+body.dark .pdf-rotate-angle-btn.active { background: linear-gradient(135deg,#1d4ed8,#1e40af); border-color: transparent; color: white; }
+
+/* ── Watermark color swatches ── */
+.pdf-color-swatches { display: flex; gap: 10px; margin-bottom: 14px; }
+.pdf-swatch { width: 30px; height: 30px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: all 0.15s; }
+.pdf-swatch.active { border-color: #1d4ed8; transform: scale(1.18); box-shadow: 0 0 0 2px white, 0 0 0 4px #1d4ed8; }
+.pdf-swatch:hover { transform: scale(1.1); }
 body.dark .pdf-dropzone { background: #0f172a; border-color: #1e3a8a; }
 body.dark .pdf-dropzone:hover, body.dark .pdf-dropzone.dragover { background: #162032; border-color: #2563eb; }
 body.dark .pdf-dropzone-text { color: #cbd5e1; }
@@ -4780,8 +4802,11 @@ body.dark .pdf-pagenum-label:has(input:checked) .pdf-pagenum-text { color: #93c5
     </div>
 
     <div id="pdf-tab-bar">
-      <button class="pdf-tab active" id="pdf-tab-merge" onclick="switchPdfTab('merge')">🗂️ Ghép PDF</button>
-      <button class="pdf-tab" id="pdf-tab-split" onclick="switchPdfTab('split')">✂️ Cắt PDF</button>
+      <button class="pdf-tab active" id="pdf-tab-merge"     onclick="switchPdfTab('merge')">🗂️ Ghép</button>
+      <button class="pdf-tab"        id="pdf-tab-split"     onclick="switchPdfTab('split')">✂️ Cắt</button>
+      <button class="pdf-tab"        id="pdf-tab-rotate"    onclick="switchPdfTab('rotate')">🔄 Xoay</button>
+      <button class="pdf-tab"        id="pdf-tab-watermark" onclick="switchPdfTab('watermark')">💧 Watermark</button>
+      <button class="pdf-tab"        id="pdf-tab-reorder"   onclick="switchPdfTab('reorder')">📋 Sắp xếp</button>
     </div>
 
     <div id="pdf-modal-body">
@@ -4862,6 +4887,134 @@ body.dark .pdf-pagenum-label:has(input:checked) .pdf-pagenum-text { color: #93c5
         </div>
       </div>
 
+
+      <!-- ── ROTATE TAB ── -->
+      <div id="pdf-panel-rotate" style="display:none">
+        <div class="pdf-dropzone" id="pdf-rotate-drop"
+          ondragover="pdfDragOver(event,'pdf-rotate-drop')"
+          ondragleave="pdfDragLeave('pdf-rotate-drop')"
+          ondrop="pdfDrop(event,'rotate')">
+          <input type="file" id="pdf-rotate-input" accept=".pdf" onchange="pdfFilesAdded(this.files,'rotate')">
+          <div class="pdf-dropzone-icon">📂</div>
+          <div class="pdf-dropzone-text">Kéo thả file PDF vào đây</div>
+          <div class="pdf-dropzone-sub">hoặc bấm để chọn file</div>
+        </div>
+        <div class="pdf-file-list" id="pdf-rotate-list"></div>
+        <div id="pdf-rotate-opts" style="display:none">
+          <div class="pdf-section-label">Góc xoay:</div>
+          <div class="pdf-rotate-btn-group">
+            <button class="pdf-rotate-angle-btn active" data-deg="90"  onclick="setRotateAngle(this)">↻ 90°</button>
+            <button class="pdf-rotate-angle-btn"        data-deg="180" onclick="setRotateAngle(this)">↺ 180°</button>
+            <button class="pdf-rotate-angle-btn"        data-deg="270" onclick="setRotateAngle(this)">↻ 270°</button>
+          </div>
+          <div class="pdf-section-label" style="margin-top:4px">Áp dụng cho:</div>
+          <div class="pdf-radio-group">
+            <label class="pdf-radio-label selected" id="pdf-rotate-lbl-all">
+              <input type="radio" name="pdf-rotate-scope" value="all" checked
+                onchange="document.querySelectorAll('#pdf-rotate-opts .pdf-radio-label').forEach(l=>l.classList.remove('selected'));this.closest('.pdf-radio-label').classList.add('selected');document.getElementById('pdf-rotate-range-wrap').classList.remove('show')">
+              Tất cả các trang
+            </label>
+            <label class="pdf-radio-label" id="pdf-rotate-lbl-range">
+              <input type="radio" name="pdf-rotate-scope" value="range"
+                onchange="document.querySelectorAll('#pdf-rotate-opts .pdf-radio-label').forEach(l=>l.classList.remove('selected'));this.closest('.pdf-radio-label').classList.add('selected');document.getElementById('pdf-rotate-range-wrap').classList.add('show')">
+              Trang cụ thể
+            </label>
+          </div>
+          <div class="pdf-range-wrap" id="pdf-rotate-range-wrap">
+            <input type="text" id="pdf-rotate-range-input" placeholder="Ví dụ: 1-3, 5, 7-9">
+            <div class="pdf-range-hint">Nhập số trang hoặc khoảng, cách nhau bằng dấu phẩy.</div>
+          </div>
+        </div>
+        <div class="pdf-progress" id="pdf-rotate-progress">
+          <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdf-rotate-fill"></div></div>
+          <div class="pdf-progress-text" id="pdf-rotate-progress-text">Đang xử lý...</div>
+        </div>
+        <button class="pdf-action-btn" id="pdf-rotate-btn" onclick="doRotatePdf()" disabled>🔄 Xoay PDF</button>
+        <div class="pdf-result" id="pdf-rotate-result">
+          <div class="pdf-result-text" id="pdf-rotate-result-text"></div>
+          <a class="pdf-download-btn" id="pdf-rotate-download">⬇️ Tải file đã xoay</a>
+        </div>
+      </div>
+
+      <!-- ── WATERMARK TAB ── -->
+      <div id="pdf-panel-watermark" style="display:none">
+        <div class="pdf-dropzone" id="pdf-wm-drop"
+          ondragover="pdfDragOver(event,'pdf-wm-drop')"
+          ondragleave="pdfDragLeave('pdf-wm-drop')"
+          ondrop="pdfDrop(event,'watermark')">
+          <input type="file" id="pdf-wm-input" accept=".pdf" onchange="pdfFilesAdded(this.files,'watermark')">
+          <div class="pdf-dropzone-icon">📂</div>
+          <div class="pdf-dropzone-text">Kéo thả file PDF vào đây</div>
+          <div class="pdf-dropzone-sub">hoặc bấm để chọn file</div>
+        </div>
+        <div class="pdf-file-list" id="pdf-wm-list"></div>
+        <div id="pdf-wm-opts" style="display:none">
+          <div class="pdf-section-label">Nội dung watermark:</div>
+          <input type="text" id="pdf-wm-text" placeholder="VD: BẢN SAO · HỒNG ANH EXPRESS"
+            style="width:100%;padding:10px 13px;border:1.5px solid #bfdbfe;border-radius:9px;font-size:14px;font-family:inherit;margin-bottom:12px;box-sizing:border-box;color:#111827;background:white;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <div class="pdf-section-label">Độ mờ:</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="range" id="pdf-wm-opacity" min="5" max="60" value="20"
+                  oninput="document.getElementById('pdf-wm-opacity-val').textContent=this.value+'%'" style="flex:1;accent-color:#2563eb">
+                <span id="pdf-wm-opacity-val" style="font-size:13px;font-weight:600;color:#374151;width:36px">20%</span>
+              </div>
+            </div>
+            <div>
+              <div class="pdf-section-label">Cỡ chữ:</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="range" id="pdf-wm-size" min="20" max="80" value="40"
+                  oninput="document.getElementById('pdf-wm-size-val').textContent=this.value" style="flex:1;accent-color:#2563eb">
+                <span id="pdf-wm-size-val" style="font-size:13px;font-weight:600;color:#374151;width:28px">40</span>
+              </div>
+            </div>
+          </div>
+          <div class="pdf-section-label">Màu chữ:</div>
+          <div class="pdf-color-swatches">
+            <button class="pdf-swatch active" data-color="gray"  style="background:#9ca3af" onclick="setWmColor(this,'gray')"  title="Xám"></button>
+            <button class="pdf-swatch"        data-color="red"   style="background:#ef4444" onclick="setWmColor(this,'red')"   title="Đỏ"></button>
+            <button class="pdf-swatch"        data-color="blue"  style="background:#2563eb" onclick="setWmColor(this,'blue')"  title="Xanh"></button>
+            <button class="pdf-swatch"        data-color="black" style="background:#111827" onclick="setWmColor(this,'black')" title="Đen"></button>
+          </div>
+        </div>
+        <div class="pdf-progress" id="pdf-wm-progress">
+          <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdf-wm-fill"></div></div>
+          <div class="pdf-progress-text" id="pdf-wm-progress-text">Đang xử lý...</div>
+        </div>
+        <button class="pdf-action-btn" id="pdf-wm-btn" onclick="doWatermarkPdf()" disabled>💧 Thêm Watermark</button>
+        <div class="pdf-result" id="pdf-wm-result">
+          <div class="pdf-result-text" id="pdf-wm-result-text"></div>
+          <a class="pdf-download-btn" id="pdf-wm-download">⬇️ Tải file đã watermark</a>
+        </div>
+      </div>
+
+      <!-- ── REORDER TAB ── -->
+      <div id="pdf-panel-reorder" style="display:none">
+        <div class="pdf-dropzone" id="pdf-reorder-drop"
+          ondragover="pdfDragOver(event,'pdf-reorder-drop')"
+          ondragleave="pdfDragLeave('pdf-reorder-drop')"
+          ondrop="pdfDrop(event,'reorder')">
+          <input type="file" id="pdf-reorder-input" accept=".pdf" onchange="pdfFilesAdded(this.files,'reorder')">
+          <div class="pdf-dropzone-icon">📂</div>
+          <div class="pdf-dropzone-text">Kéo thả file PDF vào đây</div>
+          <div class="pdf-dropzone-sub">hoặc bấm để chọn file</div>
+        </div>
+        <div class="pdf-file-list" id="pdf-reorder-list"></div>
+        <div class="pdf-order-hint" id="pdf-reorder-hint" style="display:none">
+          💡 Kéo ⠿ để đổi thứ tự trang. Bấm 🗑️ để xóa trang không cần.
+        </div>
+        <div class="pdf-progress" id="pdf-reorder-progress">
+          <div class="pdf-progress-bar"><div class="pdf-progress-fill" id="pdf-reorder-fill"></div></div>
+          <div class="pdf-progress-text" id="pdf-reorder-progress-text">Đang xử lý...</div>
+        </div>
+        <button class="pdf-action-btn" id="pdf-reorder-btn" onclick="doReorderPdf()" disabled>📋 Xuất PDF đã sắp xếp</button>
+        <div class="pdf-result" id="pdf-reorder-result">
+          <div class="pdf-result-text" id="pdf-reorder-result-text"></div>
+          <a class="pdf-download-btn" id="pdf-reorder-download">⬇️ Tải file đã sắp xếp</a>
+        </div>
+      </div>
+
     </div><!-- end modal body -->
   </div>
 </div>
@@ -4871,7 +5024,7 @@ body.dark .pdf-pagenum-label:has(input:checked) .pdf-pagenum-text { color: #93c5
 
 <script>
 // ── PDF TOOLS STATE ──
-const pdfState = { mergeFiles: [], splitFile: null };
+const pdfState = { mergeFiles: [], splitFile: null, rotateFile: null, watermarkFile: null, reorderFile: null, reorderPages: [] };
 
 // ── OPEN / CLOSE MODAL ──
 function openPdfModal(tab) {
@@ -4883,21 +5036,25 @@ function closePdfModal() {
 }
 
 // ── TAB SWITCH ──
+const _pdfTabTitles = {
+  merge:'🗂️ Ghép PDF', split:'✂️ Cắt PDF',
+  rotate:'🔄 Xoay PDF', watermark:'💧 Watermark PDF', reorder:'📋 Sắp xếp trang'
+};
 function switchPdfTab(tab) {
-  ['merge','split'].forEach(t => {
+  ['merge','split','rotate','watermark','reorder'].forEach(t => {
     document.getElementById('pdf-tab-' + t).classList.toggle('active', t === tab);
     document.getElementById('pdf-panel-' + t).style.display = t === tab ? '' : 'none';
   });
-  document.getElementById('pdf-modal-title').textContent = tab === 'merge' ? '🗂️ Ghép PDF' : '✂️ Cắt PDF';
+  document.getElementById('pdf-modal-title').textContent = _pdfTabTitles[tab] || 'PDF Tools';
 }
 
 // ── DRAG & DROP ──
-function pdfDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('dragover'); }
-function pdfDragLeave(id) { document.getElementById(id).classList.remove('dragover'); }
+function pdfDragOver(e, id) { e.preventDefault(); const _el=document.getElementById(id); if(_el) _el.classList.add('dragover'); }
+function pdfDragLeave(id) { const _el=document.getElementById(id); if(_el) _el.classList.remove('dragover'); }
 function pdfDrop(e, mode) {
   e.preventDefault();
-  const id = 'pdf-' + mode + '-drop';
-  document.getElementById(id).classList.remove('dragover');
+  const dropId = mode === 'watermark' ? 'pdf-wm-drop' : 'pdf-' + mode + '-drop';
+  const _del = document.getElementById(dropId); if(_del) _del.classList.remove('dragover');
   const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
   if (files.length) pdfFilesAdded(files, mode);
 }
@@ -4908,9 +5065,55 @@ function pdfFilesAdded(files, mode) {
   if (mode === 'merge') {
     pdfState.mergeFiles.push(...files);
     renderMergeList();
-  } else {
+  } else if (mode === 'split') {
     pdfState.splitFile = files[0];
     renderSplitFile();
+  } else if (mode === 'rotate') {
+    pdfState.rotateFile = files[0];
+    renderSingleFile('rotate', pdfState.rotateFile, 'pdf-rotate-list', 'pdf-rotate-opts', 'pdf-rotate-btn');
+  } else if (mode === 'watermark') {
+    pdfState.watermarkFile = files[0];
+    renderSingleFile('watermark', pdfState.watermarkFile, 'pdf-wm-list', 'pdf-wm-opts', 'pdf-wm-btn');
+  } else if (mode === 'reorder') {
+    pdfState.reorderFile = files[0];
+    if (pdfState.reorderFile) loadReorderPages();
+  }
+}
+
+// ── RENDER SINGLE FILE PANEL ──
+function renderSingleFile(mode, file, listId, optsId, btnId) {
+  const list = document.getElementById(listId);
+  const opts = optsId ? document.getElementById(optsId) : null;
+  const btn  = btnId  ? document.getElementById(btnId)  : null;
+  const resId = mode === 'watermark' ? 'pdf-wm-result' : 'pdf-' + mode + '-result';
+  const res  = document.getElementById(resId);
+  if (res) res.className = 'pdf-result';
+  if (!file) {
+    if (list) list.innerHTML = '';
+    if (opts) opts.style.display = 'none';
+    if (btn)  btn.disabled = true;
+    return;
+  }
+  if (list) list.innerHTML =
+    '<div class="pdf-file-item">' +
+    '<span class="pdf-file-icon">📄</span>' +
+    '<span class="pdf-file-name" title="' + file.name + '">' + file.name + '</span>' +
+    '<span class="pdf-file-size">' + fmtSize(file.size) + '</span>' +
+    '<button class="pdf-file-del" onclick="clearSingleFile(\'' + mode + '\')" title="Xóa">✕</button>' +
+    '</div>';
+  if (opts) opts.style.display = '';
+  if (btn)  btn.disabled = false;
+}
+
+function clearSingleFile(mode) {
+  if (mode === 'rotate')    { pdfState.rotateFile = null;    renderSingleFile('rotate',    null, 'pdf-rotate-list',  'pdf-rotate-opts', 'pdf-rotate-btn'); }
+  if (mode === 'watermark') { pdfState.watermarkFile = null; renderSingleFile('watermark', null, 'pdf-wm-list',      'pdf-wm-opts',     'pdf-wm-btn'); }
+  if (mode === 'reorder')   {
+    pdfState.reorderFile = null; pdfState.reorderPages = [];
+    const rl = document.getElementById('pdf-reorder-list'); if(rl) rl.innerHTML = '';
+    const rh = document.getElementById('pdf-reorder-hint'); if(rh) rh.style.display = 'none';
+    const rb = document.getElementById('pdf-reorder-btn');  if(rb) rb.disabled = true;
+    const rr = document.getElementById('pdf-reorder-result'); if(rr) rr.className = 'pdf-result';
   }
 }
 
@@ -5235,6 +5438,252 @@ async function doSplitPdf() {
     res.classList.add('show', 'error');
     resTxt.textContent = '❌ Lỗi: ' + e.message;
     pdfSetProgress('split', null);
+  }
+  btn.disabled = false;
+}
+
+// ══════════════════════════════════════════════
+// ── ROTATE PDF ──
+// ══════════════════════════════════════════════
+let _rotateDeg = 90;
+
+function setRotateAngle(btn) {
+  document.querySelectorAll('.pdf-rotate-angle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _rotateDeg = parseInt(btn.dataset.deg);
+}
+
+async function doRotatePdf() {
+  const btn    = document.getElementById('pdf-rotate-btn');
+  const res    = document.getElementById('pdf-rotate-result');
+  const resTxt = document.getElementById('pdf-rotate-result-text');
+  const dlBtn  = document.getElementById('pdf-rotate-download');
+  const scope  = document.querySelector('input[name="pdf-rotate-scope"]:checked')?.value || 'all';
+  btn.disabled = true; res.className = 'pdf-result';
+  pdfSetProgress('rotate', 5, 'Đang đọc file...');
+  try {
+    const { PDFDocument, degrees } = PDFLib;
+    const buf = await readFile(pdfState.rotateFile);
+    const doc = await PDFDocument.load(buf, { ignoreEncryption: true });
+    const totalPages = doc.getPageCount();
+    let idxs = [];
+    if (scope === 'all') {
+      idxs = Array.from({ length: totalPages }, (_, i) => i);
+    } else {
+      const raw = document.getElementById('pdf-rotate-range-input').value.trim();
+      if (!raw) throw new Error('Vui lòng nhập số trang cần xoay');
+      for (const part of raw.split(',').map(s => s.trim()).filter(Boolean)) {
+        if (part.includes('-')) {
+          const [a, b] = part.split('-').map(Number);
+          if (isNaN(a)||isNaN(b)||a<1||b>totalPages||a>b) throw new Error('Khoảng trang không hợp lệ: ' + part);
+          for (let i = a; i <= b; i++) idxs.push(i-1);
+        } else {
+          const n = parseInt(part);
+          if (isNaN(n)||n<1||n>totalPages) throw new Error('Số trang không hợp lệ: ' + part);
+          idxs.push(n-1);
+        }
+      }
+    }
+    pdfSetProgress('rotate', 40, 'Đang xoay...');
+    idxs.forEach(i => {
+      const page = doc.getPage(i);
+      page.setRotation(degrees((page.getRotation().angle + _rotateDeg) % 360));
+    });
+    pdfSetProgress('rotate', 85, 'Đang tạo file...');
+    const bytes = await doc.save();
+    const blob  = new Blob([bytes], { type: 'application/pdf' });
+    dlBtn.href = URL.createObjectURL(blob);
+    dlBtn.download = 'rotated_' + Date.now() + '.pdf';
+    resTxt.textContent = '✅ Xoay ' + _rotateDeg + '° — ' + (scope==='all'?totalPages:idxs.length) + ' trang — ' + fmtSize(blob.size);
+    res.classList.add('show');
+    pdfSetProgress('rotate', 100, 'Xong!');
+    setTimeout(() => pdfSetProgress('rotate', null), 1200);
+  } catch(e) {
+    res.classList.add('show','error');
+    resTxt.textContent = '❌ Lỗi: ' + e.message;
+    pdfSetProgress('rotate', null);
+  }
+  btn.disabled = false;
+}
+
+// ══════════════════════════════════════════════
+// ── WATERMARK PDF ──
+// ══════════════════════════════════════════════
+let _wmColor = 'gray';
+const _wmColorMap = { gray:[0.6,0.6,0.6], red:[0.9,0.2,0.2], blue:[0.15,0.38,0.92], black:[0.07,0.07,0.07] };
+
+function setWmColor(btn, color) {
+  document.querySelectorAll('.pdf-swatch').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _wmColor = color;
+}
+
+async function doWatermarkPdf() {
+  const btn    = document.getElementById('pdf-wm-btn');
+  const res    = document.getElementById('pdf-wm-result');
+  const resTxt = document.getElementById('pdf-wm-result-text');
+  const dlBtn  = document.getElementById('pdf-wm-download');
+  const text    = document.getElementById('pdf-wm-text').value.trim();
+  const opacity = parseInt(document.getElementById('pdf-wm-opacity').value) / 100;
+  const fontSize= parseInt(document.getElementById('pdf-wm-size').value);
+  if (!text) { alert('Vui lòng nhập nội dung watermark'); return; }
+  btn.disabled = true; res.className = 'pdf-result';
+  pdfSetProgress('wm', 5, 'Đang đọc file...');
+  try {
+    const { PDFDocument, rgb, degrees, StandardFonts } = PDFLib;
+    const buf  = await readFile(pdfState.watermarkFile);
+    const doc  = await PDFDocument.load(buf, { ignoreEncryption: true });
+    const font = await doc.embedFont(StandardFonts.HelveticaBold);
+    const [r,g,b2] = _wmColorMap[_wmColor] || _wmColorMap.gray;
+    const pages = doc.getPages();
+    pages.forEach((page, pi) => {
+      pdfSetProgress('wm', Math.round(10 + (pi/pages.length)*80), 'Trang '+(pi+1)+'/'+pages.length+'...');
+      const { width, height } = page.getSize();
+      const tw = font.widthOfTextAtSize(text, fontSize);
+      page.drawText(text, {
+        x: width/2 - tw/2,
+        y: height/2 - fontSize/2,
+        size: fontSize, font,
+        color: rgb(r, g, b2),
+        opacity,
+        rotate: degrees(45),
+      });
+    });
+    pdfSetProgress('wm', 92, 'Đang tạo file...');
+    const bytes = await doc.save();
+    const blob  = new Blob([bytes], { type: 'application/pdf' });
+    dlBtn.href = URL.createObjectURL(blob);
+    dlBtn.download = 'watermarked_' + Date.now() + '.pdf';
+    resTxt.textContent = '✅ Đã thêm watermark vào ' + pages.length + ' trang — ' + fmtSize(blob.size);
+    res.classList.add('show');
+    pdfSetProgress('wm', 100, 'Xong!');
+    setTimeout(() => pdfSetProgress('wm', null), 1200);
+  } catch(e) {
+    res.classList.add('show','error');
+    resTxt.textContent = '❌ Lỗi: ' + e.message;
+    pdfSetProgress('wm', null);
+  }
+  btn.disabled = false;
+}
+
+// ══════════════════════════════════════════════
+// ── REORDER PAGES ──
+// ══════════════════════════════════════════════
+async function loadReorderPages() {
+  const list = document.getElementById('pdf-reorder-list');
+  const btn  = document.getElementById('pdf-reorder-btn');
+  const hint = document.getElementById('pdf-reorder-hint');
+  if (!pdfState.reorderFile) return;
+  if (list) list.innerHTML = '<div style="text-align:center;padding:14px;color:#6b7280;font-size:13px">⏳ Đang đọc file...</div>';
+  try {
+    const { PDFDocument } = PDFLib;
+    const buf = await readFile(pdfState.reorderFile);
+    const doc = await PDFDocument.load(buf, { ignoreEncryption: true });
+    pdfState.reorderPages = Array.from({ length: doc.getPageCount() }, (_, i) => i);
+    renderReorderList();
+    if (hint) hint.style.display = '';
+    if (btn)  btn.disabled = false;
+  } catch(e) {
+    if (list) list.innerHTML = '<div style="color:#b91c1c;font-size:13px;padding:8px">❌ Lỗi: ' + e.message + '</div>';
+  }
+}
+
+let _roDragSrc = null;
+
+function renderReorderList() {
+  const list  = document.getElementById('pdf-reorder-list');
+  const btn   = document.getElementById('pdf-reorder-btn');
+  const pages = pdfState.reorderPages;
+  if (!list) return;
+  list.innerHTML = '';
+
+  // File header
+  if (pdfState.reorderFile) {
+    const hdr = document.createElement('div');
+    hdr.className = 'pdf-file-item';
+    hdr.style.cssText = 'background:#eff6ff;border-color:#bfdbfe;margin-bottom:6px;';
+    hdr.innerHTML =
+      '<span class="pdf-file-icon">📄</span>' +
+      '<span class="pdf-file-name">' + pdfState.reorderFile.name + '</span>' +
+      '<span class="pdf-file-size">' + pages.length + ' trang</span>' +
+      '<button class="pdf-file-del" onclick="clearSingleFile(\'reorder\')" title="Xóa">✕</button>';
+    list.appendChild(hdr);
+  }
+
+  pages.forEach((origIdx, pos) => {
+    const item = document.createElement('div');
+    item.className = 'pdf-file-item';
+    item.draggable = true;
+    item.innerHTML =
+      '<span class="pdf-drag-handle" title="Kéo để sắp xếp">⠿</span>' +
+      '<span class="pdf-file-idx">' + (pos+1) + '</span>' +
+      '<span style="font-size:13px;font-weight:500;color:#374151;flex:1">Trang ' + (origIdx+1) + '</span>' +
+      '<button class="pdf-file-del" title="Xóa trang này">🗑️</button>';
+
+    item.querySelector('.pdf-file-del').addEventListener('click', () => {
+      pdfState.reorderPages.splice(pos, 1);
+      renderReorderList();
+    });
+    item.addEventListener('dragstart', e => {
+      _roDragSrc = pos; item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(pos));
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      list.querySelectorAll('.pdf-file-item').forEach(el => el.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      list.querySelectorAll('.pdf-file-item').forEach(el => el.classList.remove('drag-over'));
+      if (pos !== _roDragSrc) item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (_roDragSrc === null || _roDragSrc === pos) return;
+      const moved = pdfState.reorderPages.splice(_roDragSrc, 1)[0];
+      pdfState.reorderPages.splice(pos, 0, moved);
+      _roDragSrc = null;
+      renderReorderList();
+    });
+    list.appendChild(item);
+  });
+
+  if (btn) {
+    btn.disabled = pages.length === 0;
+    btn.textContent = '📋 Xuất PDF (' + pages.length + ' trang)';
+  }
+}
+
+async function doReorderPdf() {
+  const btn    = document.getElementById('pdf-reorder-btn');
+  const res    = document.getElementById('pdf-reorder-result');
+  const resTxt = document.getElementById('pdf-reorder-result-text');
+  const dlBtn  = document.getElementById('pdf-reorder-download');
+  btn.disabled = true; res.className = 'pdf-result';
+  pdfSetProgress('reorder', 5, 'Đang đọc file...');
+  try {
+    const { PDFDocument } = PDFLib;
+    const buf = await readFile(pdfState.reorderFile);
+    const src = await PDFDocument.load(buf, { ignoreEncryption: true });
+    const out = await PDFDocument.create();
+    pdfSetProgress('reorder', 40, 'Đang sắp xếp trang...');
+    const copied = await out.copyPages(src, pdfState.reorderPages);
+    copied.forEach(p => out.addPage(p));
+    pdfSetProgress('reorder', 88, 'Đang tạo file...');
+    const bytes = await out.save();
+    const blob  = new Blob([bytes], { type: 'application/pdf' });
+    dlBtn.href = URL.createObjectURL(blob);
+    dlBtn.download = 'reordered_' + Date.now() + '.pdf';
+    resTxt.textContent = '✅ Xuất thành công ' + pdfState.reorderPages.length + ' trang — ' + fmtSize(blob.size);
+    res.classList.add('show');
+    pdfSetProgress('reorder', 100, 'Xong!');
+    setTimeout(() => pdfSetProgress('reorder', null), 1200);
+  } catch(e) {
+    res.classList.add('show','error');
+    resTxt.textContent = '❌ Lỗi: ' + e.message;
+    pdfSetProgress('reorder', null);
   }
   btn.disabled = false;
 }
