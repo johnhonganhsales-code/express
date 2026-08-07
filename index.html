@@ -240,6 +240,8 @@
   .detail-row span:last-child { font-weight: 600; color: var(--dark); }
   .detail-row.total-row { font-weight: 700; color: var(--dark); font-size: 14px; border-top: 1px solid #e5e7eb; margin-top: 4px; padding-top: 10px; border-bottom: none; }
   .detail-row.total-row span:last-child { color: var(--dark); }
+  .avg-kg-badge { display: none; font-size: 11px; font-weight: 600; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 2px 7px; margin-left: 8px; white-space: nowrap; vertical-align: middle; }
+  .avg-kg-badge.show { display: inline-block; }
   .detail-meta { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; display: flex; gap: 6px; flex-wrap: wrap; }
   .meta-tag { font-size: 11px; color: var(--gray); background: #f8fafc; border: 1px solid var(--border); padding: 3px 9px; border-radius: 20px; }
   .na-note { font-size: 13px; color: #9ca3af; text-align: center; padding: 8px 0; font-style: italic; }
@@ -1036,7 +1038,7 @@ function getProfitVND(cost) {
         <div class="detail-row"><span id="dhl-vat-lbl">VAT</span><span id="dhl-vat">—</span></div>
         <div id="dhl-other-charges"></div>
         <div class="detail-row profit-row" id="dhl-profit-row" style="display:none"><span>💰 Profit</span><span id="dhl-profit-display">—</span></div>
-        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="dhl-grand">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá<span class="avg-kg-badge" id="dhl-avg-kg"></span></span><span id="dhl-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="dhl-zone-tag">—</span>
           <span class="meta-tag" id="dhl-w-tag">—</span>
@@ -1067,7 +1069,7 @@ function getProfitVND(cost) {
         <div class="detail-row"><span id="dhl-sin-vat-lbl">VAT</span><span id="dhl-sin-vat">—</span></div>
         <div id="dhl-sin-other-charges"></div>
         <div class="detail-row profit-row" id="dhl-sin-profit-row" style="display:none"><span>💰 Profit</span><span id="dhl-sin-profit-display">—</span></div>
-        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="dhl-sin-grand">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá<span class="avg-kg-badge" id="dhl-sin-avg-kg"></span></span><span id="dhl-sin-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="dhl-sin-zone-tag">—</span>
           <span class="meta-tag" id="dhl-sin-w-tag">—</span>
@@ -1098,7 +1100,7 @@ function getProfitVND(cost) {
         <div class="detail-row"><span id="fedex-ip-vat-lbl">VAT</span><span id="fedex-ip-vat">—</span></div>
         <div id="fedex-ip-other-charges"></div>
         <div class="detail-row profit-row" id="fedex-ip-profit-row" style="display:none"><span>💰 Profit</span><span id="fedex-ip-profit-display">—</span></div>
-        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="fedex-ip-grand">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá<span class="avg-kg-badge" id="fedex-ip-avg-kg"></span></span><span id="fedex-ip-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="fedex-ip-zone-tag">—</span>
           <span class="meta-tag" id="fedex-ip-w-tag">—</span>
@@ -1129,7 +1131,7 @@ function getProfitVND(cost) {
         <div class="detail-row"><span id="fedex-ie-vat-lbl">VAT</span><span id="fedex-ie-vat">—</span></div>
         <div id="fedex-ie-other-charges"></div>
         <div class="detail-row profit-row" id="fedex-ie-profit-row" style="display:none"><span>💰 Profit</span><span id="fedex-ie-profit-display">—</span></div>
-        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="fedex-ie-grand">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá<span class="avg-kg-badge" id="fedex-ie-avg-kg"></span></span><span id="fedex-ie-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="fedex-ie-zone-tag">—</span>
           <span class="meta-tag" id="fedex-ie-w-tag">—</span>
@@ -1160,7 +1162,7 @@ function getProfitVND(cost) {
         <div class="detail-row"><span id="ups-saver-vat-lbl">VAT</span><span id="ups-saver-vat">—</span></div>
         <div id="ups-saver-other-charges"></div>
         <div class="detail-row profit-row" id="ups-saver-profit-row" style="display:none"><span>💰 Profit</span><span id="ups-saver-profit-display">—</span></div>
-        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="ups-saver-grand">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá<span class="avg-kg-badge" id="ups-saver-avg-kg"></span></span><span id="ups-saver-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="ups-saver-zone-tag">—</span>
           <span class="meta-tag" id="ups-saver-w-tag">—</span>
@@ -1191,7 +1193,7 @@ function getProfitVND(cost) {
         <div class="detail-row"><span id="ups-exp-vat-lbl">VAT</span><span id="ups-exp-vat">—</span></div>
         <div id="ups-exp-other-charges"></div>
         <div class="detail-row profit-row" id="ups-exp-profit-row" style="display:none"><span>💰 Profit</span><span id="ups-exp-profit-display">—</span></div>
-        <div class="detail-row total-row"><span>Tổng báo giá</span><span id="ups-exp-grand">—</span></div>
+        <div class="detail-row total-row"><span>Tổng báo giá<span class="avg-kg-badge" id="ups-exp-avg-kg"></span></span><span id="ups-exp-grand">—</span></div>
         <div class="detail-meta">
           <span class="meta-tag" id="ups-exp-zone-tag">—</span>
           <span class="meta-tag" id="ups-exp-w-tag">—</span>
@@ -2311,6 +2313,20 @@ function renderCarrier(id, base, fuel, fuelPct, demand, demandPct, vat, vatPct, 
     : (parseInt((profitInputEl?.value||'').replace(/\D/g,''),10)||0) > 0;
   document.getElementById(id+'-sub').textContent = hasAnyProfit ? 'đã VAT + Profit' : 'đã VAT';
   document.getElementById(id+'-grand').textContent=fmt(grand);
+
+  // Trung bình kg (allin): hiện khi DHL>31kg, FedEx/UPS>21kg
+  const avgEl = document.getElementById(id+'-avg-kg');
+  if (avgEl && billableWeight > 0) {
+    const isDHL = id.startsWith('dhl');
+    const threshold = isDHL ? 31 : 21;
+    if (billableWeight >= threshold) {
+      const avgPerKg = Math.round(grand / billableWeight);
+      avgEl.textContent = `~${avgPerKg.toLocaleString('vi-VN')} đ/kg`;
+      avgEl.classList.add('show');
+    } else {
+      avgEl.classList.remove('show');
+    }
+  }
   document.getElementById(id+'-base').textContent=fmt(base);
 
   // Render nhà cung cấp
@@ -2704,7 +2720,7 @@ function calculate() {
     : `Zone ${dhlsinZone || 'N/A'}`;
   document.getElementById('dhl-sin-service').textContent = `SIN Express · ${countryShort}`;
   renderCarrier('dhl-sin', dhlsinBase, dhlsinFuel, fuelDHL, dhlsinDemand, dhlsinDemandPerKg, 0, vatPct,
-    {zone:`DHL SIN ${dhlsinZoneLabel}`, weight:`${roundedWeightDHL} kg`, type:typeLabel}, dhlsinOC);
+    {zone:`DHL SIN ${dhlsinZoneLabel}`, weight:`${roundedWeightDHL} kg`, type:typeLabel}, dhlsinOC, roundedWeightDHL);
 
   // FedEx: kiểm tra có phải dùng Freight (IPF/IEF) không
   const fedexFreightWeightThresh = parseFloat(document.getElementById('fedex-freight-weight').value) || 70;
@@ -2796,7 +2812,7 @@ function calculate() {
   document.getElementById('ups-saver-name').textContent = usSaverNameLabel;
   document.getElementById('ups-saver-service').textContent = usSaverSvcLabel;
   renderCarrier('ups-saver',usBase,usFuel,fuelUPS,usDemand,usDemandPerKg,0,vatPct,
-    {zone:`UPS Zone ${upsZoneLabel(usSaverZone, isImport?upsSaverImpZoneNumMap:upsSaverZoneNumMap, country)}`,weight:`${roundedWeightUPS} kg`,type:typeLabel},usOC);
+    {zone:`UPS Zone ${upsZoneLabel(usSaverZone, isImport?upsSaverImpZoneNumMap:upsSaverZoneNumMap, country)}`,weight:`${roundedWeightUPS} kg`,type:typeLabel},usOC,roundedWeightUPS);
 
   // UPS Expedited (ẩn khi >70kg vì đã dùng Freight ở trên)
   // Ẩn khi chọn Document mà sheet UPS Expedited không có bảng giá Document riêng
@@ -2815,7 +2831,7 @@ function calculate() {
   const ueOC=getOtherCharges('UPS',roundedWeightUPS,dims,country,effectiveType,false,wt);
   document.getElementById('ups-exp-service').textContent = isImport ? `Worldwide Expedited Imp · ${countryShort}` : `Worldwide Expedited · ${countryShort}`;
   renderCarrier('ups-exp',ueBase,ueFuel,fuelUPS,ueDemand,ueDemandPerKg,0,vatPct,
-    {zone:`UPS Zone ${upsZoneLabel(ueZone, isImport?upsExpImpZoneNumMap:upsExpZoneNumMap, country)}`,weight:`${roundedWeightUPS} kg`,type:typeLabel},ueOC);
+    {zone:`UPS Zone ${upsZoneLabel(ueZone, isImport?upsExpImpZoneNumMap:upsExpZoneNumMap, country)}`,weight:`${roundedWeightUPS} kg`,type:typeLabel},ueOC,roundedWeightUPS);
 
   // Restore currentType
   currentType = savedType;
