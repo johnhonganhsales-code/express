@@ -3286,7 +3286,7 @@ function vsvxSaveLocal(iso, data) {
   // Chỉ lưu localStorage khi data hợp lệ, kèm timestamp để TTL
   if (!vsvxIsValid(data)) return;
   try {
-    const payload = JSON.stringify({ ts: Date.now(), cities: data.cities, ranges: data.ranges });
+    const payload = JSON.stringify({ v: 2, ts: Date.now(), cities: data.cities, ranges: data.ranges });
     // Thử lưu; nếu quota exceeded thì xóa các entry cũ nhất trước
     try {
       localStorage.setItem('vsvx_' + iso, payload);
@@ -3308,6 +3308,11 @@ function vsvxLoadLocal(iso) {
     const saved = localStorage.getItem('vsvx_' + iso);
     if (!saved) return null;
     const parsed = JSON.parse(saved);
+    // Invalidate cache cũ (không có v:2) — đã fix bug merge FedEx vào DHL ranges
+    if (!parsed.v || parsed.v < 2) {
+      localStorage.removeItem('vsvx_' + iso);
+      return null;
+    }
     // Kiểm tra TTL
     if (parsed.ts && (Date.now() - parsed.ts) > VSVX_CACHE_TTL) {
       localStorage.removeItem('vsvx_' + iso);
@@ -3354,14 +3359,14 @@ async function fetchVsvxFromServer(iso) {
     throw new Error('Không có data VSVX cho ' + iso);
   }
 
-  // Merge: cities/ranges từ cả 2 nguồn, loại trùng
+  // Giữ DHL và FedEx ranges RIÊNG BIỆT:
+  // - _vsvxMatched chỉ check dhlRanges/dhlCities (DHL VSVX)
+  // - _fedexOdaTier check fedexRanges/fedexCities (FedEx ODA)
   const cities = [...new Set([
     ...(dhlData?.cities  || []),
-    ...(fedexData?.cities || []),
   ])];
   const ranges = [
     ...(dhlData?.ranges  || []),
-    ...(fedexData?.ranges || []),
   ];
   return { cities, ranges, _dhl: dhlData, _fedex: fedexData };
 }
