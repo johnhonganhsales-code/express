@@ -3514,10 +3514,12 @@ function fedexOdaIsValid(data) {
   return data && data.entries && data.entries.length > 0 && data.type;
 }
 
+const FEDEX_ODA_CACHE_VER = 3; // bump: fix city name parsing from tier string
+
 function fedexOdaSaveLocal(iso, data) {
   if (!fedexOdaIsValid(data)) return;
   try {
-    const payload = JSON.stringify({ ts: Date.now(), type: data.type, entries: data.entries });
+    const payload = JSON.stringify({ v: FEDEX_ODA_CACHE_VER, ts: Date.now(), type: data.type, entries: data.entries });
     try {
       localStorage.setItem('fedex_oda_' + iso, payload);
     } catch(e) {
@@ -3538,6 +3540,11 @@ function fedexOdaLoadLocal(iso) {
     const saved = localStorage.getItem('fedex_oda_' + iso);
     if (!saved) return null;
     const parsed = JSON.parse(saved);
+    // Invalidate cache cũ không có version hoặc version thấp hơn
+    if (!parsed.v || parsed.v < FEDEX_ODA_CACHE_VER) {
+      localStorage.removeItem('fedex_oda_' + iso);
+      return null;
+    }
     if (parsed.ts && (Date.now() - parsed.ts) > FEDEX_ODA_TTL) {
       localStorage.removeItem('fedex_oda_' + iso);
       return null;
@@ -3554,24 +3561,77 @@ function fedexOdaLoadLocal(iso) {
 }
 
 async function fetchFedexOdaFromServer(iso) {
-  const urls = [
-    `${PROXY}?fedex_oda=${iso}&t=${Date.now()}`,
-    `${PROXY}?fedex_oda=${iso}`,
-  ];
-  let lastErr;
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, { cache: 'no-store', redirect: 'follow' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      if (data && data.error) throw new Error(data.error);
-      return data;
-    } catch(e) {
-      lastErr = e;
-      console.warn('[FedEx ODA] fetch failed:', url, e.message);
+  // Đọc từ GitHub JSON (giống DHL VSVX) — không cold start
+  const url = `${VSVX_CDN}/fedex/${iso}.json`;
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) {
+      if (res.status === 404) return { type: 'postcode', entries: [], noOda: true };
+      throw new Error('HTTP ' + res.status);
     }
+    const raw = await res.json();
+
+    // Parse ranges: mỗi phần tử là [tierStr, from, to]
+    // tierStr dạng "OPAP:Tier B|OPAF:No|ODAP:Tier A|ODAF:No"
+    // Dùng tier cao nhất trong ODAP (xuất) hoặc OPAP (nếu không có ODAP)
+    function parseTierStr(tierStr) {
+      const parts = {};
+      String(tierStr).split('|').forEach(s => {
+        const [k, ...v] = s.split(':');
+        parts[k.trim()] = v.join(':').trim();
+      });
+      // Ưu tiên ODAP → ODAF → OPAP → OPAF (bao gồm cả Freight)
+      const tierVal = parts['ODAP'] || parts['ODAF'] || parts['OPAP'] || parts['OPAF'] || 'No';
+      // Normalize: "Tier A" -> "A", "Tier B" -> "B", "No" -> "No"
+      const m = tierVal.match(/Tier\s+([A-C])/i);
+      return m ? m[1].toUpperCase() : 'No';
+    }
+
+    const entries = [];
+    const hasCities = raw.cities && raw.cities.length > 0;
+    const hasRanges = raw.ranges && raw.ranges.length > 0;
+
+    if (hasRanges) {
+      for (const r of raw.ranges) {
+        const tier = parseTierStr(r[0]);
+        if (tier === 'No') continue; // bỏ qua entry không có ODA
+        // Detect numeric vs alpha postcode
+        const isNum = /^\d+$/.test(String(r[1]).replace(/[-\s]/g, ''));
+        entries.push({ tier, from: r[1], to: r[2], _isNum: isNum });
+      }
+    }
+    if (hasCities) {
+      for (const c of raw.cities) {
+        let city, tier;
+        if (typeof c === 'string') {
+          // Format: "OPAP:Tier B|OPAF:Tier B|ODAP:Tier B|ODAF:Tier B|Tai O"
+          // Tên city là phần cuối sau dấu | cuối cùng nếu không chứa ':'
+          const parts = c.split('|');
+          const lastPart = parts[parts.length - 1].trim();
+          if (lastPart && !lastPart.includes(':')) {
+            city = lastPart;
+            const tierStr = parts.slice(0, -1).join('|');
+            tier = parseTierStr(tierStr);
+          } else {
+            // Không tìm thấy city name rời — bỏ qua entry này
+            continue;
+          }
+        } else {
+          city = c.city;
+          tier = c.tier || 'A';
+        }
+        if (!city || tier === 'No') continue;
+        entries.push({ tier, city });
+      }
+    }
+
+    // 'mixed' khi có cả city lẫn range (VD: HK), 'city' khi chỉ có city, 'postcode' khi chỉ có range
+    const type = hasCities && hasRanges ? 'mixed' : hasCities ? 'city' : 'postcode';
+    return { type, entries };
+  } catch(e) {
+    console.warn('[FedEx ODA] fetch failed:', url, e.message);
+    throw e;
   }
-  throw lastErr;
 }
 
 async function loadFedexOda(iso) {
@@ -3624,21 +3684,37 @@ function fedexOdaMatchTier(data, val) {
   for (const entry of data.entries) {
     let matched = false;
 
-    if (data.type === 'postcode' && /^\d+$/.test(valNorm)) {
-      // Range match
-      if (entry.from !== undefined && entry.to !== undefined) {
-        const fromNum = parseInt(normalize(String(entry.from)), 10);
-        const toNum   = parseInt(normalize(String(entry.to)),   10);
-        const valNum  = parseInt(valNorm, 10);
-        matched = valNum >= fromNum && valNum <= toNum;
-      }
-    } else if (data.type === 'city' && entry.city) {
-      // City name match
+    if (entry.city !== undefined) {
+      // City name match — áp dụng cho mọi type kể cả 'mixed' và 'postcode'
       const cLow = String(entry.city).toLowerCase();
       const cNorm = normalize(entry.city);
       if (cNorm === valNorm) { matched = true; }
       else if (!/^[a-z0-9]+$/.test(valNorm)) {
         matched = cLow === q || cLow.includes(q) || q.includes(cLow);
+      }
+    } else if (entry.from !== undefined && entry.to !== undefined) {
+      // Postcode range match — áp dụng cho mọi type kể cả 'mixed' và 'city'
+      const fromNorm = normalize(String(entry.from));
+      const toNorm   = normalize(String(entry.to));
+      const isNumRange = /^\d+$/.test(fromNorm);
+      if (isNumRange && /^\d+$/.test(valNorm)) {
+        // Numeric range match (US, AU, etc.)
+        const fromNum = parseInt(fromNorm, 10);
+        const toNum   = parseInt(toNorm, 10);
+        const valNum  = parseInt(valNorm, 10);
+        matched = valNum >= fromNum && valNum <= toNum;
+      } else if (!isNumRange) {
+        // Alpha/alphanumeric range match (UK, etc.)
+        // Strip trailing wildcard X for prefix match
+        const fromBase = fromNorm.replace(/x+$/i, '');
+        const toBase   = toNorm.replace(/x+$/i, '');
+        if (fromBase === toBase) {
+          // Single entry: prefix match
+          matched = valNorm.startsWith(fromBase);
+        } else {
+          // Lexicographic range
+          matched = valNorm >= fromBase && valNorm <= toBase + 'z'.repeat(10);
+        }
       }
     }
 
