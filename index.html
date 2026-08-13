@@ -1314,6 +1314,7 @@ const GIDS = {
 let countryData   = {};
 let countryAliases = {}; // normalized-name -> canonical
 let dhlDocRates   = {}, dhlNonDocRates = {}, dhlMultRates = {};
+let dhlImpDocRates = {}, dhlImpNonDocRates = {}, dhlImpMultRates = {};
 // DHL SIN rates: keyed by col index (1-16), with special cols 3=BN, 5=PK
 let dhlsinDocRates = {}, dhlsinNonDocRates = {}, dhlsinMultRates = {};
 // DHLSIN zone -> column index mapping
@@ -1547,6 +1548,7 @@ async function fetchAllData(onProgress) {
     FedEx_IP_Imp:     raw['Cost_FedEx_IP_Imp']      || [],
     FedEx_IE_Imp:     raw['Cost_FedEx_IE_Imp']      || [],
     Other_Charges:    raw['Other_Charges']          || [],
+    Cost_DHL_Imp:     raw['Cost_DHL_Imp']           || [],
   };
 }
 
@@ -2157,6 +2159,29 @@ function getDHLRate(weight, zone) {
   return base30+extra*mult;
 }
 
+function getDHLImpRate(weight, zone) {
+  const zIdx = zone - 1;
+  const lookup = (table) => {
+    const keys = Object.keys(table).map(Number).sort((a,b) => a-b);
+    const k = keys.find(k => k >= weight) || keys[keys.length-1];
+    return (table[k] || [])[zIdx] || 0;
+  };
+  if (currentType === 'document') return lookup(dhlImpDocRates);
+  if (weight <= 30) return lookup(dhlImpNonDocRates);
+  const base30 = (dhlImpNonDocRates[30] || [])[zIdx] || 0;
+  const extra = weight - 30;
+  let mult = 0;
+  for (const [key, vals] of Object.entries(dhlImpMultRates)) {
+    const parts = key.replace('–','-').split('-');
+    if (parts.length >= 2) {
+      const lo = parseFloat(parts[0]), hi = parseFloat(parts[1]);
+      if (weight > lo && weight <= hi) { mult = (vals||[])[zIdx] || 0; break; }
+    }
+  }
+  if (!mult) { const lk = Object.keys(dhlImpMultRates).pop(); if(lk) mult = (dhlImpMultRates[lk]||[])[zIdx]||0; }
+  return base30 + extra * mult;
+}
+
 function getUPSRate(weight, zoneNum, docTable, nonDocTable, specialDoc, specialNonDoc, countryName, zoneNumMap, perKgKeys) {
   console.log('[UPS RATE] weight='+weight+' zoneNum='+zoneNum+' country='+countryName+' type='+currentType+' docTableKeys='+Object.keys(docTable).length+' nonDocTableKeys='+Object.keys(nonDocTable).length+' zoneNumMap='+JSON.stringify(zoneNumMap));
   if (!zoneNum) return 0;
@@ -2694,19 +2719,24 @@ function calculate() {
   }
 
   // Update service labels
-  document.getElementById('dhl-service').textContent      = `Worldwide Express · ${countryShort}`;
+  document.getElementById('dhl-service').textContent = isImport
+    ? `Worldwide Import Express · ${countryShort}`
+    : `Worldwide Express · ${countryShort}`;
   document.getElementById('fedex-ip-service').textContent = `IP Package · ${countryShort}`;
   document.getElementById('fedex-ie-service').textContent = `IE Package · ${countryShort}`;
 
-  // DHL — chỉ hiện khi hàng xuất (chưa có bảng giá nhập)
-  const dhlBase = (!isImport && zones.dhl) ? getDHLRate(roundedWeightDHL,zones.dhl) : 0;
+  // DHL — xuất dùng getDHLRate, nhập dùng getDHLImpRate (nếu có bảng giá)
+  const dhlHasImpData = Object.keys(dhlImpDocRates).length > 0 || Object.keys(dhlImpNonDocRates).length > 0;
+  const dhlBase = zones.dhl
+    ? (isImport && dhlHasImpData ? getDHLImpRate(roundedWeightDHL, zones.dhl) : (!isImport ? getDHLRate(roundedWeightDHL, zones.dhl) : 0))
+    : 0;
   const dhlFuel=dhlBase*fuelDHL/100;
   const { amt: dhlDemand, perKg: dhlDemandPerKg } = calcDemand('DHL', fuelDHL);
   const dhlOC=getOtherCharges('DHL',roundedWeightDHL,dims,country,effectiveType,false,wt);
   renderCarrier('dhl',dhlBase,dhlFuel,fuelDHL,dhlDemand,dhlDemandPerKg,0,vatPct,
     {zone:`DHL Vùng ${zones.dhl||'N/A'}`,weight:`${roundedWeightDHL} kg`,type:typeLabel},dhlOC,roundedWeightDHL);
 
-  // DHL SIN — chỉ hiện khi hàng xuất (chưa có bảng giá nhập)
+  // DHL SIN — chỉ hiện khi hàng xuất (chưa có bảng giá nhập riêng)
   const dhlsinZone = zones.dhlsin;
   const dhlsinEligible = !isImport && !!(dhlsinZone || countryISO === 'PK');
   const dhlsinBase = dhlsinEligible ? getDHLSINRate(roundedWeightDHL, dhlsinZone, countryISO) : 0;
@@ -2848,8 +2878,8 @@ function calculate() {
 // ============================================================
 // CACHE (version-based – không dùng TTL nữa)
 // ============================================================
-const CACHE_KEY     = 'multicarrier_cache_v28'; // v28: add FedEx IP/IE import rates
-const CACHE_VER_KEY = 'multicarrier_version_v28';
+const CACHE_KEY     = 'multicarrier_cache_v29'; // v29: add DHL Import rates (Cost_DHL_Imp)
+const CACHE_VER_KEY = 'multicarrier_version_v29';
 
 function serializeForCache(p) {
   return JSON.parse(JSON.stringify(p, (key, value) =>
@@ -2897,7 +2927,7 @@ async function fetchVersion() {
 // ============================================================
 // APPLY DATA
 // ============================================================
-function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFreightExp, demandData, dhlsin, upsSavImp, upsExpImp, upsFreightImp, fedexIPImp, fedexIEImp) {
+function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFreightExp, demandData, dhlsin, upsSavImp, upsExpImp, upsFreightImp, fedexIPImp, fedexIEImp, dhlImp) {
   if (Array.isArray(oc)) OTHER_CHARGES = oc;
   if (demandData && typeof demandData === 'object') demandRates = demandData;
   if (setting.providers && typeof setting.providers === 'object') providerMap = setting.providers;
@@ -2943,6 +2973,11 @@ function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFr
   dhlDocRates    = dhl.doc;
   dhlNonDocRates = dhl.nonDoc;
   dhlMultRates   = dhl.mult;
+  if (dhlImp) {
+    dhlImpDocRates    = dhlImp.doc  || {};
+    dhlImpNonDocRates = dhlImp.nonDoc || {};
+    dhlImpMultRates   = dhlImp.mult || {};
+  }
   upsSaverDoc    = upsSav.doc;
   upsSaverNonDoc = upsSav.nonDoc;
   upsSaverSpecialDoc = upsSav.specialDoc||{};
@@ -3022,7 +3057,7 @@ async function loadData(forceRefresh=false) {
   // ── BƯỚC 1: Load cache ngay → hiện giao diện trước ─────────
   const cachedFirst = loadCache();
   if (cachedFirst && !forceRefresh) {
-    applyData(cachedFirst.setting,cachedFirst.cd,cachedFirst.dhl,cachedFirst.upsSav,cachedFirst.upsExp,cachedFirst.fedexIP,cachedFirst.fedexIE,cachedFirst.oc,cachedFirst.upsFreightExp,cachedFirst.demandData,cachedFirst.dhlsin,cachedFirst.upsSavImp,cachedFirst.upsExpImp,cachedFirst.upsFreightImp,cachedFirst.fedexIPImp||null,cachedFirst.fedexIEImp||null);
+    applyData(cachedFirst.setting,cachedFirst.cd,cachedFirst.dhl,cachedFirst.upsSav,cachedFirst.upsExp,cachedFirst.fedexIP,cachedFirst.fedexIE,cachedFirst.oc,cachedFirst.upsFreightExp,cachedFirst.demandData,cachedFirst.dhlsin,cachedFirst.upsSavImp,cachedFirst.upsExpImp,cachedFirst.upsFreightImp,cachedFirst.fedexIPImp||null,cachedFirst.fedexIEImp||null,cachedFirst.dhlImp||null);
     calcBtn.disabled = false;
     document.getElementById('import-btn').disabled = false;
     dot.className    = 'status-dot ok';
@@ -3060,7 +3095,7 @@ async function loadData(forceRefresh=false) {
   if (!forceRefresh && cached && cachedVersion && cachedVersion === remoteVersion) {
     pbDone();
     // Nếu cache cũ chưa có dhlsin → parse lại để cập nhật
-    applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE,cached.oc,cached.upsFreightExp,cached.demandData,cached.dhlsin||null,cached.upsSavImp,cached.upsExpImp,cached.upsFreightImp,cached.fedexIPImp||null,cached.fedexIEImp||null);
+    applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE,cached.oc,cached.upsFreightExp,cached.demandData,cached.dhlsin||null,cached.upsSavImp,cached.upsExpImp,cached.upsFreightImp,cached.fedexIPImp||null,cached.fedexIEImp||null,cached.dhlImp||null);
     calcBtn.disabled = false;
     document.getElementById('import-btn').disabled = false;
     dot.className = 'status-dot ok';
@@ -3112,9 +3147,10 @@ async function loadData(forceRefresh=false) {
     const upsFreightImp = parseCostUPS(fetched.UPS_Freight_Imp || []);
     const fedexIPImp = parseCostFedEx(fetched.FedEx_IP_Imp || []);
     const fedexIEImp = parseCostFedEx(fetched.FedEx_IE_Imp || []);
+    const dhlImp     = parseCostDHL(fetched.Cost_DHL_Imp || []);
 
-    applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp);
-    saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp }, remoteVersion);
+    applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp);
+    saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp }, remoteVersion);
     pbShow(100);
     pbDone();
 
