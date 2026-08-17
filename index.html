@@ -460,9 +460,93 @@ body.dark .shortcut-hint { background: #f1f5f9; color: #1e293b; }
   position: fixed; inset: 0; width: 100vw; height: 100vh;
   z-index: -1; pointer-events: none; display: block;
 }
+
+/* ── WEEKLY UPDATE POPUP ── */
+#weekly-popup-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  animation: overlayFadeIn 0.3s ease;
+}
+@keyframes overlayFadeIn { from { opacity: 0; } to { opacity: 1; } }
+#weekly-popup-box {
+  background: white;
+  border-radius: 20px;
+  padding: 32px 28px 24px;
+  max-width: 360px; width: calc(100% - 40px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.1);
+  text-align: center;
+  animation: popupBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+@keyframes popupBounceIn {
+  from { opacity: 0; transform: scale(0.8) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+body.dark #weekly-popup-box { background: #1e293b; border: 1px solid #334155; }
+#weekly-popup-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+  box-shadow: 0 4px 20px rgba(37,99,235,0.4);
+  font-size: 28px;
+}
+#weekly-popup-title {
+  font-size: 17px; font-weight: 800; color: #111827; margin-bottom: 10px; line-height: 1.3;
+}
+body.dark #weekly-popup-title { color: #f1f5f9; }
+#weekly-popup-body {
+  font-size: 14px; color: #4b5563; line-height: 1.6; margin-bottom: 22px;
+}
+body.dark #weekly-popup-body { color: #94a3b8; }
+#weekly-popup-body strong { color: #1d4ed8; font-weight: 700; }
+body.dark #weekly-popup-body strong { color: #60a5fa; }
+#weekly-popup-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  color: white; border: none; border-radius: 12px;
+  padding: 13px 28px; font-size: 15px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(29,78,216,0.4);
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+  width: 100%; justify-content: center;
+  margin-bottom: 10px;
+}
+#weekly-popup-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(29,78,216,0.5);
+  filter: brightness(1.1);
+}
+#weekly-popup-close {
+  font-size: 13px; color: #9ca3af; cursor: pointer; background: none; border: none;
+  font-family: inherit; padding: 4px 8px; border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  width: 100%;
+}
+#weekly-popup-close:hover { color: #374151; background: #f1f5f9; }
+body.dark #weekly-popup-close:hover { color: #cbd5e1; background: #0f172a; }
 </style>
 </head>
 <body>
+
+<!-- ── WEEKLY UPDATE POPUP ── -->
+<div id="weekly-popup-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="weekly-popup-title">
+  <div id="weekly-popup-box">
+    <div id="weekly-popup-icon">🔄</div>
+    <div id="weekly-popup-title">Cập nhật dữ liệu FSC</div>
+    <div id="weekly-popup-body">
+      Bấm <strong>Cập nhật</strong> để update FSC mới nhất.<br>
+      <span style="font-size:12.5px;color:#9ca3af;">(App đã bật auto update nhưng cần bấm thủ công khi mới mở)</span>
+    </div>
+    <button id="weekly-popup-btn" onclick="weeklyPopupUpdate()">🔄 Cập nhật FSC</button>
+    <button id="weekly-popup-close" onclick="weeklyPopupDismiss()">Bỏ qua, nhắc lại tuần sau</button>
+  </div>
+</div>
+
 <canvas id="glitter-bg-canvas" aria-hidden="true"></canvas>
 
 <header>
@@ -3975,6 +4059,78 @@ async function loadUtilities() {
 loadNotices();
 loadUtilities();
 loadData();
+
+// ── WEEKLY UPDATE POPUP ──
+// Hiện popup lần đầu mở trong tuần (tính từ 8:00 sáng thứ 2 giờ VN)
+(function initWeeklyPopup() {
+  const STORAGE_KEY = 'ha_fsc_popup_week';
+
+  // Tính "tuần key" dựa trên thứ 2 gần nhất 8:00 sáng giờ VN (UTC+7)
+  function getWeekKey() {
+    const now = new Date();
+    // Giờ VN = UTC+7
+    const vnOffset = 7 * 60; // phút
+    const vnNow = new Date(now.getTime() + (vnOffset - now.getTimezoneOffset()) * 60000);
+
+    const day = vnNow.getDay(); // 0=CN, 1=T2...6=T7
+    const h = vnNow.getHours();
+    const m = vnNow.getMinutes();
+
+    // Tính số ngày kể từ thứ 2 gần nhất 8h sáng
+    let daysSinceMonday = (day === 0) ? 6 : day - 1; // ngày kể từ thứ 2
+
+    // Nếu là thứ 2 nhưng chưa đến 8h thì tính về tuần trước
+    if (day === 1 && (h < 8)) {
+      daysSinceMonday = 7;
+    }
+
+    const monday = new Date(vnNow);
+    monday.setDate(vnNow.getDate() - daysSinceMonday);
+    monday.setHours(8, 0, 0, 0);
+
+    // Key = YYYY-Www (năm + số tuần ISO)
+    const yyyy = monday.getFullYear();
+    const startOfYear = new Date(yyyy, 0, 1);
+    const weekNum = Math.ceil(((monday - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+    return `${yyyy}-W${String(weekNum).padStart(2, '0')}`;
+  }
+
+  function shouldShowPopup() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const currentWeek = getWeekKey();
+      return saved !== currentWeek;
+    } catch(e) { return false; }
+  }
+
+  function markShown() {
+    try { localStorage.setItem(STORAGE_KEY, getWeekKey()); } catch(e) {}
+  }
+
+  window.weeklyPopupUpdate = function() {
+    markShown();
+    document.getElementById('weekly-popup-overlay').style.display = 'none';
+    // Trigger FSC update
+    if (typeof loadData === 'function') loadData(true);
+  };
+
+  window.weeklyPopupDismiss = function() {
+    markShown();
+    document.getElementById('weekly-popup-overlay').style.display = 'none';
+  };
+
+  // Đóng khi click ngoài box
+  document.getElementById('weekly-popup-overlay').addEventListener('click', function(e) {
+    if (e.target === this) weeklyPopupDismiss();
+  });
+
+  // Hiện popup nếu cần (delay nhỏ để trang load xong)
+  if (shouldShowPopup()) {
+    setTimeout(function() {
+      document.getElementById('weekly-popup-overlay').style.display = 'flex';
+    }, 800);
+  }
+})();
 </script>
 
 <!-- ── MOBILE SIDEBAR MODAL ── -->
