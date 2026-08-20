@@ -2856,11 +2856,17 @@ function calculate() {
     (maxSinglePieceGirth > 0 && maxSinglePieceGirth > fedexFreightGirthThresh);
 
   // FedEx: apply min billable weight if oversize (18kg min)
-  const fedexBillableWeight = effectiveType==='document'
+  const fedexBillableWeightBase = effectiveType==='document'
     ? roundedWeightFedEx
     : Math.max(roundedWeightFedEx, getFedExBillableWeight(roundedWeightFedEx, dims));
+  // IPF/IEF (Freight): áp giá tối thiểu 68kg
+  const FEDEX_FREIGHT_MIN_KG = 68;
+  const fedexBillableWeight = useFedExFreight
+    ? Math.max(fedexBillableWeightBase, FEDEX_FREIGHT_MIN_KG)
+    : fedexBillableWeightBase;
   const fedexWeightLabel = fedexBillableWeight > roundedWeightFedEx
-    ? `${roundedWeightFedEx} kg → min ${fedexBillableWeight} kg (oversize)` : `${roundedWeightFedEx} kg`;
+    ? `${roundedWeightFedEx} kg → min ${fedexBillableWeight} kg (${useFedExFreight && fedexBillableWeight === FEDEX_FREIGHT_MIN_KG ? 'IPF/IEF min 68 kg' : 'oversize'})`
+    : `${roundedWeightFedEx} kg`;
 
   // FedEx IP / IPF — xuất dùng fedexIPRates, nhập dùng fedexIPImpRates
   const fipZone = useFedExFreight ? (zones.fedexIPF || zones.fedexIP) : zones.fedexIP;
