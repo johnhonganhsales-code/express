@@ -529,6 +529,26 @@ body.dark #weekly-popup-body strong { color: #60a5fa; }
 }
 #weekly-popup-close:hover { color: #374151; background: #f1f5f9; }
 body.dark #weekly-popup-close:hover { color: #cbd5e1; background: #0f172a; }
+/* ── COUNTRY COMBOBOX ── */
+.country-combo-wrap { position: relative; }
+.country-combo-wrap input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.10) !important;
+}
+.country-combo-wrap input.has-value {
+  font-weight: 600; color: var(--dark) !important;
+}
+.country-opt {
+  padding: 9px 14px; font-size: 14px; color: #374151; cursor: pointer;
+  border-bottom: 1px solid #f1f5f9; transition: background 0.1s;
+  display: flex; align-items: center; gap: 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.country-opt:last-child { border-bottom: none; }
+.country-opt:hover, .country-opt.active { background: #eff6ff; color: #1d4ed8; }
+.country-opt mark { background: #fef08a; color: inherit; border-radius: 2px; font-style: normal; font-weight: 700; }
+.country-opt-empty { padding: 14px; font-size: 13px; color: #9ca3af; text-align: center; font-style: italic; }
+
 /* ── FEDEX NCC DROPDOWN ── */
 .fedex-ncc-wrap {
   display: flex; align-items: center; gap: 8px;
@@ -672,10 +692,29 @@ body.dark #weekly-popup-close:hover { color: #cbd5e1; background: #0f172a; }
     <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-bottom:14px;">
       <div>
         <label style="display:block;font-size:14px;font-weight:500;color:var(--dark);margin-bottom:6px;">Quốc gia đến</label>
-        <div class="select-wrap">
-          <select id="country" onchange="updateZone()">
+        <div class="country-combo-wrap" id="country-combo-wrap">
+          <!-- Hidden select giữ nguyên để không break logic -->
+          <select id="country" onchange="updateZone()" style="display:none">
             <option value=""> Chọn quốc gia </option>
           </select>
+          <!-- Combobox input -->
+          <div style="position:relative;">
+            <input type="text" id="country-search"
+              placeholder="🔍 Tìm quốc gia..."
+              autocomplete="off" spellcheck="false"
+              style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit;color:var(--dark);background:white;outline:none;transition:border-color 0.2s,box-shadow 0.2s;cursor:text;"
+              oninput="countryComboInput()"
+              onfocus="countryComboOpen()"
+              onkeydown="countryComboKey(event)"
+            />
+            <span id="country-combo-clear" onclick="countryComboReset()"
+              style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#9ca3af;font-size:18px;line-height:1;user-select:none;" title="Xóa">×</span>
+            <span id="country-combo-arrow"
+              style="display:block;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:12px;pointer-events:none;">▾</span>
+          </div>
+          <div id="country-dropdown"
+            style="display:none;position:absolute;z-index:999;left:0;right:0;top:calc(100% + 4px);background:white;border:1.5px solid #bfdbfe;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.13);max-height:240px;overflow-y:auto;overflow-x:hidden;">
+          </div>
         </div>
       </div>
       <div class="field" id="vsvx-field" style="display:none;margin:0;">
@@ -7740,5 +7779,214 @@ import * as THREE from 'three';
 })();
 </script>
 
+
+<script>
+// ── COUNTRY COMBOBOX ──────────────────────────────────────────
+let _ccAllOptions = []; // {value, label} sorted
+let _ccActiveIdx  = -1;
+let _ccOpen       = false;
+
+function countryComboInit() {
+  // Build options list from hidden select
+  const sel = document.getElementById('country');
+  _ccAllOptions = [];
+  for (let i = 1; i < sel.options.length; i++) {
+    _ccAllOptions.push({ value: sel.options[i].value, label: sel.options[i].text });
+  }
+}
+
+function _ccNorm(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+function countryComboOpen() {
+  const inp = document.getElementById('country-search');
+  const dd  = document.getElementById('country-dropdown');
+  if (!_ccAllOptions.length) countryComboInit();
+  _ccOpen = true;
+  countryComboRender(inp.value);
+  dd.style.display = 'block';
+  inp.style.borderColor = 'var(--accent)';
+  inp.style.boxShadow   = '0 0 0 3px rgba(37,99,235,0.10)';
+}
+
+function countryComboClose() {
+  const dd  = document.getElementById('country-dropdown');
+  const inp = document.getElementById('country-search');
+  dd.style.display = 'none';
+  inp.style.borderColor = '';
+  inp.style.boxShadow   = '';
+  _ccOpen = false;
+  _ccActiveIdx = -1;
+}
+
+function countryComboRender(query) {
+  const dd = document.getElementById('country-dropdown');
+  const q  = (query || '').trim();
+  const qn = _ccNorm(q);
+
+  let filtered;
+  if (!q) {
+    filtered = _ccAllOptions;
+  } else {
+    // Ưu tiên: bắt đầu bằng query > chứa query
+    const starts = _ccAllOptions.filter(o => _ccNorm(o.label).startsWith(qn));
+    const contains = _ccAllOptions.filter(o => !_ccNorm(o.label).startsWith(qn) && _ccNorm(o.label).includes(qn));
+    filtered = [...starts, ...contains];
+  }
+
+  if (!filtered.length) {
+    dd.innerHTML = '<div class="country-opt-empty">Không tìm thấy quốc gia</div>';
+    _ccActiveIdx = -1;
+    return;
+  }
+
+  const sel = document.getElementById('country');
+  const curVal = sel.value;
+
+  dd.innerHTML = filtered.slice(0, 80).map((o, i) => {
+    const isSelected = o.value === curVal;
+    let label = o.label;
+    if (q) {
+      // Highlight matched chars
+      const idx = _ccNorm(label).indexOf(qn);
+      if (idx >= 0) {
+        label = label.slice(0,idx) + '<mark>' + label.slice(idx, idx+q.length) + '</mark>' + label.slice(idx+q.length);
+      }
+    }
+    return `<div class="country-opt${isSelected?' active':''}" data-value="${o.value}" data-idx="${i}" onmousedown="countryComboSelect('${o.value.replace(/'/g,"\\'")}')">
+      ${isSelected ? '<span style="color:#2563eb;font-size:11px;">✓</span>' : '<span style="width:14px;display:inline-block;"></span>'}
+      ${label}
+    </div>`;
+  }).join('');
+
+  // Set active index to selected item
+  _ccActiveIdx = filtered.findIndex(o => o.value === curVal);
+  if (_ccActiveIdx >= 0) {
+    setTimeout(() => {
+      const activeEl = dd.querySelector('.country-opt.active');
+      if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+    }, 0);
+  }
+}
+
+function countryComboInput() {
+  const inp = document.getElementById('country-search');
+  const q   = inp.value.trim();
+  const clearBtn    = document.getElementById('country-combo-clear');
+  const arrowBtn    = document.getElementById('country-combo-arrow');
+
+  clearBtn.style.display = q ? 'block' : 'none';
+  arrowBtn.style.display = q ? 'none'  : 'block';
+
+  if (!_ccOpen) countryComboOpen();
+  else countryComboRender(q);
+  _ccActiveIdx = -1;
+
+  // If input is cleared, deselect country
+  if (!q) {
+    const sel = document.getElementById('country');
+    sel.value = '';
+    inp.classList.remove('has-value');
+    updateZone();
+  }
+}
+
+function countryComboSelect(value) {
+  const sel  = document.getElementById('country');
+  const inp  = document.getElementById('country-search');
+  const clearBtn = document.getElementById('country-combo-clear');
+  const arrowBtn = document.getElementById('country-combo-arrow');
+
+  sel.value = value;
+  const opt = _ccAllOptions.find(o => o.value === value);
+  inp.value = opt ? opt.label : value;
+  inp.classList.add('has-value');
+  clearBtn.style.display = 'block';
+  arrowBtn.style.display = 'none';
+  countryComboClose();
+  updateZone();
+}
+
+function countryComboReset() {
+  const sel  = document.getElementById('country');
+  const inp  = document.getElementById('country-search');
+  const clearBtn = document.getElementById('country-combo-clear');
+  const arrowBtn = document.getElementById('country-combo-arrow');
+
+  sel.value = '';
+  inp.value = '';
+  inp.classList.remove('has-value');
+  clearBtn.style.display = 'none';
+  arrowBtn.style.display = 'block';
+  countryComboClose();
+  inp.focus();
+  updateZone();
+}
+
+function countryComboKey(e) {
+  const dd = document.getElementById('country-dropdown');
+  const opts = dd.querySelectorAll('.country-opt');
+  if (!opts.length) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _ccActiveIdx = Math.min(_ccActiveIdx + 1, opts.length - 1);
+    _ccHighlight(opts);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _ccActiveIdx = Math.max(_ccActiveIdx - 1, 0);
+    _ccHighlight(opts);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (_ccActiveIdx >= 0 && opts[_ccActiveIdx]) {
+      countryComboSelect(opts[_ccActiveIdx].dataset.value);
+    }
+  } else if (e.key === 'Escape') {
+    // Restore previously selected value on Escape
+    const sel = document.getElementById('country');
+    const inp = document.getElementById('country-search');
+    if (sel.value) {
+      const opt = _ccAllOptions.find(o => o.value === sel.value);
+      inp.value = opt ? opt.label : sel.value;
+    } else {
+      inp.value = '';
+    }
+    countryComboClose();
+  }
+}
+
+function _ccHighlight(opts) {
+  opts.forEach((el, i) => {
+    el.classList.toggle('active', i === _ccActiveIdx);
+    if (i === _ccActiveIdx) el.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('mousedown', function(e) {
+  const wrap = document.getElementById('country-combo-wrap');
+  if (wrap && !wrap.contains(e.target)) countryComboClose();
+});
+
+// Sync combobox after populateCountries (called after data loads)
+const _origPopulateCountries = populateCountries;
+populateCountries = function() {
+  _origPopulateCountries();
+  countryComboInit();
+  // Restore display if a value was already selected
+  const sel = document.getElementById('country');
+  const inp = document.getElementById('country-search');
+  if (sel.value) {
+    const opt = _ccAllOptions.find(o => o.value === sel.value);
+    if (opt) {
+      inp.value = opt.label;
+      inp.classList.add('has-value');
+      document.getElementById('country-combo-clear').style.display = 'block';
+      document.getElementById('country-combo-arrow').style.display = 'none';
+    }
+  }
+};
+</script>
 </body>
 </html>
