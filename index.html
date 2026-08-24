@@ -2795,36 +2795,46 @@ function renderFedExNCCDropdown(cardId, baseVT, baseMDL, hasMDL, fuelFedEx, vatP
   // Không hiện dropdown nếu MDL không có giá
   if (!hasMDL) return;
 
+  // ── Lấy tên NCC từ providerMap (sheet Setting) ──
+  // providerMap['FEDEX'] = [{val:'Viettel', ...}, {val:'MDL', ...}]
+  // Tìm entry MDL theo tên (chứa 'MDL'), còn lại là Viettel (entry đầu không phải MDL)
+  // Nếu sheet chỉ có 1 dòng FedEx → labelMDL fallback = 'MDL'
+  const fedexProviders = providerMap['FEDEX'] || providerMap['FedEx'] || [];
+  const mdlEntry = fedexProviders.find(e => e.val && e.val.toUpperCase().includes('MDL'));
+  const vtEntry  = fedexProviders.find(e => e.val && !e.val.toUpperCase().includes('MDL'));
+  const labelVT  = (vtEntry  && vtEntry.val)  ? vtEntry.val  : (fedexProviders[0]?.val || 'Viettel');
+  const labelMDL = (mdlEntry && mdlEntry.val) ? mdlEntry.val : 'MDL';
+
   const totalVT  = calcFedExTotal(baseVT,  fuelFedEx, demand, ocList, vatPct);
   const totalMDL = calcFedExTotal(baseMDL, fuelFedEx, demand, ocList, vatPct);
-  const cheapest = totalVT <= totalMDL ? 'Viettel' : 'MDL';
+  // bằng nhau → ưu tiên MDL (NCC thứ 2)
+  const isEqual = totalVT === totalMDL;
+  const cheapestKey = totalVT < totalMDL ? 'VT' : 'MDL';
+  const cheapestLabel = cheapestKey === 'VT' ? labelVT : labelMDL;
+  const cheapestBadge = isEqual
+    ? `⭐ Bằng nhau, ưu tiên ${labelMDL}`
+    : `⭐ ${cheapestLabel} rẻ hơn`;
   const nccKey   = cardId === 'fedex-ip' ? '_fedexIPNCC' : '_fedexIENCC';
-  const current  = window[nccKey] || cheapest;
+  const current  = window[nccKey] || cheapestKey;
 
   const wrap = document.createElement('div');
   wrap.className = 'fedex-ncc-wrap';
   wrap.innerHTML = `
     <span class="fedex-ncc-label">NCC</span>
     <select class="fedex-ncc-select">
-      <option value="Viettel" ${current==='Viettel'?'selected':''}>Viettel — ${Math.round(baseVT).toLocaleString('vi-VN')} ₫</option>
-      <option value="MDL"     ${current==='MDL'    ?'selected':''}>MDL — ${Math.round(baseMDL).toLocaleString('vi-VN')} ₫</option>
+      <option value="VT"  ${current==='VT' ?'selected':''}>${labelVT} — ${Math.round(baseVT).toLocaleString('vi-VN')} ₫</option>
+      <option value="MDL" ${current==='MDL'?'selected':''}>${labelMDL} — ${Math.round(baseMDL).toLocaleString('vi-VN')} ₫</option>
     </select>
-    <span class="fedex-ncc-cheapest">⭐ ${cheapest} rẻ hơn</span>
+    <span class="fedex-ncc-cheapest">${cheapestBadge}</span>
   `;
 
   const sel = wrap.querySelector('select');
   sel.addEventListener('change', () => {
     window[nccKey] = sel.value;
-    // Tính lại base theo NCC mới
     const newBase = sel.value === 'MDL' ? baseMDL : baseVT;
     const newFuel = newBase * fuelFedEx / 100;
-    const { amt: newDemand, perKg: newDemandPerKg } = (() => {
-      // re-use demand đã tính (không thay đổi theo NCC)
-      return { amt: demand, perKg: 0 };
-    })();
     renderCarrier(cardId, newBase, newFuel, fuelFedEx, demand, 0, 0, vatPct,
       {zone:`FedEx Zone ${zone||'N/A'}`, weight:weightLabel, type:typeLabel}, ocList, billableWeight);
-    // Re-render dropdown (giữ nguyên selection)
     renderFedExNCCDropdown(cardId, baseVT, baseMDL, hasMDL, fuelFedEx, vatPct, demand, ocList, billableWeight,
       zone, ratesMDL, perKgMDL, ratesVT, perKgVT, weightLabel, typeLabel);
   });
@@ -2979,11 +2989,12 @@ function calculate() {
 
   const fipHasMDL   = fipBaseMDL > 0;
   // Mặc định chọn NCC có giá thấp hơn
-  const fipDefaultNCC = (!fipHasMDL || fipBaseVT <= fipBaseMDL) ? 'Viettel' : 'MDL';
+  // bằng nhau → ưu tiên MDL
+  const fipDefaultNCC = (!fipHasMDL || fipBaseVT < fipBaseMDL) ? 'VT' : 'MDL';
   window._fedexIPNCC  = window._fedexIPNCC || fipDefaultNCC;
   // Reset nếu MDL không có giá
-  if (!fipHasMDL) window._fedexIPNCC = 'Viettel';
-  const fipBase = (window._fedexIPNCC === 'MDL' && fipHasMDL) ? fipBaseMDL : fipBaseVT;
+  if (!fipHasMDL) window._fedexIPNCC = 'VT';
+  const fipBase = (window._fedexIPNCC === 'MDL' && fipHasMDL) ? fipBaseMDL : fipBaseVT; // 'VT' hoặc 'MDL'
 
   const fipFuel  = fipBase * fuelFedEx / 100;
   const { amt: fipDemand, perKg: fipDemandPerKg } = calcDemand('FedEx', fuelFedEx);
@@ -3010,10 +3021,10 @@ function calculate() {
   const fieBaseMDL  = fieZone && Object.keys(fieRatesMDL).length > 0 ? getFedExRate(fedexBillableWeight, fieZone, fieRatesMDL, fiePerKgMDL) : 0;
 
   const fieHasMDL   = fieBaseMDL > 0;
-  const fieDefaultNCC = (!fieHasMDL || fieBaseVT <= fieBaseMDL) ? 'Viettel' : 'MDL';
+  const fieDefaultNCC = (!fieHasMDL || fieBaseVT < fieBaseMDL) ? 'VT' : 'MDL';
   window._fedexIENCC  = window._fedexIENCC || fieDefaultNCC;
-  if (!fieHasMDL) window._fedexIENCC = 'Viettel';
-  const fieBase = (window._fedexIENCC === 'MDL' && fieHasMDL) ? fieBaseMDL : fieBaseVT;
+  if (!fieHasMDL) window._fedexIENCC = 'VT';
+  const fieBase = (window._fedexIENCC === 'MDL' && fieHasMDL) ? fieBaseMDL : fieBaseVT; // 'VT' hoặc 'MDL'
 
   const fieFuel  = fieBase * fuelFedEx / 100;
   const { amt: fieDemand, perKg: fieDemandPerKg } = calcDemand('FedEx', fuelFedEx);
