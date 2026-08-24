@@ -539,15 +539,17 @@ body.dark #weekly-popup-close:hover { color: #cbd5e1; background: #0f172a; }
   font-weight: 600; color: var(--dark) !important;
 }
 .country-opt {
-  padding: 9px 14px; font-size: 14px; color: #374151; cursor: pointer;
-  border-bottom: 1px solid #f1f5f9; transition: background 0.1s;
-  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; font-size: 13px; font-weight: 600; color: #1a1a1a; cursor: pointer;
+  border-bottom: 1px solid #e5e7eb; transition: background 0.08s;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase; letter-spacing: 0.03em;
+  background: white;
 }
 .country-opt:last-child { border-bottom: none; }
-.country-opt:hover, .country-opt.active { background: #eff6ff; color: #1d4ed8; }
-.country-opt mark { background: #fef08a; color: inherit; border-radius: 2px; font-style: normal; font-weight: 700; }
-.country-opt-empty { padding: 14px; font-size: 13px; color: #9ca3af; text-align: center; font-style: italic; }
+.country-opt:hover { background: #dbeafe; color: #1e3a8a; }
+.country-opt.active { background: #f59e0b; color: #1a1a1a; }
+.country-opt span.cc-hl { background: transparent; font-weight: 800; }
+.country-opt-empty { padding: 14px; font-size: 13px; color: #9ca3af; text-align: center; font-style: italic; text-transform: none; }
 
 /* ── FEDEX NCC DROPDOWN ── */
 .fedex-ncc-wrap {
@@ -713,7 +715,7 @@ body.dark #weekly-popup-close:hover { color: #cbd5e1; background: #0f172a; }
               style="display:block;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:12px;pointer-events:none;">▾</span>
           </div>
           <div id="country-dropdown"
-            style="display:none;position:absolute;z-index:999;left:0;right:0;top:calc(100% + 4px);background:white;border:1.5px solid #bfdbfe;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.13);max-height:240px;overflow-y:auto;overflow-x:hidden;">
+            style="display:none;position:absolute;z-index:999;left:0;right:0;top:calc(100% + 2px);background:white;border:1px solid #d1d5db;border-radius:4px;box-shadow:0 4px 16px rgba(0,0,0,0.18);max-height:260px;overflow-y:auto;overflow-x:hidden;">
           </div>
         </div>
       </div>
@@ -7829,10 +7831,8 @@ function countryComboRender(query) {
   if (!q) {
     filtered = _ccAllOptions;
   } else {
-    // Ưu tiên: bắt đầu bằng query > chứa query
-    const starts = _ccAllOptions.filter(o => _ccNorm(o.label).startsWith(qn));
-    const contains = _ccAllOptions.filter(o => !_ccNorm(o.label).startsWith(qn) && _ccNorm(o.label).includes(qn));
-    filtered = [...starts, ...contains];
+    // Chỉ tìm tên bắt đầu bằng query
+    filtered = _ccAllOptions.filter(o => _ccNorm(o.label).startsWith(qn));
   }
 
   if (!filtered.length) {
@@ -7848,15 +7848,12 @@ function countryComboRender(query) {
     const isSelected = o.value === curVal;
     let label = o.label;
     if (q) {
-      // Highlight matched chars
-      const idx = _ccNorm(label).indexOf(qn);
-      if (idx >= 0) {
-        label = label.slice(0,idx) + '<mark>' + label.slice(idx, idx+q.length) + '</mark>' + label.slice(idx+q.length);
-      }
+      // Highlight prefix match
+      const matched = label.slice(0, q.length);
+      const rest    = label.slice(q.length);
+      label = '<span class="cc-hl">' + matched + '</span>' + rest;
     }
-    return `<div class="country-opt${isSelected?' active':''}" data-value="${o.value}" data-idx="${i}" onmousedown="countryComboSelect('${o.value.replace(/'/g,"\\'")}')">
-      ${isSelected ? '<span style="color:#2563eb;font-size:11px;margin-right:4px;">✓</span>' : ''}${label}
-    </div>`;
+    return `<div class="country-opt${isSelected?' active':''}" data-value="${o.value}" data-idx="${i}" onmousedown="countryComboSelect('${o.value.replace(/'/g,"\\'")}')">${isSelected ? '<span style="color:#2563eb;font-size:11px;margin-right:4px;">✓</span>' : ''}${label}</div>`;
   }).join('');
 
   // Set active index to selected item
