@@ -7844,7 +7844,7 @@ function countryComboRender(query) {
   const sel = document.getElementById('country');
   const curVal = sel.value;
 
-  dd.innerHTML = filtered.slice(0, 80).map((o, i) => {
+  dd.innerHTML = filtered.slice(0, q ? 80 : filtered.length).map((o, i) => {
     const isSelected = o.value === curVal;
     let label = o.label;
     if (q) {
@@ -7855,8 +7855,7 @@ function countryComboRender(query) {
       }
     }
     return `<div class="country-opt${isSelected?' active':''}" data-value="${o.value}" data-idx="${i}" onmousedown="countryComboSelect('${o.value.replace(/'/g,"\\'")}')">
-      ${isSelected ? '<span style="color:#2563eb;font-size:11px;">✓</span>' : '<span style="width:14px;display:inline-block;"></span>'}
-      ${label}
+      ${isSelected ? '<span style="color:#2563eb;font-size:11px;margin-right:4px;">✓</span>' : ''}${label}
     </div>`;
   }).join('');
 
