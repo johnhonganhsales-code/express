@@ -529,6 +529,22 @@ body.dark #weekly-popup-body strong { color: #60a5fa; }
 }
 #weekly-popup-close:hover { color: #374151; background: #f1f5f9; }
 body.dark #weekly-popup-close:hover { color: #cbd5e1; background: #0f172a; }
+/* ── FEDEX NCC DROPDOWN ── */
+.fedex-ncc-wrap {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 0 4px; padding: 8px 10px;
+  background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;
+}
+.fedex-ncc-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; }
+.fedex-ncc-select {
+  flex: 1; padding: 5px 10px; border: 1.5px solid #bfdbfe; border-radius: 7px;
+  font-size: 13px; font-weight: 700; font-family: inherit; color: #1d4ed8;
+  background: white; cursor: pointer; outline: none; appearance: none; -webkit-appearance: none;
+}
+.fedex-ncc-select:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.12); }
+.fedex-ncc-cheapest { font-size: 11px; color: #059669; background: #f0fdf4; border: 1px solid #86efac; border-radius: 5px; padding: 2px 7px; flex-shrink: 0; font-weight: 600; }
+.fedex-ncc-price { font-size: 12px; color: #374151; flex-shrink: 0; }
+
 </style>
 </head>
 <body>
@@ -1381,6 +1397,10 @@ const GIDS = {
   UPS_Freight_Imp:  314852818,
   FedEx_IP_Imp:     823881690,
   FedEx_IE_Imp:     949561842,
+  FedEx_IP_Exp_MDL: 821735541,
+  FedEx_IE_Exp_MDL: 1546893149,
+  FedEx_IP_Imp_MDL: 1955230152,
+  FedEx_IE_Imp_MDL: 1700376749,
 };
 
 // ============================================================
@@ -1415,6 +1435,11 @@ let fedexIPRates  = {}, fedexIERates   = {};
 let fedexIPPerKgKeys = [], fedexIEPerKgKeys = [];
 let fedexIPImpRates = {}, fedexIEImpRates = {};
 let fedexIPImpPerKgKeys = [], fedexIEImpPerKgKeys = [];
+// MDL rates
+let fedexIPMDLRates = {}, fedexIEMDLRates = {};
+let fedexIPMDLPerKgKeys = [], fedexIEMDLPerKgKeys = [];
+let fedexIPImpMDLRates = {}, fedexIEImpMDLRates = {};
+let fedexIPImpMDLPerKgKeys = [], fedexIEImpMDLPerKgKeys = [];
 // FedEx zone letter → col index in rate array
 const FEDEX_ZONES = ['A','B','C','D','E','F','G','H','K','M','P','O','Q','R','S','T','U','V','W','X','Y','Z'];
 let currentType = 'document';
@@ -1627,12 +1652,16 @@ async function fetchAllData(onProgress) {
     UPS_Saver_Imp:    raw['Cost_UPS_Saver_Imp']     || [],
     UPS_Exp_Imp:      raw['Cost_UPS_EXPEDITED_Imp'] || [],
     UPS_Freight_Imp:  raw['Cost_UPS_Freight_Imp']   || [],
-    FedEx_IP:         raw['Cost_FedEx_IP_Exp']      || [],
-    FedEx_IE:         raw['Cost_FedEx_IE_Exp']      || [],
-    FedEx_IP_Imp:     raw['Cost_FedEx_IP_Imp']      || [],
-    FedEx_IE_Imp:     raw['Cost_FedEx_IE_Imp']      || [],
-    Other_Charges:    raw['Other_Charges']          || [],
-    Cost_DHL_Imp:     raw['Cost_DHL_Imp']           || [],
+    FedEx_IP:         raw['Cost_FedEx_IP_Exp_Viettel'] || raw['Cost_FedEx_IP_Exp'] || [],
+    FedEx_IE:         raw['Cost_FedEx_IE_Exp_Viettel'] || raw['Cost_FedEx_IE_Exp'] || [],
+    FedEx_IP_Imp:     raw['Cost_FedEx_IP_Imp_Viettel'] || raw['Cost_FedEx_IP_Imp'] || [],
+    FedEx_IE_Imp:     raw['Cost_FedEx_IE_Imp_Viettel'] || raw['Cost_FedEx_IE_Imp'] || [],
+    FedEx_IP_MDL:     raw['Cost_FedEx_IP_Exp_MDL']     || [],
+    FedEx_IE_MDL:     raw['Cost_FedEx_IE_Exp_MDL']     || [],
+    FedEx_IP_Imp_MDL: raw['Cost_FedEx_IP_Imp_MDL']     || [],
+    FedEx_IE_Imp_MDL: raw['Cost_FedEx_IE_Imp_MDL']     || [],
+    Other_Charges:    raw['Other_Charges']              || [],
+    Cost_DHL_Imp:     raw['Cost_DHL_Imp']               || [],
   };
 }
 
@@ -2743,6 +2772,69 @@ function getOtherCharges(carrier, weight, dims, country, type, isFreight=false, 
 // ============================================================
 // CALCULATE
 // ============================================================
+// ============================================================
+// FEDEX NCC DROPDOWN – Viettel / MDL
+// ============================================================
+function calcFedExTotal(base, fuelFedEx, demand, ocList, vatPct) {
+  const fuel    = base * fuelFedEx / 100;
+  const subtotal = base + fuel + demand;
+  const ocTotal  = ocList.reduce((s, c) => s + (c.flat || 0), 0);
+  const vat      = (subtotal + ocTotal) * vatPct / 100;
+  return Math.round(subtotal + ocTotal + vat);
+}
+
+function renderFedExNCCDropdown(cardId, baseVT, baseMDL, hasMDL, fuelFedEx, vatPct, demand, ocList, billableWeight,
+    zone, ratesMDL, perKgMDL, ratesVT, perKgVT, weightLabel, typeLabel) {
+  const detail = document.getElementById(cardId + '-detail');
+  if (!detail) return;
+
+  // Xóa dropdown cũ nếu có
+  const oldWrap = detail.querySelector('.fedex-ncc-wrap');
+  if (oldWrap) oldWrap.remove();
+
+  // Không hiện dropdown nếu MDL không có giá
+  if (!hasMDL) return;
+
+  const totalVT  = calcFedExTotal(baseVT,  fuelFedEx, demand, ocList, vatPct);
+  const totalMDL = calcFedExTotal(baseMDL, fuelFedEx, demand, ocList, vatPct);
+  const cheapest = totalVT <= totalMDL ? 'Viettel' : 'MDL';
+  const nccKey   = cardId === 'fedex-ip' ? '_fedexIPNCC' : '_fedexIENCC';
+  const current  = window[nccKey] || cheapest;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'fedex-ncc-wrap';
+  wrap.innerHTML = `
+    <span class="fedex-ncc-label">NCC</span>
+    <select class="fedex-ncc-select">
+      <option value="Viettel" ${current==='Viettel'?'selected':''}>Viettel — ${Math.round(baseVT).toLocaleString('vi-VN')} ₫</option>
+      <option value="MDL"     ${current==='MDL'    ?'selected':''}>MDL — ${Math.round(baseMDL).toLocaleString('vi-VN')} ₫</option>
+    </select>
+    <span class="fedex-ncc-cheapest">⭐ ${cheapest} rẻ hơn</span>
+  `;
+
+  const sel = wrap.querySelector('select');
+  sel.addEventListener('change', () => {
+    window[nccKey] = sel.value;
+    // Tính lại base theo NCC mới
+    const newBase = sel.value === 'MDL' ? baseMDL : baseVT;
+    const newFuel = newBase * fuelFedEx / 100;
+    const { amt: newDemand, perKg: newDemandPerKg } = (() => {
+      // re-use demand đã tính (không thay đổi theo NCC)
+      return { amt: demand, perKg: 0 };
+    })();
+    renderCarrier(cardId, newBase, newFuel, fuelFedEx, demand, 0, 0, vatPct,
+      {zone:`FedEx Zone ${zone||'N/A'}`, weight:weightLabel, type:typeLabel}, ocList, billableWeight);
+    // Re-render dropdown (giữ nguyên selection)
+    renderFedExNCCDropdown(cardId, baseVT, baseMDL, hasMDL, fuelFedEx, vatPct, demand, ocList, billableWeight,
+      zone, ratesMDL, perKgMDL, ratesVT, perKgVT, weightLabel, typeLabel);
+  });
+
+  // Chèn ngay sau provider row hoặc đầu detail
+  const providerRow = detail.querySelector('.provider-row');
+  if (providerRow) providerRow.after(wrap);
+  else detail.prepend(wrap);
+}
+
 function calculate() {
   const country=document.getElementById('country').value;
   const wt=parseFloat(document.getElementById('weight').value);
@@ -2785,6 +2877,9 @@ function calculate() {
 
   // Xác định hướng nhập/xuất — khai báo trước calcDemand để isImport có giá trị đúng
   const isImport = currentDirection === 'import';
+  // Reset NCC selection mỗi lần tính để re-evaluate NCC rẻ hơn
+  window._fedexIPNCC = null;
+  window._fedexIENCC = null;
 
   // Helper: tính demand amount từ sheet Demand
   // demandAmt = perKg × chargeWeight (làm tròn lên 0.5)
@@ -2868,35 +2963,67 @@ function calculate() {
     ? `${roundedWeightFedEx} kg → min ${fedexBillableWeight} kg (${useFedExFreight && fedexBillableWeight === FEDEX_FREIGHT_MIN_KG ? 'IPF/IEF min 68 kg' : 'oversize'})`
     : `${roundedWeightFedEx} kg`;
 
-  // FedEx IP / IPF — xuất dùng fedexIPRates, nhập dùng fedexIPImpRates
-  const fipZone = useFedExFreight ? (zones.fedexIPF || zones.fedexIP) : zones.fedexIP;
+  // ── FedEx IP / IPF ──────────────────────────────────────────
+  const fipZone  = useFedExFreight ? (zones.fedexIPF || zones.fedexIP) : zones.fedexIP;
   const fipLabel = useFedExFreight ? 'FedEx International Priority Freight' : 'FedEx International Priority';
   const fipService = useFedExFreight ? `IPF · ${countryShort}` : `IP Package · ${countryShort}`;
-  const fipRates   = isImport ? fedexIPImpRates   : fedexIPRates;
-  const fipPerKg   = isImport ? fedexIPImpPerKgKeys : fedexIPPerKgKeys;
-  const fipBase = fipZone ? getFedExRate(fedexBillableWeight, fipZone, fipRates, fipPerKg) : 0;
-  const fipFuel=fipBase*fuelFedEx/100;
-  const { amt: fipDemand, perKg: fipDemandPerKg } = calcDemand('FedEx', fuelFedEx);
-  const fipOC=getOtherCharges('FedEx',roundedWeightFedEx,dims,country,effectiveType,useFedExFreight,wt);
-  document.getElementById('fedex-ip-name').textContent = fipLabel;
-  document.getElementById('fedex-ip-service').textContent = fipService;
-  renderCarrier('fedex-ip',fipBase,fipFuel,fuelFedEx,fipDemand,fipDemandPerKg,0,vatPct,
-    {zone:`FedEx Zone ${fipZone||'N/A'}`,weight:fedexWeightLabel,type:typeLabel},fipOC,fedexBillableWeight);
 
-  // FedEx IE / IEF — xuất dùng fedexIERates, nhập dùng fedexIEImpRates
-  const fieZone = useFedExFreight ? (zones.fedexIEF || zones.fedexIE) : zones.fedexIE;
+  // Viettel
+  const fipRatesVT  = isImport ? fedexIPImpRates    : fedexIPRates;
+  const fipPerKgVT  = isImport ? fedexIPImpPerKgKeys : fedexIPPerKgKeys;
+  const fipBaseVT   = fipZone ? getFedExRate(fedexBillableWeight, fipZone, fipRatesVT, fipPerKgVT) : 0;
+  // MDL
+  const fipRatesMDL = isImport ? fedexIPImpMDLRates    : fedexIPMDLRates;
+  const fipPerKgMDL = isImport ? fedexIPImpMDLPerKgKeys : fedexIPMDLPerKgKeys;
+  const fipBaseMDL  = fipZone && Object.keys(fipRatesMDL).length > 0 ? getFedExRate(fedexBillableWeight, fipZone, fipRatesMDL, fipPerKgMDL) : 0;
+
+  const fipHasMDL   = fipBaseMDL > 0;
+  // Mặc định chọn NCC có giá thấp hơn
+  const fipDefaultNCC = (!fipHasMDL || fipBaseVT <= fipBaseMDL) ? 'Viettel' : 'MDL';
+  window._fedexIPNCC  = window._fedexIPNCC || fipDefaultNCC;
+  // Reset nếu MDL không có giá
+  if (!fipHasMDL) window._fedexIPNCC = 'Viettel';
+  const fipBase = (window._fedexIPNCC === 'MDL' && fipHasMDL) ? fipBaseMDL : fipBaseVT;
+
+  const fipFuel  = fipBase * fuelFedEx / 100;
+  const { amt: fipDemand, perKg: fipDemandPerKg } = calcDemand('FedEx', fuelFedEx);
+  const fipOC    = getOtherCharges('FedEx', roundedWeightFedEx, dims, country, effectiveType, useFedExFreight, wt);
+  document.getElementById('fedex-ip-name').textContent    = fipLabel;
+  document.getElementById('fedex-ip-service').textContent = fipService;
+  renderCarrier('fedex-ip', fipBase, fipFuel, fuelFedEx, fipDemand, fipDemandPerKg, 0, vatPct,
+    {zone:`FedEx Zone ${fipZone||'N/A'}`, weight:fedexWeightLabel, type:typeLabel}, fipOC, fedexBillableWeight);
+  renderFedExNCCDropdown('fedex-ip', fipBaseVT, fipBaseMDL, fipHasMDL, fuelFedEx, vatPct, fipDemand, fipOC, fedexBillableWeight,
+    fipZone, fipRatesMDL, fipPerKgMDL, fipRatesVT, fipPerKgVT, fedexWeightLabel, typeLabel);
+
+  // ── FedEx IE / IEF ──────────────────────────────────────────
+  const fieZone  = useFedExFreight ? (zones.fedexIEF || zones.fedexIE) : zones.fedexIE;
   const fieLabel = useFedExFreight ? 'FedEx International Economy Freight' : 'FedEx International Economy';
   const fieService = useFedExFreight ? `IEF · ${countryShort}` : `IE Package · ${countryShort}`;
-  const fieRates   = isImport ? fedexIEImpRates   : fedexIERates;
-  const fiePerKg   = isImport ? fedexIEImpPerKgKeys : fedexIEPerKgKeys;
-  const fieBase = fieZone ? getFedExRate(fedexBillableWeight, fieZone, fieRates, fiePerKg) : 0;
-  const fieFuel=fieBase*fuelFedEx/100;
+
+  // Viettel
+  const fieRatesVT  = isImport ? fedexIEImpRates    : fedexIERates;
+  const fiePerKgVT  = isImport ? fedexIEImpPerKgKeys : fedexIEPerKgKeys;
+  const fieBaseVT   = fieZone ? getFedExRate(fedexBillableWeight, fieZone, fieRatesVT, fiePerKgVT) : 0;
+  // MDL
+  const fieRatesMDL = isImport ? fedexIEImpMDLRates    : fedexIEMDLRates;
+  const fiePerKgMDL = isImport ? fedexIEImpMDLPerKgKeys : fedexIEMDLPerKgKeys;
+  const fieBaseMDL  = fieZone && Object.keys(fieRatesMDL).length > 0 ? getFedExRate(fedexBillableWeight, fieZone, fieRatesMDL, fiePerKgMDL) : 0;
+
+  const fieHasMDL   = fieBaseMDL > 0;
+  const fieDefaultNCC = (!fieHasMDL || fieBaseVT <= fieBaseMDL) ? 'Viettel' : 'MDL';
+  window._fedexIENCC  = window._fedexIENCC || fieDefaultNCC;
+  if (!fieHasMDL) window._fedexIENCC = 'Viettel';
+  const fieBase = (window._fedexIENCC === 'MDL' && fieHasMDL) ? fieBaseMDL : fieBaseVT;
+
+  const fieFuel  = fieBase * fuelFedEx / 100;
   const { amt: fieDemand, perKg: fieDemandPerKg } = calcDemand('FedEx', fuelFedEx);
-  const fieOC=getOtherCharges('FedEx',roundedWeightFedEx,dims,country,effectiveType,useFedExFreight,wt);
-  document.getElementById('fedex-ie-name').textContent = fieLabel;
+  const fieOC    = getOtherCharges('FedEx', roundedWeightFedEx, dims, country, effectiveType, useFedExFreight, wt);
+  document.getElementById('fedex-ie-name').textContent    = fieLabel;
   document.getElementById('fedex-ie-service').textContent = fieService;
-  renderCarrier('fedex-ie',fieBase,fieFuel,fuelFedEx,fieDemand,fieDemandPerKg,0,vatPct,
-    {zone:`FedEx Zone ${fieZone||'N/A'}`,weight:fedexWeightLabel,type:typeLabel},fieOC,fedexBillableWeight);
+  renderCarrier('fedex-ie', fieBase, fieFuel, fuelFedEx, fieDemand, fieDemandPerKg, 0, vatPct,
+    {zone:`FedEx Zone ${fieZone||'N/A'}`, weight:fedexWeightLabel, type:typeLabel}, fieOC, fedexBillableWeight);
+  renderFedExNCCDropdown('fedex-ie', fieBaseVT, fieBaseMDL, fieHasMDL, fuelFedEx, vatPct, fieDemand, fieOC, fedexBillableWeight,
+    fieZone, fieRatesMDL, fiePerKgMDL, fieRatesVT, fiePerKgVT, fedexWeightLabel, typeLabel);
 
   // UPS: chỉ dùng Freight khi cân THỰC TẾ kiện nặng nhất > 70kg (không tính dim weight, không cộng tổng)
   const upsFreightThreshold = parseFloat(document.getElementById('ups-freight-threshold').value) || 70;
@@ -2968,8 +3095,9 @@ function calculate() {
 // ============================================================
 // CACHE (version-based – không dùng TTL nữa)
 // ============================================================
-const CACHE_KEY     = 'multicarrier_cache_v29'; // v29: add DHL Import rates (Cost_DHL_Imp)
-const CACHE_VER_KEY = 'multicarrier_version_v29';
+const CACHE_KEY     = 'multicarrier_cache_v30'; // v30: add FedEx MDL dual-provider support
+const CACHE_VER_KEY_OLD = 'multicarrier_version_v29';
+const CACHE_VER_KEY = 'multicarrier_version_v30';
 
 function serializeForCache(p) {
   return JSON.parse(JSON.stringify(p, (key, value) =>
@@ -3017,7 +3145,7 @@ async function fetchVersion() {
 // ============================================================
 // APPLY DATA
 // ============================================================
-function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFreightExp, demandData, dhlsin, upsSavImp, upsExpImp, upsFreightImp, fedexIPImp, fedexIEImp, dhlImp) {
+function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFreightExp, demandData, dhlsin, upsSavImp, upsExpImp, upsFreightImp, fedexIPImp, fedexIEImp, dhlImp, fedexIPMDL, fedexIEMDL, fedexIPImpMDL, fedexIEImpMDL) {
   if (Array.isArray(oc)) OTHER_CHARGES = oc;
   if (demandData && typeof demandData === 'object') demandRates = demandData;
   if (setting.providers && typeof setting.providers === 'object') providerMap = setting.providers;
@@ -3088,6 +3216,15 @@ function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFr
   fedexIEImpRates      = fedexIEImp  || {};
   fedexIPImpPerKgKeys  = (fedexIPImp  && fedexIPImp.perKgKeys)  || [];
   fedexIEImpPerKgKeys  = (fedexIEImp  && fedexIEImp.perKgKeys)  || [];
+  // MDL
+  fedexIPMDLRates      = fedexIPMDL  || {};
+  fedexIEMDLRates      = fedexIEMDL  || {};
+  fedexIPMDLPerKgKeys  = (fedexIPMDL  && fedexIPMDL.perKgKeys)  || [];
+  fedexIEMDLPerKgKeys  = (fedexIEMDL  && fedexIEMDL.perKgKeys)  || [];
+  fedexIPImpMDLRates     = fedexIPImpMDL || {};
+  fedexIEImpMDLRates     = fedexIEImpMDL || {};
+  fedexIPImpMDLPerKgKeys = (fedexIPImpMDL && fedexIPImpMDL.perKgKeys) || [];
+  fedexIEImpMDLPerKgKeys = (fedexIEImpMDL && fedexIEImpMDL.perKgKeys) || [];
 
   if (setting.dhlFuel!==undefined)   document.getElementById('fuel-dhl').value   = setting.dhlFuel.toFixed(2);
   if (setting.fedexFuel!==undefined) document.getElementById('fuel-fedex').value = setting.fedexFuel.toFixed(2);
@@ -3147,7 +3284,7 @@ async function loadData(forceRefresh=false) {
   // ── BƯỚC 1: Load cache ngay → hiện giao diện trước ─────────
   const cachedFirst = loadCache();
   if (cachedFirst && !forceRefresh) {
-    applyData(cachedFirst.setting,cachedFirst.cd,cachedFirst.dhl,cachedFirst.upsSav,cachedFirst.upsExp,cachedFirst.fedexIP,cachedFirst.fedexIE,cachedFirst.oc,cachedFirst.upsFreightExp,cachedFirst.demandData,cachedFirst.dhlsin,cachedFirst.upsSavImp,cachedFirst.upsExpImp,cachedFirst.upsFreightImp,cachedFirst.fedexIPImp||null,cachedFirst.fedexIEImp||null,cachedFirst.dhlImp||null);
+    applyData(cachedFirst.setting,cachedFirst.cd,cachedFirst.dhl,cachedFirst.upsSav,cachedFirst.upsExp,cachedFirst.fedexIP,cachedFirst.fedexIE,cachedFirst.oc,cachedFirst.upsFreightExp,cachedFirst.demandData,cachedFirst.dhlsin,cachedFirst.upsSavImp,cachedFirst.upsExpImp,cachedFirst.upsFreightImp,cachedFirst.fedexIPImp||null,cachedFirst.fedexIEImp||null,cachedFirst.dhlImp||null,cachedFirst.fedexIPMDL||null,cachedFirst.fedexIEMDL||null,cachedFirst.fedexIPImpMDL||null,cachedFirst.fedexIEImpMDL||null);
     calcBtn.disabled = false;
     document.getElementById('import-btn').disabled = false;
     dot.className    = 'status-dot ok';
@@ -3185,7 +3322,7 @@ async function loadData(forceRefresh=false) {
   if (!forceRefresh && cached && cachedVersion && cachedVersion === remoteVersion) {
     pbDone();
     // Nếu cache cũ chưa có dhlsin → parse lại để cập nhật
-    applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE,cached.oc,cached.upsFreightExp,cached.demandData,cached.dhlsin||null,cached.upsSavImp,cached.upsExpImp,cached.upsFreightImp,cached.fedexIPImp||null,cached.fedexIEImp||null,cached.dhlImp||null);
+    applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE,cached.oc,cached.upsFreightExp,cached.demandData,cached.dhlsin||null,cached.upsSavImp,cached.upsExpImp,cached.upsFreightImp,cached.fedexIPImp||null,cached.fedexIEImp||null,cached.dhlImp||null,cached.fedexIPMDL||null,cached.fedexIEMDL||null,cached.fedexIPImpMDL||null,cached.fedexIEImpMDL||null);
     calcBtn.disabled = false;
     document.getElementById('import-btn').disabled = false;
     dot.className = 'status-dot ok';
@@ -3238,9 +3375,13 @@ async function loadData(forceRefresh=false) {
     const fedexIPImp = parseCostFedEx(fetched.FedEx_IP_Imp || []);
     const fedexIEImp = parseCostFedEx(fetched.FedEx_IE_Imp || []);
     const dhlImp     = parseCostDHL(fetched.Cost_DHL_Imp || []);
+    const fedexIPMDL    = parseCostFedEx(fetched.FedEx_IP_MDL    || []);
+    const fedexIEMDL    = parseCostFedEx(fetched.FedEx_IE_MDL    || []);
+    const fedexIPImpMDL = parseCostFedEx(fetched.FedEx_IP_Imp_MDL || []);
+    const fedexIEImpMDL = parseCostFedEx(fetched.FedEx_IE_Imp_MDL || []);
 
-    applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp);
-    saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp }, remoteVersion);
+    applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp,fedexIPMDL,fedexIEMDL,fedexIPImpMDL,fedexIEImpMDL);
+    saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp,fedexIPMDL,fedexIEMDL,fedexIPImpMDL,fedexIEImpMDL }, remoteVersion);
     pbShow(100);
     pbDone();
 
