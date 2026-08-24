@@ -2835,6 +2835,13 @@ function renderFedExNCCDropdown(cardId, baseVT, baseMDL, hasMDL, fuelFedEx, vatP
     const newFuel = newBase * fuelFedEx / 100;
     renderCarrier(cardId, newBase, newFuel, fuelFedEx, demand, 0, 0, vatPct,
       {zone:`FedEx Zone ${zone||'N/A'}`, weight:weightLabel, type:typeLabel}, ocList, billableWeight);
+    // Cập nhật nhãn NCC (provider-row badge) theo NCC đang chọn
+    const provEl    = document.getElementById(cardId + '-provider');
+    const provRowEl = document.getElementById(cardId + '-provider-row');
+    if (provEl && provRowEl) {
+      provEl.textContent = sel.value === 'MDL' ? labelMDL : labelVT;
+      provRowEl.style.display = 'flex';
+    }
     renderFedExNCCDropdown(cardId, baseVT, baseMDL, hasMDL, fuelFedEx, vatPct, demand, ocList, billableWeight,
       zone, ratesMDL, perKgMDL, ratesVT, perKgVT, weightLabel, typeLabel);
   });
@@ -3005,6 +3012,14 @@ function calculate() {
     {zone:`FedEx Zone ${fipZone||'N/A'}`, weight:fedexWeightLabel, type:typeLabel}, fipOC, fedexBillableWeight);
   renderFedExNCCDropdown('fedex-ip', fipBaseVT, fipBaseMDL, fipHasMDL, fuelFedEx, vatPct, fipDemand, fipOC, fedexBillableWeight,
     fipZone, fipRatesMDL, fipPerKgMDL, fipRatesVT, fipPerKgVT, fedexWeightLabel, typeLabel);
+  // Sync nhãn provider-row với NCC đang chọn
+  (function(){ const fedexProvs = providerMap['FEDEX']||providerMap['FedEx']||[];
+    const mdlE=fedexProvs.find(e=>e.val&&e.val.toUpperCase().includes('MDL'));
+    const vtE =fedexProvs.find(e=>e.val&&!e.val.toUpperCase().includes('MDL'));
+    const lVT=vtE?.val||fedexProvs[0]?.val||'Viettel'; const lMDL=mdlE?.val||'MDL';
+    const pEl=document.getElementById('fedex-ip-provider'); const pRow=document.getElementById('fedex-ip-provider-row');
+    if(pEl&&pRow&&fipHasMDL){ pEl.textContent=window._fedexIPNCC==='MDL'?lMDL:lVT; pRow.style.display='flex'; }
+  })();
 
   // ── FedEx IE / IEF ──────────────────────────────────────────
   const fieZone  = useFedExFreight ? (zones.fedexIEF || zones.fedexIE) : zones.fedexIE;
@@ -3035,6 +3050,14 @@ function calculate() {
     {zone:`FedEx Zone ${fieZone||'N/A'}`, weight:fedexWeightLabel, type:typeLabel}, fieOC, fedexBillableWeight);
   renderFedExNCCDropdown('fedex-ie', fieBaseVT, fieBaseMDL, fieHasMDL, fuelFedEx, vatPct, fieDemand, fieOC, fedexBillableWeight,
     fieZone, fieRatesMDL, fiePerKgMDL, fieRatesVT, fiePerKgVT, fedexWeightLabel, typeLabel);
+  // Sync nhãn provider-row với NCC đang chọn
+  (function(){ const fedexProvs = providerMap['FEDEX']||providerMap['FedEx']||[];
+    const mdlE=fedexProvs.find(e=>e.val&&e.val.toUpperCase().includes('MDL'));
+    const vtE =fedexProvs.find(e=>e.val&&!e.val.toUpperCase().includes('MDL'));
+    const lVT=vtE?.val||fedexProvs[0]?.val||'Viettel'; const lMDL=mdlE?.val||'MDL';
+    const pEl=document.getElementById('fedex-ie-provider'); const pRow=document.getElementById('fedex-ie-provider-row');
+    if(pEl&&pRow&&fieHasMDL){ pEl.textContent=window._fedexIENCC==='MDL'?lMDL:lVT; pRow.style.display='flex'; }
+  })();
 
   // UPS: chỉ dùng Freight khi cân THỰC TẾ kiện nặng nhất > 70kg (không tính dim weight, không cộng tổng)
   const upsFreightThreshold = parseFloat(document.getElementById('ups-freight-threshold').value) || 70;
