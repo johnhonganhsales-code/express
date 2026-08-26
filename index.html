@@ -2724,6 +2724,30 @@ function getFedExBillableWeight(weight, dims) {
   }
   return minW;
 }
+
+// UPS Oversize 2: mỗi kiện bị trigger → tính min 40 kg/kiện
+const UPS_OS2_MIN_KG = 40;
+
+// Trả về { totalWeight, triggered } trong đó:
+//   totalWeight = tổng cân tính cước sau khi ép min 40kg/kiện bị OS2
+//   triggered   = true nếu có ít nhất 1 kiện bị ép
+function getUPSOS2BillableWeight(pieces) {
+  if (!pieces || pieces.length === 0) return { totalWeight: 0, triggered: false };
+  let total = 0;
+  let triggered = false;
+  pieces.forEach(p => {
+    const pDims    = { l: p.lCm, w: p.wCm, h: p.hCm };
+    const pChargeW = Math.max(p.wKg, (p.lCm * p.wCm * p.hCm) / 5000);
+    const isOS2    = evalCondition('ups_oversize2', 'UPS', pChargeW, pDims, '', 'non-document', [], p.wKg);
+    if (isOS2) {
+      total += Math.max(pChargeW, UPS_OS2_MIN_KG);
+      triggered = true;
+    } else {
+      total += pChargeW;
+    }
+  });
+  return { totalWeight: total, triggered };
+}
 const CHARGE_GROUP = {
   'weight>70':'size','weight>25&&weight<=70':'size','weight>25&&weight<=50':'size',
   'dhl_oversize':'size',
@@ -2910,7 +2934,15 @@ function calculate() {
   // roundedWeight riêng cho từng hãng (làm tròn từng kiện rồi cộng)
   const roundedWeightDHL    = calcTotalRoundedByCarrier('DHL');
   const roundedWeightFedEx  = calcTotalRoundedByCarrier('FedEx');
-  const roundedWeightUPS    = calcTotalRoundedByCarrier('UPS');
+  const _rawRoundedWeightUPS = calcTotalRoundedByCarrier('UPS');
+  // UPS Oversize 2: ép min 40 kg/kiện bị trigger, tính lại tổng cân UPS
+  const _upsOS2Check = getUPSOS2BillableWeight(window._piecesKg || []);
+  const roundedWeightUPS = _upsOS2Check.triggered
+    ? Math.max(_rawRoundedWeightUPS, Math.ceil(_upsOS2Check.totalWeight * 2) / 2) // làm tròn 0.5kg
+    : _rawRoundedWeightUPS;
+  const upsWeightLabel = _upsOS2Check.triggered
+    ? `${_rawRoundedWeightUPS} kg → min ${roundedWeightUPS} kg (UPS Oversize 2)`
+    : `${roundedWeightUPS} kg`;
   // Dùng DHL làm mặc định cho các chỗ chỉ cần 1 giá trị (header, demand, etc.)
   const roundedWeight = roundedWeightDHL;
 
@@ -3134,7 +3166,7 @@ function calculate() {
   document.getElementById('ups-saver-name').textContent = usSaverNameLabel;
   document.getElementById('ups-saver-service').textContent = usSaverSvcLabel;
   renderCarrier('ups-saver',usBase,usFuel,fuelUPS,usDemand,usDemandPerKg,0,vatPct,
-    {zone:`UPS Zone ${upsZoneLabel(usSaverZone, isImport?upsSaverImpZoneNumMap:upsSaverZoneNumMap, country)}`,weight:`${roundedWeightUPS} kg`,type:typeLabel},usOC,roundedWeightUPS);
+    {zone:`UPS Zone ${upsZoneLabel(usSaverZone, isImport?upsSaverImpZoneNumMap:upsSaverZoneNumMap, country)}`,weight:upsWeightLabel,type:typeLabel},usOC,roundedWeightUPS);
 
   // UPS Expedited (ẩn khi >70kg vì đã dùng Freight ở trên)
   // Ẩn khi chọn Document mà sheet UPS Expedited không có bảng giá Document riêng
@@ -3153,7 +3185,7 @@ function calculate() {
   const ueOC=getOtherCharges('UPS',roundedWeightUPS,dims,country,effectiveType,false,wt);
   document.getElementById('ups-exp-service').textContent = isImport ? `Worldwide Expedited Imp · ${countryShort}` : `Worldwide Expedited · ${countryShort}`;
   renderCarrier('ups-exp',ueBase,ueFuel,fuelUPS,ueDemand,ueDemandPerKg,0,vatPct,
-    {zone:`UPS Zone ${upsZoneLabel(ueZone, isImport?upsExpImpZoneNumMap:upsExpZoneNumMap, country)}`,weight:`${roundedWeightUPS} kg`,type:typeLabel},ueOC,roundedWeightUPS);
+    {zone:`UPS Zone ${upsZoneLabel(ueZone, isImport?upsExpImpZoneNumMap:upsExpZoneNumMap, country)}`,weight:upsWeightLabel,type:typeLabel},ueOC,roundedWeightUPS);
 
   // Restore currentType
   currentType = savedType;
