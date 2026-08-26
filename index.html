@@ -2941,7 +2941,7 @@ function calculate() {
     ? Math.max(_rawRoundedWeightUPS, Math.ceil(_upsOS2Check.totalWeight * 2) / 2) // làm tròn 0.5kg
     : _rawRoundedWeightUPS;
   const upsWeightLabel = _upsOS2Check.triggered
-    ? `${_rawRoundedWeightUPS} kg → min ${roundedWeightUPS} kg (UPS Oversize 2)`
+    ? `${_rawRoundedWeightUPS} kg → min ${roundedWeightUPS} kg (LPS)`
     : `${roundedWeightUPS} kg`;
   // Dùng DHL làm mặc định cho các chỗ chỉ cần 1 giá trị (header, demand, etc.)
   const roundedWeight = roundedWeightDHL;
