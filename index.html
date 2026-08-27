@@ -939,6 +939,14 @@ body.dark .hn-pass-cancel { background: #0f172a; border-color: #334155; color: #
   display: flex; align-items: center; gap: 5px;
 }
 .hn-reload-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.hn-add-btn {
+  padding: 7px 14px; border-radius: 8px; border: none;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white; font-family: inherit; transition: all 0.15s;
+  display: flex; align-items: center; gap: 5px; white-space: nowrap;
+}
+.hn-add-btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(5,150,105,0.4); }
 .hn-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; }
 table.hn-table {
   width: 100%; border-collapse: collapse; font-size: 12.5px;
@@ -8972,6 +8980,7 @@ document.addEventListener('keydown', function(e) {
       <button class="hn-filter-btn" id="hn-filt-chua" onclick="setHNFilter('chua')">⏳ Chưa lấy</button>
       <button class="hn-filter-btn" id="hn-filt-da" onclick="setHNFilter('da')">✅ Đã lấy</button>
       <button class="hn-reload-btn" onclick="loadHNData()">🔄 Tải lại</button>
+      <button class="hn-add-btn" onclick="closeHangNhapView(); openHangNhapForm();" title="Thêm đơn hàng mới">➕ Thêm đơn</button>
       <span class="hn-count-badge" id="hn-count-badge">0 đơn</span>
     </div>
     <div class="hn-table-wrap">
