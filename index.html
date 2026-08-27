@@ -266,6 +266,71 @@
   footer { text-align: center; padding: 20px; font-size: 11px; color: #9ca3af; }
   @media (max-width: 480px) { .carrier-total { font-size: 16px; } }
 
+  /* ── LOGIN MODAL (chỉ cho Hàng nhập) ── */
+  #hn-login-overlay {
+    position: fixed; inset: 0; z-index: 999999;
+    background: rgba(15,23,42,0.65);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+    animation: overlayFadeIn 0.25s ease;
+  }
+  #hn-login-overlay.open { display: flex; }
+  #hn-login-box {
+    background: white; border-radius: 22px;
+    padding: 36px 32px 28px;
+    max-width: 360px; width: calc(100% - 40px);
+    box-shadow: 0 28px 72px rgba(0,0,0,0.35), 0 6px 20px rgba(0,0,0,0.15);
+    animation: popupBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  .hn-login-logo-row { display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:18px; }
+  .hn-login-logo-row .logo-dhl { padding:3px 9px; font-size:14px; }
+  .hn-login-logo-row .logo-fedex { font-size:14px; }
+  .hn-login-logo-row .logo-ups  { padding:3px 8px; font-size:12px; }
+  .hn-login-title { text-align:center; font-size:17px; font-weight:800; color:#111827; margin-bottom:4px; }
+  .hn-login-sub   { text-align:center; font-size:13px; color:#9ca3af; margin-bottom:24px; }
+  .hn-login-field { margin-bottom:13px; }
+  .hn-login-field label { display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
+  .hn-login-input {
+    width:100%; padding:11px 14px; border:1.5px solid #e2e8f0;
+    border-radius:10px; font-size:15px; font-family:inherit;
+    color:#111827 !important; background:#f8fafc !important;
+    -webkit-text-fill-color:#111827 !important; caret-color:#111827 !important;
+    outline:none; transition:border-color 0.2s, box-shadow 0.2s; box-sizing:border-box;
+  }
+  .hn-login-input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.12); background:white !important; }
+  .hn-login-input.err { border-color:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,0.1); }
+  .hn-login-err { font-size:12.5px; color:#dc2626; min-height:18px; text-align:center; font-weight:500; margin:8px 0 4px; }
+  .hn-login-btn {
+    width:100%; padding:13px; margin-top:4px;
+    background:linear-gradient(135deg,#1d4ed8 0%,#1e40af 100%);
+    color:white; border:none; border-radius:11px;
+    font-size:15px; font-weight:700; font-family:inherit;
+    cursor:pointer; box-shadow:0 4px 14px rgba(29,78,216,0.4);
+    transition:transform 0.15s, box-shadow 0.15s, filter 0.15s;
+  }
+  .hn-login-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(29,78,216,0.5); filter:brightness(1.1); }
+  .hn-login-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+  .hn-login-cancel-row { text-align:center; margin-top:14px; }
+  .hn-login-cancel-link { font-size:13px; color:#9ca3af; cursor:pointer; background:none; border:none; font-family:inherit; padding:4px 8px; border-radius:6px; transition:color 0.15s, background 0.15s; }
+  .hn-login-cancel-link:hover { color:#374151; background:#f1f5f9; }
+  .hn-login-last-hint { display:none; justify-content:center; align-items:center; gap:5px; margin-top:14px; font-size:12px; color:#6b7280; }
+  .hn-login-last-hint span { font-weight:600; color:#374151; }
+  @keyframes hnLoginShake {
+    0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+  }
+  .hn-login-shake { animation: hnLoginShake 0.4s ease; }
+
+  /* ── LOGOUT BUTTON (thay thế nút khoá) ── */
+  .hn-logout-btn {
+    flex-shrink:0; margin-top:2px; padding:5px 11px; border-radius:9px;
+    border:1.5px solid #fca5a5; background:#fef2f2; cursor:pointer;
+    font-size:12px; font-weight:700; color:#dc2626; line-height:1;
+    transition:all 0.2s; display:flex; align-items:center; gap:5px; white-space:nowrap;
+    font-family:inherit;
+  }
+  .hn-logout-btn:hover { background:#fee2e2; border-color:#ef4444; }
+
   /* ── SIDEBAR ── */
   .sidebar { width: 270px; flex-shrink: 0; padding: 20px 0 40px; }
   .sidebar-card {
@@ -567,6 +632,375 @@ body.dark #weekly-popup-close:hover { color: #cbd5e1; background: #0f172a; }
 .fedex-ncc-cheapest { font-size: 11px; color: #059669; background: #f0fdf4; border: 1px solid #86efac; border-radius: 5px; padding: 2px 7px; flex-shrink: 0; font-weight: 600; }
 .fedex-ncc-price { font-size: 12px; color: #374151; flex-shrink: 0; }
 
+/* ── QUẢN LÝ HÀNG NHẬP MODAL ── */
+#hangnhap-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 99998;
+  display: flex; align-items: center; justify-content: center;
+  animation: overlayFadeIn 0.25s ease;
+}
+#hangnhap-box {
+  background: white;
+  border-radius: 20px;
+  padding: 28px 28px 24px;
+  max-width: 720px; width: calc(100% - 32px);
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.1);
+  animation: popupBounceIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+body.dark #hangnhap-box { background: #1e293b; border: 1px solid #334155; }
+#hangnhap-box h2 {
+  font-size: 16px; font-weight: 800; color: #111827;
+  margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+}
+body.dark #hangnhap-box h2 { color: #f1f5f9; }
+#hangnhap-box .hn-sub {
+  font-size: 12px; color: #9ca3af; margin-bottom: 20px;
+}
+.hn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 600px) { .hn-grid { grid-template-columns: 1fr; } }
+.hn-field label {
+  font-size: 12px; font-weight: 700; color: #6b7280;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 5px; display: block;
+}
+body.dark .hn-field label { color: #94a3b8; }
+.hn-field input, .hn-field select {
+  width: 100%; padding: 10px 12px;
+  border: 1.5px solid #e2e8f0; border-radius: 10px;
+  font-size: 14px; font-family: inherit;
+  color: #111827 !important; background: white !important;
+  outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+}
+body.dark .hn-field input, body.dark .hn-field select {
+  background: #0f172a !important; color: #f1f5f9 !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+.hn-field input:focus, .hn-field select:focus {
+  border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+}
+.hn-field.full { grid-column: 1 / -1; }
+.hn-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+.hn-btn-cancel {
+  padding: 10px 20px; border-radius: 10px; border: 1.5px solid #e2e8f0;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  background: white; color: #6b7280; font-family: inherit;
+  transition: all 0.15s;
+}
+.hn-btn-cancel:hover { background: #f8fafc; color: #374151; }
+body.dark .hn-btn-cancel { background: #0f172a; border-color: #334155; color: #94a3b8; }
+body.dark .hn-btn-cancel:hover { background: #1e293b; color: #f1f5f9; }
+.hn-btn-save {
+  padding: 10px 24px; border-radius: 10px; border: none;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white; font-family: inherit;
+  box-shadow: 0 4px 14px rgba(5,150,105,0.35);
+  transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+}
+.hn-btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(5,150,105,0.45); filter: brightness(1.05); }
+.hn-btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.hn-status {
+  font-size: 13px; text-align: center; margin-top: 10px;
+  padding: 8px 12px; border-radius: 8px; display: none;
+}
+.hn-status.ok { display: block; background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+.hn-status.err { display: block; background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+.hn-sidebar-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px; border-radius: 9px;
+  font-size: 13px; font-weight: 600; color: #374151;
+  cursor: pointer; transition: all 0.15s;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1.5px solid #86efac;
+  width: 100%; font-family: inherit;
+}
+.hn-sidebar-btn:hover { background: linear-gradient(135deg, #dcfce7, #bbf7d0); transform: translateX(2px); box-shadow: 0 2px 8px rgba(5,150,105,0.2); }
+body.dark .hn-sidebar-btn { background: linear-gradient(135deg,#052e16,#064e3b); border-color: #166534; color: #86efac; }
+body.dark .hn-sidebar-btn:hover { background: linear-gradient(135deg,#064e3b,#065f46); }
+
+/* ── PASSWORD MODAL ── */
+#hn-pass-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  animation: overlayFadeIn 0.2s ease;
+}
+#hn-pass-box {
+  background: white; border-radius: 18px;
+  padding: 32px 28px 24px; max-width: 340px; width: calc(100% - 32px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  animation: popupBounceIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  text-align: center;
+}
+body.dark #hn-pass-box { background: #1e293b; border: 1px solid #334155; }
+#hn-pass-box .pass-icon { font-size: 36px; margin-bottom: 12px; }
+#hn-pass-box h3 { font-size: 15px; font-weight: 800; color: #111827; margin-bottom: 4px; }
+body.dark #hn-pass-box h3 { color: #f1f5f9; }
+#hn-pass-box p { font-size: 12px; color: #9ca3af; margin-bottom: 18px; }
+#hn-pass-input {
+  width: 100%; padding: 12px 16px;
+  border: 2px solid #e2e8f0; border-radius: 12px;
+  font-size: 18px; font-family: inherit; text-align: center;
+  letter-spacing: 4px; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #111827 !important; background: white !important;
+  margin-bottom: 12px;
+}
+body.dark #hn-pass-input {
+  background: #0f172a !important; color: #f1f5f9 !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+#hn-pass-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+#hn-pass-input.shake {
+  animation: passShake 0.4s ease;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.15) !important;
+}
+@keyframes passShake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+#hn-pass-err { font-size: 12px; color: #ef4444; margin-bottom: 10px; min-height: 16px; }
+.pass-btn-row { display: flex; gap: 8px; }
+.hn-pass-cancel {
+  flex: 1; padding: 10px; border-radius: 10px;
+  border: 1.5px solid #e2e8f0; font-size: 14px; font-weight: 600;
+  cursor: pointer; background: white; color: #6b7280; font-family: inherit;
+  transition: all 0.15s;
+}
+.hn-pass-cancel:hover { background: #f8fafc; color: #374151; }
+body.dark .hn-pass-cancel { background: #0f172a; border-color: #334155; color: #94a3b8; }
+.hn-pass-ok {
+  flex: 2; padding: 10px; border-radius: 10px; border: none;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white; font-family: inherit;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+  transition: all 0.15s;
+}
+.hn-pass-ok:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.45); }
+.hn-pass-ok:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.pass-lockout { font-size: 12px; color: #f59e0b; margin-top: 8px; }
+
+/* ── QUÊN / ĐỔI MẬT KHẨU ── */
+.pass-forgot-link {
+  display: inline-block; margin-top: 10px;
+  font-size: 12px; color: #6b7280; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+.pass-forgot-link:hover { color: #2563eb; }
+
+#hn-forgot-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,0.65);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  z-index: 100000;
+  display: flex; align-items: center; justify-content: center;
+  animation: overlayFadeIn 0.2s ease;
+}
+#hn-forgot-box {
+  background: white; border-radius: 18px;
+  padding: 32px 28px 24px; max-width: 340px; width: calc(100% - 32px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  animation: popupBounceIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  text-align: center;
+}
+#hn-forgot-box .fgt-icon { font-size: 36px; margin-bottom: 12px; }
+#hn-forgot-box h3 { font-size: 15px; font-weight: 800; color: #111827; margin-bottom: 4px; }
+#hn-forgot-box .fgt-desc { font-size: 12px; color: #9ca3af; margin-bottom: 18px; line-height: 1.5; }
+.fgt-step { display: none; }
+.fgt-step.active { display: block; }
+.fgt-input {
+  width: 100%; padding: 12px 16px; box-sizing: border-box;
+  border: 2px solid #e2e8f0; border-radius: 12px;
+  font-size: 16px; font-family: inherit; text-align: center;
+  letter-spacing: 2px; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #111827; background: white;
+  margin-bottom: 10px;
+}
+.fgt-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.fgt-input.fgt-err-border { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.15) !important; }
+#fgt-err { font-size: 12px; color: #ef4444; margin-bottom: 10px; min-height: 16px; }
+#fgt-ok  { font-size: 12px; color: #059669; margin-bottom: 10px; min-height: 16px; font-weight: 600; }
+.fgt-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+.fgt-cancel-btn {
+  flex: 1; padding: 10px; border-radius: 10px;
+  border: 1.5px solid #e2e8f0; font-size: 14px; font-weight: 600;
+  cursor: pointer; background: white; color: #6b7280; font-family: inherit;
+  transition: all 0.15s;
+}
+.fgt-cancel-btn:hover { background: #f8fafc; }
+.fgt-ok-btn {
+  flex: 2; padding: 10px; border-radius: 10px; border: none;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white; font-family: inherit; transition: all 0.15s;
+}
+.fgt-ok-btn:hover { filter: brightness(1.08); }
+.fgt-ok-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.fgt-progress {
+  display: flex; gap: 6px; justify-content: center; margin-bottom: 20px;
+}
+.fgt-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #e2e8f0; transition: background 0.3s;
+}
+.fgt-dot.active { background: #2563eb; }
+.fgt-dot.done   { background: #059669; }
+
+
+.hn-radio-group {
+  display: flex; gap: 10px;
+}
+.hn-radio-label {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px; border-radius: 10px; cursor: pointer;
+  border: 1.5px solid #e2e8f0; background: #f8fafc;
+  font-size: 13px; font-weight: 600; color: #6b7280;
+  transition: all 0.18s; user-select: none;
+}
+.hn-radio-label input[type=radio] { display: none; }
+.hn-radio-label.checked-yes {
+  border-color: #059669; background: #f0fdf4; color: #059669;
+  box-shadow: 0 0 0 2px rgba(5,150,105,0.12);
+}
+.hn-radio-label.checked-no {
+  border-color: #f59e0b; background: #fffbeb; color: #b45309;
+  box-shadow: 0 0 0 2px rgba(245,158,11,0.12);
+}
+.hn-radio-label:hover:not(.checked-yes):not(.checked-no) {
+  border-color: #94a3b8; background: #f1f5f9; color: #374151;
+}
+
+/* ── VIEW DATA MODAL ── */
+#hn-view-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,0.65);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  z-index: 99998;
+  display: flex; align-items: center; justify-content: center;
+  animation: overlayFadeIn 0.25s ease;
+}
+#hn-view-box {
+  background: white; border-radius: 20px;
+  padding: 26px 28px 22px;
+  max-width: 900px; width: calc(100% - 32px);
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.1);
+  animation: popupBounceIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  position: relative;
+}
+#hn-view-box h2 { font-size: 16px; font-weight: 800; color: #111827; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+#hn-view-box .hn-sub { font-size: 12px; color: #9ca3af; margin-bottom: 16px; }
+.hn-view-toolbar {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.hn-search-input {
+  flex: 1; min-width: 180px; padding: 8px 12px;
+  border: 1.5px solid #e2e8f0; border-radius: 9px;
+  font-size: 13px; font-family: inherit; outline: none;
+  transition: border-color 0.2s;
+}
+.hn-search-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.10); }
+.hn-filter-btn {
+  padding: 7px 14px; border-radius: 8px; border: 1.5px solid #e2e8f0;
+  font-size: 12px; font-weight: 600; cursor: pointer; background: white;
+  color: #6b7280; font-family: inherit; transition: all 0.15s;
+}
+.hn-filter-btn.active-all { border-color: #6b7280; background: #f1f5f9; color: #111827; }
+.hn-filter-btn.active-yes { border-color: #059669; background: #f0fdf4; color: #059669; }
+.hn-filter-btn.active-no  { border-color: #f59e0b; background: #fffbeb; color: #b45309; }
+.hn-filter-btn:hover { background: #f8fafc; }
+.hn-reload-btn {
+  padding: 7px 14px; border-radius: 8px; border: none;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white; font-family: inherit; transition: all 0.15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.hn-reload-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.hn-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; }
+table.hn-table {
+  width: 100%; border-collapse: collapse; font-size: 12.5px;
+}
+table.hn-table th {
+  background: #f8fafc; padding: 9px 11px; text-align: left;
+  font-size: 11px; font-weight: 700; color: #6b7280;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  border-bottom: 1.5px solid #e2e8f0; white-space: nowrap;
+}
+table.hn-table td {
+  padding: 9px 11px; border-bottom: 1px solid #f1f5f9;
+  color: #374151; vertical-align: middle;
+}
+table.hn-table tr:last-child td { border-bottom: none; }
+table.hn-table tr:hover td { background: #f8fafc; }
+.hn-badge-yes { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #f0fdf4; color: #059669; border: 1px solid #86efac; }
+.hn-badge-no  { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.hn-edit-btn {
+  padding: 4px 10px; border-radius: 7px; border: 1.5px solid #bfdbfe;
+  font-size: 11px; font-weight: 600; cursor: pointer; background: #eff6ff;
+  color: #1d4ed8; font-family: inherit; transition: all 0.15s; white-space: nowrap;
+}
+.hn-edit-btn:hover { background: #dbeafe; border-color: #93c5fd; }
+.hn-del-btn {
+  padding: 4px 10px; border-radius: 7px; border: 1.5px solid #fca5a5;
+  font-size: 11px; font-weight: 600; cursor: pointer; background: #fef2f2;
+  color: #dc2626; font-family: inherit; transition: all 0.15s; white-space: nowrap;
+  margin-left: 4px;
+}
+.hn-del-btn:hover { background: #fee2e2; border-color: #f87171; }
+.hn-view-loading { text-align: center; padding: 28px; color: #9ca3af; font-size: 13px; }
+.hn-view-empty { text-align: center; padding: 28px; color: #9ca3af; font-size: 13px; font-style: italic; }
+.hn-count-badge { font-size: 11px; font-weight: 600; color: #6b7280; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px 8px; margin-left: auto; }
+
+/* ── EDIT ROW INLINE ── */
+.hn-inline-edit td { background: #eff6ff !important; }
+.hn-inline-input {
+  width: 100%; padding: 5px 8px; border: 1.5px solid #93c5fd; border-radius: 7px;
+  font-size: 12px; font-family: inherit; outline: none; background: white;
+  color: #111827 !important; -webkit-text-fill-color: #111827 !important;
+}
+.hn-inline-select {
+  width: 100%; padding: 5px 8px; border: 1.5px solid #93c5fd; border-radius: 7px;
+  font-size: 12px; font-family: inherit; outline: none; background: white;
+  color: #111827 !important; -webkit-text-fill-color: #111827 !important;
+}
+.hn-save-row-btn {
+  padding: 4px 10px; border-radius: 7px; border: none;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white; font-family: inherit; transition: all 0.15s; white-space: nowrap;
+}
+.hn-save-row-btn:hover { filter: brightness(1.08); }
+.hn-cancel-row-btn {
+  padding: 4px 10px; border-radius: 7px; border: 1.5px solid #e2e8f0;
+  font-size: 11px; font-weight: 600; cursor: pointer; background: white;
+  color: #6b7280; font-family: inherit; transition: all 0.15s; white-space: nowrap;
+  margin-left: 3px;
+}
+.hn-cancel-row-btn:hover { background: #f8fafc; }
+
 </style>
 </head>
 <body>
@@ -662,6 +1096,19 @@ body.dark #weekly-popup-close:hover { color: #cbd5e1; background: #0f172a; }
     <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb dhl">DHL</span> Express</div><div id="sb-fuel-dhl">F5 để refesh</div></div>
     <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb fedex">FedEx</span> IP/IE</div><div id="sb-fuel-fedex">F5 để refesh</div></div>
     <div class="fuel-row"><div class="fuel-lbl"><span class="fuel-badge-sb ups">UPS</span> Saver/Exp</div><div id="sb-fuel-ups">F5 để refesh</div></div>
+  </div>
+
+  <!-- Quản lý hàng nhập -->
+  <div class="sidebar-card">
+    <div class="sidebar-title"><span>📦</span> Quản lý hàng nhập</div>
+    <button class="hn-sidebar-btn" onclick="openHangNhapAuth()" style="margin-bottom:7px;">
+      <span style="font-size:16px;">➕</span>
+      <span>Thêm đơn hàng nhập</span>
+    </button>
+    <button class="hn-sidebar-btn" onclick="openHangNhapViewAuth()" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#93c5fd;color:#1d4ed8;">
+      <span style="font-size:16px;">📋</span>
+      <span>Xem & chỉnh sửa dữ liệu</span>
+    </button>
   </div>
 
   <!-- Lịch sử tính -->
@@ -8015,6 +8462,1045 @@ populateCountries = function() {
     }
   }
 };
+</script>
+
+<!-- ── QUẢN LÝ HÀNG NHẬP MODAL ── -->
+<div id="hangnhap-overlay" style="display:none;" role="dialog" aria-modal="true">
+  <div id="hangnhap-box">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+      <div>
+        <h2>📦 Quản lý hàng nhập</h2>
+        <div class="hn-sub">Nhập thông tin đơn hàng → tự động lưu vào Google Sheet</div>
+      </div>
+      <button class="hn-logout-btn" onclick="hnDoLogout()" title="Đăng xuất">🚪 <span id="hn-badge-form"></span></button>
+    </div>
+    <div class="hn-grid">
+      <div class="hn-field">
+        <label>Ngày tạo bill</label>
+        <input type="date" id="hn-ngay-tao" />
+      </div>
+      <div class="hn-field">
+        <label>Ngày pick up</label>
+        <input type="date" id="hn-ngay-pickup" />
+      </div>
+      <div class="hn-field">
+        <label>AWB</label>
+        <input type="text" id="hn-awb" placeholder="Nhập số AWB..." />
+      </div>
+      <div class="hn-field">
+        <label>Khách hàng</label>
+        <input type="text" id="hn-khach" placeholder="Tên khách hàng..." />
+      </div>
+      <div class="hn-field">
+        <label>Dịch vụ</label>
+        <select id="hn-dichvu">
+          <option value="">-- Chọn dịch vụ --</option>
+          <option>DHL Express</option>
+          <option>DHL Import</option>
+          <option>FedEx IP</option>
+          <option>FedEx IE</option>
+          <option>UPS Expedited</option>
+          <option>UPS Express</option>
+          <option>Khác</option>
+        </select>
+      </div>
+      <div class="hn-field">
+        <label>Số kiện</label>
+        <input type="number" id="hn-sokien" placeholder="0" min="1" />
+      </div>
+      <div class="hn-field">
+        <label>Số kg</label>
+        <input type="number" id="hn-sokg" placeholder="0.0" step="0.1" min="0" />
+      </div>
+      <div class="hn-field">
+        <label>Giá bán <span style="font-size:11px;color:#9ca3af;font-weight:500;">(VND)</span></label>
+        <input type="number" id="hn-giaban" placeholder="0" min="0" step="1000" />
+      </div>
+      <div class="hn-field">
+        <label>Ghi chú</label>
+        <input type="text" id="hn-ghichu" placeholder="Ghi chú thêm..." />
+      </div>
+      <div class="hn-field full">
+        <label>Tình trạng lấy hàng</label>
+        <div class="hn-radio-group" id="hn-layhang-group">
+          <label class="hn-radio-label checked-no" id="hn-label-chua" onclick="setLayHang('chua')">
+            <input type="radio" name="hn-layhang" value="chua" id="hn-radio-chua" checked />
+            <span>⏳ Chưa lấy hàng</span>
+          </label>
+          <label class="hn-radio-label" id="hn-label-da" onclick="setLayHang('da')">
+            <input type="radio" name="hn-layhang" value="da" id="hn-radio-da" />
+            <span>✅ Đã lấy hàng</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="hn-btns">
+      <button class="hn-btn-cancel" onclick="closeHangNhap()">Huỷ</button>
+      <button class="hn-btn-save" id="hn-save-btn" onclick="saveHangNhap()">
+        <span id="hn-save-icon">💾</span>
+        <span id="hn-save-text">Lưu vào Google Sheet</span>
+      </button>
+    </div>
+    <div class="hn-status" id="hn-status"></div>
+  </div>
+</div>
+<script>
+// ── QUẢN LÝ HÀNG NHẬP ──
+// 👇 Paste URL Apps Script của mày vào đây sau khi deploy
+const HANGNHAP_SHEET_URL = 'https://script.google.com/macros/s/AKfycbw-J-Z76_8FfLlegjZWqTD_w7Ez2uff66GnPxUgYFWV1EVKzLUvX2dnm8h8-vwoopwIBA/exec';
+
+// ── PASSWORD PROTECTION ──
+let _hnPassAttempts = 0;
+let _hnLockUntil = 0;
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 5 * 60 * 1000; // 5 phút
+
+async function openHangNhapAuth() {
+  if (typeof _hnPendingAction === 'undefined' || _hnPendingAction !== 'view') {
+    _hnPendingAction = 'add';
+  }
+  // ── Nếu đã mở khoá phiên → bỏ qua bước nhập mật khẩu ──
+  if (window._hnSessionUnlocked) {
+    if (_hnPendingAction === 'view') {
+      _hnPendingAction = 'add';
+      openHangNhapView();
+    } else {
+      openHangNhapForm();
+    }
+    return;
+  }
+  // Kiểm tra đang bị khoá không
+  if (Date.now() < _hnLockUntil) {
+    const remaining = Math.ceil((_hnLockUntil - Date.now()) / 1000);
+    document.getElementById('hn-pass-lockout').textContent =
+      '🔒 Tài khoản bị khoá. Thử lại sau ' + remaining + 's';
+    showPassModal();
+    return;
+  }
+  showPassModal();
+}
+
+function showPassModal() {
+  document.getElementById('hn-pass-input').value = '';
+  document.getElementById('hn-pass-err').textContent = '';
+  document.getElementById('hn-pass-lockout').textContent = '';
+  document.getElementById('hn-pass-ok-btn').disabled = false;
+  document.getElementById('hn-pass-overlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('hn-pass-input').focus(), 100);
+}
+
+function closePassModal() {
+  document.getElementById('hn-pass-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// SHA-256 hash function (Web Crypto API)
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Hash của password - đổi pass thì cần cập nhật hash này
+// Pass hiện tại: admin123
+const HANGNHAP_PASS_HASH = '83cf8b609de60036a8277bd0e96135751bbc07eb234256d4b65b893360651bf2';
+
+// checkHangNhapPass được định nghĩa lại ở script block bên dưới (hỗ trợ đổi mật khẩu runtime)
+async function checkHangNhapPass() { /* overridden below */ }
+
+function setLayHang(val) {
+  document.getElementById('hn-radio-chua').checked = (val === 'chua');
+  document.getElementById('hn-radio-da').checked   = (val === 'da');
+  const lChua = document.getElementById('hn-label-chua');
+  const lDa   = document.getElementById('hn-label-da');
+  lChua.className = 'hn-radio-label' + (val === 'chua' ? ' checked-no' : '');
+  lDa.className   = 'hn-radio-label' + (val === 'da'   ? ' checked-yes' : '');
+}
+
+function openHangNhapForm() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('hn-ngay-tao').value = today;
+  document.getElementById('hn-ngay-pickup').value = today;
+  ['hn-awb','hn-khach','hn-ghichu'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('hn-dichvu').value = '';
+  document.getElementById('hn-sokien').value = '';
+  document.getElementById('hn-sokg').value = '';
+  document.getElementById('hn-giaban').value = '';
+  setLayHang('chua');
+  const st = document.getElementById('hn-status');
+  st.className = 'hn-status'; st.textContent = '';
+  const btn = document.getElementById('hn-save-btn');
+  btn.disabled = false;
+  document.getElementById('hn-save-icon').textContent = '💾';
+  document.getElementById('hn-save-text').textContent = 'Lưu vào Google Sheet';
+  document.getElementById('hangnhap-overlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+// Alias for backward compatibility (sidebar button onclick="openHangNhapAuth()" already handles routing)
+function openHangNhap() { openHangNhapForm(); }
+
+function closeHangNhap() {
+  document.getElementById('hangnhap-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function saveHangNhap() {
+  const ngayTao    = document.getElementById('hn-ngay-tao').value;
+  const ngayPickup = document.getElementById('hn-ngay-pickup').value;
+  const awb        = document.getElementById('hn-awb').value.trim();
+  const khach      = document.getElementById('hn-khach').value.trim();
+  const dichvu     = document.getElementById('hn-dichvu').value;
+  const sokien     = document.getElementById('hn-sokien').value;
+  const sokg       = document.getElementById('hn-sokg').value;
+  const giaban     = document.getElementById('hn-giaban').value;
+  const ghichu     = document.getElementById('hn-ghichu').value.trim();
+
+  if (!ngayTao || !awb || !khach || !dichvu || !sokien || !sokg) {
+    showHNStatus('err', '⚠️ Vui lòng điền đầy đủ các trường bắt buộc (trừ Ghi chú).');
+    return;
+  }
+
+  const btn = document.getElementById('hn-save-btn');
+  btn.disabled = true;
+  document.getElementById('hn-save-icon').textContent = '⏳';
+  document.getElementById('hn-save-text').textContent = 'Đang lưu...';
+  showHNStatus('', '');
+
+  const layhang = document.querySelector('input[name="hn-layhang"]:checked')?.value || 'chua';
+
+  // Luôn convert sang dd/MM/yyyy trước khi gửi (input[type=date] trả về yyyy-MM-dd)
+  const payload = {
+    action: 'save',
+    ngayTao:    inputToVNDate(ngayTao),
+    ngayPickup: inputToVNDate(ngayPickup),
+    awb, khach, dichvu,
+    sokien: Number(sokien), sokg: Number(sokg), giaban: Number(giaban) || 0, ghichu,
+    layhang
+  };
+
+  try {
+    await fetch(HANGNHAP_SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    document.getElementById('hn-save-icon').textContent = '✅';
+    document.getElementById('hn-save-text').textContent = 'Đã lưu!';
+    showHNStatus('ok', '✅ Lưu thành công vào Google Sheet!');
+    setTimeout(() => closeHangNhap(), 1800);
+  } catch(e) {
+    btn.disabled = false;
+    document.getElementById('hn-save-icon').textContent = '💾';
+    document.getElementById('hn-save-text').textContent = 'Lưu vào Google Sheet';
+    showHNStatus('err', '❌ Lỗi kết nối. Kiểm tra lại URL Apps Script.');
+  }
+}
+
+function showHNStatus(type, msg) {
+  const el = document.getElementById('hn-status');
+  el.className = 'hn-status' + (type ? ' ' + type : '');
+  el.textContent = msg;
+}
+
+// ── VIEW DATA ──
+let _hnAllData = [];
+let _hnFilter = 'all';
+let _hnPendingAction = 'add'; // 'add' hoặc 'view'
+
+function openHangNhapViewAuth() {
+  _hnPendingAction = 'view';
+  openHangNhapAuth();
+}
+
+function openHangNhapView() {
+  document.getElementById('hn-view-overlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  _hnFilter = 'all';
+  updateFilterBtns();
+  loadHNData();
+}
+
+function closeHangNhapView() {
+  document.getElementById('hn-view-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function loadHNData() {
+  document.getElementById('hn-view-loading').style.display = 'block';
+  document.getElementById('hn-data-table').style.display = 'none';
+  document.getElementById('hn-view-empty').style.display = 'none';
+  document.getElementById('hn-count-badge').textContent = '...';
+
+  try {
+    const url = HANGNHAP_SHEET_URL + '?action=list&t=' + Date.now();
+    const res  = await fetch(url);
+    const json = await res.json();
+    _hnAllData = Array.isArray(json.data) ? json.data : [];
+    renderHNTable();
+  } catch(e) {
+    document.getElementById('hn-view-loading').textContent = '❌ Không thể tải dữ liệu. Kiểm tra URL Apps Script và quyền CORS.';
+  }
+}
+
+function setHNFilter(f) {
+  _hnFilter = f;
+  updateFilterBtns();
+  renderHNTable();
+}
+
+function updateFilterBtns() {
+  ['all','chua','da'].forEach(f => {
+    const btn = document.getElementById('hn-filt-' + f);
+    if (!btn) return;
+    btn.className = 'hn-filter-btn' + (_hnFilter === f ? (' active-' + f) : '');
+  });
+}
+
+function filterHNTable() { renderHNTable(); }
+
+// ── Date helpers ──
+// "dd/MM/yyyy" hoặc "yyyy-MM-dd" → Date object (trả null nếu lỗi)
+function parseFlexDate(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  // ISO: yyyy-MM-dd
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y,m,d] = s.split('-');
+    return new Date(+y, +m-1, +d);
+  }
+  // VN: dd/MM/yyyy
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const [d,m,y] = s.split('/');
+    return new Date(+y, +m-1, +d);
+  }
+  return null;
+}
+// Bất kỳ format → "dd/MM/yyyy" để hiển thị
+function toDisplayDate(s) {
+  const d = parseFlexDate(s);
+  if (!d) return s || '';
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+// Bất kỳ format → "yyyy-MM-dd" cho input[type=date]
+function toInputDate(s) {
+  const d = parseFlexDate(s);
+  if (!d) return '';
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+// "yyyy-MM-dd" → "dd/MM/yyyy" để gửi lên sheet
+function inputToVNDate(s) {
+  if (!s) return '';
+  const d = parseFlexDate(s);
+  if (!d) return s;
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+// So sánh 2 ngày (bất kỳ format) để sort
+function dateVal(s) {
+  const d = parseFlexDate(s);
+  return d ? d.getTime() : 0;
+}
+
+function renderHNTable() {
+  const q = (document.getElementById('hn-search')?.value || '').toLowerCase();
+  let rows = _hnAllData.filter(r => {
+    if (_hnFilter === 'da'   && r.layhang !== 'da')   return false;
+    if (_hnFilter === 'chua' && r.layhang === 'da')   return false;
+    if (q && ![ r.awb, r.khach, r.dichvu, r.ghichu ].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  // ── Sắp xếp theo Ngày tạo bill tăng dần (cũ nhất lên trên) ──
+  rows.sort((a, b) => dateVal(a.ngayTao) - dateVal(b.ngayTao));
+
+  document.getElementById('hn-view-loading').style.display = 'none';
+  document.getElementById('hn-count-badge').textContent = rows.length + ' đơn';
+
+  const tbody = document.getElementById('hn-table-body');
+  if (rows.length === 0) {
+    document.getElementById('hn-data-table').style.display = 'none';
+    document.getElementById('hn-view-empty').style.display = 'block';
+    return;
+  }
+  document.getElementById('hn-view-empty').style.display = 'none';
+  document.getElementById('hn-data-table').style.display = 'table';
+
+  tbody.innerHTML = rows.map((r, i) => {
+    const isYes = r.layhang === 'da';
+    const badge = isYes
+      ? '<span class="hn-badge-yes">✅ Đã lấy</span>'
+      : '<span class="hn-badge-no">⏳ Chưa lấy</span>';
+    return `<tr data-idx="${r._row || i}" id="hn-row-${r._row || i}">
+      <td>${toDisplayDate(r.ngayTao)}</td>
+      <td>${toDisplayDate(r.ngayPickup)}</td>
+      <td style="font-weight:700;">${r.awb || ''}</td>
+      <td>${r.khach || ''}</td>
+      <td>${r.dichvu || ''}</td>
+      <td style="text-align:center;">${r.sokien || ''}</td>
+      <td style="text-align:center;">${r.sokg || ''}</td>
+      <td style="text-align:right;font-weight:600;color:#059669;">${r.giaban ? Number(r.giaban).toLocaleString('vi-VN') + ' ₫' : ''}</td>
+      <td>${badge}</td>
+      <td style="color:#9ca3af;font-style:italic;">${r.ghichu || ''}</td>
+      <td>
+        <button class="hn-edit-btn" onclick="startEditHNRow(${r._row}, ${JSON.stringify(r).replace(/"/g,'&quot;')})">✏️ Sửa</button>
+        <button class="hn-del-btn" onclick="deleteHNRow(${r._row})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function startEditHNRow(rowIdx, r) {
+  const tr = document.getElementById('hn-row-' + rowIdx);
+  if (!tr) return;
+  tr.className = 'hn-inline-edit';
+  const dichvuOpts = ['DHL Express','DHL Import','FedEx IP','FedEx IE','UPS Expedited','UPS Express','Khác']
+    .map(o => `<option${r.dichvu===o?' selected':''}>${o}</option>`).join('');
+  const lyY = r.layhang==='da'  ? 'selected' : '';
+  const lyN = r.layhang!=='da'  ? 'selected' : '';
+  // Convert ngày về yyyy-MM-dd cho input[type=date]
+  const valTao = toInputDate(r.ngayTao);
+  const valPU  = toInputDate(r.ngayPickup);
+  tr.innerHTML = `
+    <td><input class="hn-inline-input" id="ei-ngaytao" type="date" value="${valTao}" /></td>
+    <td><input class="hn-inline-input" id="ei-ngaypu"  type="date" value="${valPU}" /></td>
+    <td><input class="hn-inline-input" id="ei-awb"     type="text" value="${r.awb||''}" /></td>
+    <td><input class="hn-inline-input" id="ei-khach"   type="text" value="${r.khach||''}" /></td>
+    <td><select class="hn-inline-select" id="ei-dichvu">${dichvuOpts}</select></td>
+    <td><input class="hn-inline-input" id="ei-sokien"  type="number" value="${r.sokien||''}" style="width:60px;" /></td>
+    <td><input class="hn-inline-input" id="ei-sokg"    type="number" step="0.1" value="${r.sokg||''}" style="width:60px;" /></td>
+    <td><input class="hn-inline-input" id="ei-giaban"  type="number" step="1000" value="${r.giaban||''}" placeholder="0" style="width:100px;" /></td>
+    <td><select class="hn-inline-select" id="ei-layhang" style="width:110px;">
+          <option value="chua" ${lyN}>⏳ Chưa lấy</option>
+          <option value="da"   ${lyY}>✅ Đã lấy</option>
+        </select></td>
+    <td><input class="hn-inline-input" id="ei-ghichu"  type="text" value="${r.ghichu||''}" /></td>
+    <td>
+      <button class="hn-save-row-btn"   onclick="saveEditHNRow(${rowIdx})">💾 Lưu</button>
+      <button class="hn-cancel-row-btn" onclick="renderHNTable()">Huỷ</button>
+    </td>`;
+}
+
+async function saveEditHNRow(rowIdx) {
+  // Convert yyyy-MM-dd → dd/MM/yyyy để lưu vào sheet
+  const payload = {
+    action:     'update',
+    row:        rowIdx,
+    ngayTao:    inputToVNDate(document.getElementById('ei-ngaytao').value),
+    ngayPickup: inputToVNDate(document.getElementById('ei-ngaypu').value),
+    awb:        document.getElementById('ei-awb').value.trim(),
+    khach:      document.getElementById('ei-khach').value.trim(),
+    dichvu:     document.getElementById('ei-dichvu').value,
+    sokien:     Number(document.getElementById('ei-sokien').value),
+    sokg:       Number(document.getElementById('ei-sokg').value),
+    giaban:     Number(document.getElementById('ei-giaban').value) || 0,
+    layhang:    document.getElementById('ei-layhang').value,
+    ghichu:     document.getElementById('ei-ghichu').value.trim(),
+  };
+  try {
+    await fetch(HANGNHAP_SHEET_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    // Update local data
+    const idx = _hnAllData.findIndex(r => r._row === rowIdx);
+    if (idx >= 0) Object.assign(_hnAllData[idx], payload);
+    renderHNTable();
+  } catch(e) {
+    alert('❌ Lỗi khi lưu. Kiểm tra kết nối.');
+  }
+}
+
+async function deleteHNRow(rowIdx) {
+  if (!confirm('Xoá đơn hàng này?')) return;
+  try {
+    await fetch(HANGNHAP_SHEET_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', row: rowIdx })
+    });
+    _hnAllData = _hnAllData.filter(r => r._row !== rowIdx);
+    renderHNTable();
+  } catch(e) {
+    alert('❌ Lỗi khi xoá.');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('hangnhap-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeHangNhap();
+  });
+  document.getElementById('hn-pass-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closePassModal();
+  });
+  document.getElementById('hn-view-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeHangNhapView();
+  });
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    if (document.getElementById('hn-view-overlay').style.display === 'flex') closeHangNhapView();
+    if (document.getElementById('hangnhap-overlay').style.display === 'flex') closeHangNhap();
+    if (document.getElementById('hn-pass-overlay').style.display === 'flex') closePassModal();
+  }
+});
+</script>
+
+<!-- ── VIEW DATA MODAL ── -->
+<div id="hn-view-overlay" style="display:none;">
+  <div id="hn-view-box">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:0;">
+      <div>
+        <h2>📋 Danh sách hàng nhập</h2>
+        <div class="hn-sub">Xem, tìm kiếm và chỉnh sửa dữ liệu từ Google Sheet</div>
+      </div>
+      <button class="hn-logout-btn" onclick="hnDoLogout()" title="Đăng xuất">🚪 <span id="hn-badge-view"></span></button>
+    </div>
+    <div class="hn-view-toolbar">
+      <input type="text" class="hn-search-input" id="hn-search" placeholder="🔍 Tìm AWB, khách hàng..." oninput="filterHNTable()" />
+      <button class="hn-filter-btn active-all" id="hn-filt-all" onclick="setHNFilter('all')">Tất cả</button>
+      <button class="hn-filter-btn" id="hn-filt-chua" onclick="setHNFilter('chua')">⏳ Chưa lấy</button>
+      <button class="hn-filter-btn" id="hn-filt-da" onclick="setHNFilter('da')">✅ Đã lấy</button>
+      <button class="hn-reload-btn" onclick="loadHNData()">🔄 Tải lại</button>
+      <span class="hn-count-badge" id="hn-count-badge">0 đơn</span>
+    </div>
+    <div class="hn-table-wrap">
+      <div class="hn-view-loading" id="hn-view-loading">⏳ Đang tải dữ liệu...</div>
+      <table class="hn-table" id="hn-data-table" style="display:none;">
+        <thead>
+          <tr>
+            <th>Ngày tạo</th>
+            <th>Ngày PU</th>
+            <th>AWB</th>
+            <th>Khách hàng</th>
+            <th>Dịch vụ</th>
+            <th>Kiện</th>
+            <th>Kg</th>
+            <th>Giá bán (VND)</th>
+            <th>Tình trạng</th>
+            <th>Ghi chú</th>
+            <th style="width:110px;">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="hn-table-body"></tbody>
+      </table>
+      <div class="hn-view-empty" id="hn-view-empty" style="display:none;">Không có dữ liệu phù hợp.</div>
+    </div>
+    <div style="margin-top:14px;display:flex;justify-content:flex-end;">
+      <button class="hn-btn-cancel" onclick="closeHangNhapView()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── LOGIN MODAL (Hàng nhập) ── -->
+<div id="hn-login-overlay">
+  <div id="hn-login-box">
+    <div class="hn-login-logo-row">
+      <span class="logo-dhl">DHL</span>
+      <span class="logo-fedex"><span class="fe">Fed</span><span class="ex">Ex</span></span>
+      <span class="logo-ups">UPS</span>
+    </div>
+    <div class="hn-login-title">📦 Quản lý hàng nhập</div>
+    <div class="hn-login-sub">Đăng nhập để tiếp tục</div>
+    <div class="hn-login-field">
+      <label for="hn-login-username">Tên đăng nhập</label>
+      <input class="hn-login-input" id="hn-login-username" type="text"
+        placeholder="Nhập username..." autocomplete="username" maxlength="40"
+        onkeydown="if(event.key==='Enter')document.getElementById('hn-login-password').focus()" />
+    </div>
+    <div class="hn-login-field">
+      <label for="hn-login-password">Mật khẩu</label>
+      <input class="hn-login-input" id="hn-login-password" type="password"
+        placeholder="••••••" autocomplete="current-password" maxlength="30"
+        onkeydown="if(event.key==='Enter')hnDoLogin()" />
+    </div>
+    <div class="hn-login-err" id="hn-login-err"></div>
+    <button class="hn-login-btn" id="hn-login-btn" onclick="hnDoLogin()">🔓 Đăng nhập</button>
+    <div class="hn-login-last-hint" id="hn-login-last-hint">
+      Lần trước: <span id="hn-login-last-name"></span>
+      <button onclick="hnClearLastUser()" style="background:none;border:none;cursor:pointer;font-size:11px;color:#9ca3af;padding:0 2px;" title="Xoá">✕</button>
+    </div>
+    <div class="hn-login-cancel-row">
+      <button class="hn-login-cancel-link" onclick="hnCloseLogin()">Huỷ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PASSWORD MODAL ── -->
+<div id="hn-pass-overlay" style="display:none;">
+  <div id="hn-pass-box">
+    <div class="pass-icon">🔐</div>
+    <h3>Xác thực quyền truy cập</h3>
+    <p>Nhập mật khẩu để vào Quản lý hàng nhập</p>
+    <input type="password" id="hn-pass-input" placeholder="••••••" maxlength="30"
+      onkeydown="if(event.key==='Enter')checkHangNhapPass()" />
+    <div id="hn-pass-err"></div>
+    <div class="pass-btn-row">
+      <button class="hn-pass-cancel" onclick="closePassModal()">Huỷ</button>
+      <button class="hn-pass-ok" id="hn-pass-ok-btn" onclick="checkHangNhapPass()">🔓 Xác nhận</button>
+    </div>
+    <div class="pass-lockout" id="hn-pass-lockout"></div>
+    <div><span class="pass-forgot-link" onclick="openForgotPass()">🔑 Quên mật khẩu / Đổi mật khẩu</span></div>
+  </div>
+</div>
+<!-- ── QUÊN / ĐỔI MẬT KHẨU MODAL ── -->
+<div id="hn-forgot-overlay" style="display:none;">
+  <div id="hn-forgot-box">
+    <div class="fgt-icon" id="fgt-icon">🔑</div>
+    <h3 id="fgt-title">Quên mật khẩu</h3>
+    <p class="fgt-desc" id="fgt-desc">Nhập số điện thoại xác thực để tiếp tục</p>
+    <div class="fgt-progress">
+      <div class="fgt-dot active" id="fgt-d1"></div>
+      <div class="fgt-dot" id="fgt-d2"></div>
+      <div class="fgt-dot" id="fgt-d3"></div>
+    </div>
+
+    <!-- Bước 1: Nhập SĐT xác thực -->
+    <div class="fgt-step active" id="fgt-step1">
+      <input class="fgt-input" id="fgt-phone" type="tel" maxlength="15"
+        placeholder="Số điện thoại xác thực"
+        onkeydown="if(event.key==='Enter')fgtNextStep1()" />
+      <div id="fgt-err"></div>
+      <div class="fgt-btn-row">
+        <button class="fgt-cancel-btn" onclick="closeForgotPass()">Huỷ</button>
+        <button class="fgt-ok-btn" onclick="fgtNextStep1()">Tiếp theo →</button>
+      </div>
+    </div>
+
+    <!-- Bước 2: Nhập mật khẩu mới -->
+    <div class="fgt-step" id="fgt-step2">
+      <input class="fgt-input" id="fgt-newpass" type="password" maxlength="30"
+        placeholder="Mật khẩu mới"
+        style="letter-spacing:3px;"
+        onkeydown="if(event.key==='Enter')document.getElementById('fgt-newpass2').focus()" />
+      <input class="fgt-input" id="fgt-newpass2" type="password" maxlength="30"
+        placeholder="Nhập lại mật khẩu"
+        style="letter-spacing:3px;"
+        onkeydown="if(event.key==='Enter')fgtNextStep2()" />
+      <div id="fgt-err"></div>
+      <div class="fgt-btn-row">
+        <button class="fgt-cancel-btn" onclick="fgtGoStep(1)">← Quay lại</button>
+        <button class="fgt-ok-btn" onclick="fgtNextStep2()">Đổi mật khẩu</button>
+      </div>
+    </div>
+
+    <!-- Bước 3: Thành công -->
+    <div class="fgt-step" id="fgt-step3">
+      <div style="font-size:48px;margin-bottom:12px;">✅</div>
+      <div style="font-size:13px;color:#059669;font-weight:700;margin-bottom:16px;">Đổi mật khẩu thành công!</div>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:20px;">Mật khẩu mới đã được lưu. Vui lòng đăng nhập lại.</div>
+      <button class="fgt-ok-btn" style="width:100%;" onclick="closeForgotPass()">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── SĐT xác thực (normalize bỏ khoảng trắng/dấu gạch) ──
+const RECOVERY_PHONE = '0938619560';
+
+function openForgotPass() {
+  fgtGoStep(1);
+  document.getElementById('fgt-phone').value = '';
+  document.getElementById('fgt-newpass') && (document.getElementById('fgt-newpass').value = '');
+  document.getElementById('fgt-newpass2') && (document.getElementById('fgt-newpass2').value = '');
+  clearFgtErr();
+  document.getElementById('hn-forgot-overlay').style.display = 'flex';
+}
+
+function closeForgotPass() {
+  document.getElementById('hn-forgot-overlay').style.display = 'none';
+}
+
+function fgtGoStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('fgt-step'+i).classList.toggle('active', i===n);
+    const dot = document.getElementById('fgt-d'+i);
+    dot.className = 'fgt-dot' + (i < n ? ' done' : i === n ? ' active' : '');
+  });
+  clearFgtErr();
+  if (n===1) {
+    document.getElementById('fgt-icon').textContent  = '🔑';
+    document.getElementById('fgt-title').textContent = 'Quên mật khẩu';
+    document.getElementById('fgt-desc').textContent  = 'Nhập số điện thoại xác thực để tiếp tục';
+    setTimeout(() => document.getElementById('fgt-phone').focus(), 100);
+  }
+  if (n===2) {
+    document.getElementById('fgt-icon').textContent  = '🔒';
+    document.getElementById('fgt-title').textContent = 'Đặt mật khẩu mới';
+    document.getElementById('fgt-desc').textContent  = 'Nhập mật khẩu mới bạn muốn sử dụng';
+    setTimeout(() => document.getElementById('fgt-newpass').focus(), 100);
+  }
+  if (n===3) {
+    document.getElementById('fgt-icon').textContent  = '🎉';
+    document.getElementById('fgt-title').textContent = 'Hoàn tất';
+    document.getElementById('fgt-desc').textContent  = '';
+  }
+}
+
+function clearFgtErr() {
+  const el = document.getElementById('fgt-err');
+  if (el) el.textContent = '';
+}
+
+function setFgtErr(msg) {
+  const el = document.getElementById('fgt-err');
+  if (el) el.textContent = msg;
+  // shake input
+  const inp = document.querySelector('.fgt-step.active .fgt-input');
+  if (inp) {
+    inp.classList.add('fgt-err-border');
+    setTimeout(() => inp.classList.remove('fgt-err-border'), 800);
+  }
+}
+
+function fgtNextStep1() {
+  const phone = document.getElementById('fgt-phone').value.trim().replace(/[\s\-\.]/g,'');
+  if (!phone) { setFgtErr('Vui lòng nhập số điện thoại.'); return; }
+  if (phone !== RECOVERY_PHONE) {
+    setFgtErr('❌ Số điện thoại không đúng!');
+    document.getElementById('fgt-phone').value = '';
+    document.getElementById('fgt-phone').focus();
+    return;
+  }
+  fgtGoStep(2);
+}
+
+async function fgtNextStep2() {
+  const p1 = document.getElementById('fgt-newpass').value;
+  const p2 = document.getElementById('fgt-newpass2').value;
+  if (!p1) { setFgtErr('Vui lòng nhập mật khẩu mới.'); return; }
+  if (p1.length < 4) { setFgtErr('Mật khẩu phải ít nhất 4 ký tự.'); return; }
+  if (p1 !== p2) {
+    setFgtErr('❌ Mật khẩu nhập lại không khớp!');
+    document.getElementById('fgt-newpass2').value = '';
+    document.getElementById('fgt-newpass2').focus();
+    return;
+  }
+  // Hash mật khẩu mới và lưu vào biến runtime
+  try {
+    const newHash = await sha256(p1);
+    window._hnPassHashRuntime = newHash;
+    fgtGoStep(3);
+  } catch(e) {
+    setFgtErr('❌ Lỗi khi xử lý mật khẩu.');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HỆ THỐNG ĐĂNG NHẬP — chỉ bảo vệ phần Quản lý hàng nhập
+// ══════════════════════════════════════════════════════════════
+
+// ── Danh sách tài khoản ──
+// Thêm user: { username, passHash (sha256), phone (SĐT khôi phục) }
+// Hash mặc định 999 = 83cf8b609de60036a8277bd0e96135751bbc07eb234256d4b65b893360651bf2
+const HN_USERS = [
+  { username: 'admin',    passHash: '83cf8b609de60036a8277bd0e96135751bbc07eb234256d4b65b893360651bf2', phone: '0938619560' },
+  { username: 'nhanvien', passHash: '83cf8b609de60036a8277bd0e96135751bbc07eb234256d4b65b893360651bf2', phone: '0938619560' },
+];
+const HN_SESSION_TTL = 8 * 60 * 60 * 1000; // 8 giờ
+const HN_SESSION_KEY = 'haex_hn_session';
+const HN_LAST_KEY    = 'haex_hn_last';
+
+let _hnCurrentUser = null; // { username, phone, _runtimeHash? }
+let _hnLoginPendingAction = 'add'; // 'add' | 'view'
+
+// ── Restore session khi load trang ──
+(function() {
+  try {
+    const raw = localStorage.getItem(HN_SESSION_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.username && s.expires && Date.now() < s.expires) {
+      const u = HN_USERS.find(x => x.username === s.username);
+      if (u) {
+        _hnCurrentUser = Object.assign({}, u);
+        if (s.runtimeHash) _hnCurrentUser._runtimeHash = s.runtimeHash;
+        window._hnSessionUnlocked = true;
+      }
+    }
+  } catch(e) {}
+})();
+
+function hnSaveSession() {
+  if (!_hnCurrentUser) return;
+  const s = {
+    username: _hnCurrentUser.username,
+    expires: Date.now() + HN_SESSION_TTL,
+    runtimeHash: _hnCurrentUser._runtimeHash || null
+  };
+  localStorage.setItem(HN_SESSION_KEY, JSON.stringify(s));
+}
+
+function hnClearSession() {
+  localStorage.removeItem(HN_SESSION_KEY);
+  _hnCurrentUser = null;
+  window._hnSessionUnlocked = false;
+  window._hnPassHashRuntime = undefined;
+}
+
+function hnUpdateBadges() {
+  const name = _hnCurrentUser ? _hnCurrentUser.username : '';
+  ['hn-badge-form','hn-badge-view'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = name ? name : '';
+  });
+}
+
+// ── Mở login modal ──
+function hnOpenLogin(action) {
+  _hnLoginPendingAction = action || 'add';
+  // Điền sẵn username lần trước
+  const last = localStorage.getItem(HN_LAST_KEY);
+  const unEl = document.getElementById('hn-login-username');
+  const hintEl = document.getElementById('hn-login-last-hint');
+  const hintName = document.getElementById('hn-login-last-name');
+  if (last) {
+    unEl.value = last;
+    hintName.textContent = last;
+    hintEl.style.display = 'flex';
+  } else {
+    unEl.value = '';
+    hintEl.style.display = 'none';
+  }
+  document.getElementById('hn-login-password').value = '';
+  document.getElementById('hn-login-err').textContent = '';
+  document.getElementById('hn-login-username').classList.remove('err');
+  document.getElementById('hn-login-password').classList.remove('err');
+  document.getElementById('hn-login-btn').disabled = false;
+  document.getElementById('hn-login-btn').textContent = '🔓 Đăng nhập';
+  document.getElementById('hn-login-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => {
+    const focus = last ? document.getElementById('hn-login-password') : document.getElementById('hn-login-username');
+    focus.focus();
+  }, 120);
+}
+
+function hnCloseLogin() {
+  document.getElementById('hn-login-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function hnClearLastUser() {
+  localStorage.removeItem(HN_LAST_KEY);
+  document.getElementById('hn-login-last-hint').style.display = 'none';
+  document.getElementById('hn-login-username').value = '';
+  document.getElementById('hn-login-username').focus();
+}
+
+async function hnDoLogin() {
+  const unEl  = document.getElementById('hn-login-username');
+  const pwEl  = document.getElementById('hn-login-password');
+  const errEl = document.getElementById('hn-login-err');
+  const btn   = document.getElementById('hn-login-btn');
+  const box   = document.getElementById('hn-login-box');
+
+  const username = unEl.value.trim().toLowerCase();
+  const password = pwEl.value;
+  errEl.textContent = '';
+  unEl.classList.remove('err'); pwEl.classList.remove('err');
+
+  if (!username) { unEl.classList.add('err'); unEl.focus(); errEl.textContent = 'Vui lòng nhập tên đăng nhập.'; return; }
+  if (!password) { pwEl.classList.add('err'); pwEl.focus(); errEl.textContent = 'Vui lòng nhập mật khẩu.'; return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Đang xác thực...';
+
+  try {
+    const hash = await sha256(password);
+    const found = HN_USERS.find(u => u.username === username);
+    const validHash = (found && found._runtimeHash) ? found._runtimeHash : (found ? found.passHash : null);
+
+    if (!found || hash !== validHash) {
+      box.classList.add('hn-login-shake');
+      setTimeout(() => box.classList.remove('hn-login-shake'), 400);
+      pwEl.value = ''; pwEl.classList.add('err'); unEl.classList.add('err');
+      errEl.textContent = '❌ Tên đăng nhập hoặc mật khẩu không đúng!';
+      btn.disabled = false; btn.textContent = '🔓 Đăng nhập';
+      return;
+    }
+
+    // ── Thành công ──
+    _hnCurrentUser = Object.assign({}, found);
+    window._hnSessionUnlocked = true;
+    window._hnPassHashRuntime = validHash;
+    localStorage.setItem(HN_LAST_KEY, found.username);
+    hnSaveSession();
+    hnUpdateBadges();
+
+    btn.textContent = '✅ Thành công!';
+    setTimeout(() => {
+      hnCloseLogin();
+      btn.disabled = false; btn.textContent = '🔓 Đăng nhập';
+      if (_hnLoginPendingAction === 'view') {
+        _hnPendingAction = 'add';
+        openHangNhapView();
+      } else {
+        openHangNhapForm();
+      }
+    }, 450);
+
+  } catch(e) {
+    errEl.textContent = '❌ Lỗi hệ thống. Thử lại.';
+    btn.disabled = false; btn.textContent = '🔓 Đăng nhập';
+  }
+}
+
+function hnDoLogout() {
+  const name = _hnCurrentUser ? _hnCurrentUser.username : '';
+  if (!confirm('Đăng xuất khỏi tài khoản ' + name + '?')) return;
+  hnClearSession();
+  ['hangnhap-overlay','hn-view-overlay'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.body.style.overflow = '';
+  hnUpdateBadges();
+}
+
+// ── Override openHangNhapAuth: dùng login modal thay vì password modal ──
+openHangNhapAuth = function(action) {
+  if (typeof action === 'undefined') action = 'add';
+  if (_hnCurrentUser) {
+    // Đã login → vào thẳng
+    window._hnSessionUnlocked = true;
+    if (action === 'view') { _hnPendingAction = 'add'; openHangNhapView(); }
+    else openHangNhapForm();
+  } else {
+    hnOpenLogin(action);
+  }
+};
+
+openHangNhapViewAuth = function() {
+  openHangNhapAuth('view');
+};
+
+// ── Override forgot password để lấy phone từ user hiện tại ──
+fgtNextStep1 = function() {
+  const phone = document.getElementById('fgt-phone').value.trim().replace(/[\s\-\.]/g,'');
+  if (!phone) { setFgtErr('Vui lòng nhập số điện thoại.'); return; }
+  const validPhone = (_hnCurrentUser && _hnCurrentUser.phone) ? _hnCurrentUser.phone : RECOVERY_PHONE;
+  if (phone !== validPhone) {
+    setFgtErr('❌ Số điện thoại không đúng!');
+    document.getElementById('fgt-phone').value = '';
+    document.getElementById('fgt-phone').focus();
+    return;
+  }
+  fgtGoStep(2);
+};
+
+fgtNextStep2 = async function() {
+  const p1 = document.getElementById('fgt-newpass').value;
+  const p2 = document.getElementById('fgt-newpass2').value;
+  if (!p1) { setFgtErr('Vui lòng nhập mật khẩu mới.'); return; }
+  if (p1.length < 4) { setFgtErr('Mật khẩu phải ít nhất 4 ký tự.'); return; }
+  if (p1 !== p2) {
+    setFgtErr('❌ Mật khẩu nhập lại không khớp!');
+    document.getElementById('fgt-newpass2').value = '';
+    document.getElementById('fgt-newpass2').focus();
+    return;
+  }
+  try {
+    const newHash = await sha256(p1);
+    window._hnPassHashRuntime = newHash;
+    if (_hnCurrentUser) {
+      _hnCurrentUser._runtimeHash = newHash;
+      const u = HN_USERS.find(x => x.username === _hnCurrentUser.username);
+      if (u) u._runtimeHash = newHash;
+      hnSaveSession();
+    }
+    fgtGoStep(3);
+  } catch(e) {
+    setFgtErr('❌ Lỗi khi xử lý mật khẩu.');
+  }
+};
+
+// Init badges on load
+document.addEventListener('DOMContentLoaded', hnUpdateBadges);
+
+// Override checkHangNhapPass để dùng runtime hash nếu có
+const _origCheckPass = checkHangNhapPass;
+async function checkHangNhapPass() {
+  if (Date.now() < _hnLockUntil) return;
+  const inputPass = document.getElementById('hn-pass-input').value;
+  if (!inputPass) { document.getElementById('hn-pass-err').textContent = 'Vui lòng nhập mật khẩu.'; return; }
+
+  const btn = document.getElementById('hn-pass-ok-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang kiểm tra...';
+  document.getElementById('hn-pass-err').textContent = '';
+
+  try {
+    const inputHash = await sha256(inputPass);
+    const validHash = window._hnPassHashRuntime || HANGNHAP_PASS_HASH;
+
+    if (inputHash === validHash) {
+      _hnPassAttempts = 0;
+      window._hnSessionUnlocked = false; // reset — user controls lock state via button
+      closePassModal();
+      if (_hnPendingAction === 'view') {
+        _hnPendingAction = 'add';
+        openHangNhapView();
+      } else {
+        openHangNhapForm();
+      }
+    } else {
+      _hnPassAttempts++;
+      const MAX_ATTEMPTS = 5, LOCKOUT_MS = 300000;
+      const remaining = MAX_ATTEMPTS - _hnPassAttempts;
+      const inp = document.getElementById('hn-pass-input');
+      inp.classList.add('shake');
+      setTimeout(() => inp.classList.remove('shake'), 400);
+      inp.value = '';
+      if (_hnPassAttempts >= MAX_ATTEMPTS) {
+        _hnLockUntil = Date.now() + LOCKOUT_MS;
+        _hnPassAttempts = 0;
+        document.getElementById('hn-pass-err').textContent = '❌ Sai mật khẩu!';
+        document.getElementById('hn-pass-lockout').textContent = '🔒 Khoá 5 phút do nhập sai quá nhiều lần.';
+        btn.disabled = true; btn.textContent = '🔓 Xác nhận';
+        const lockTimer = setInterval(() => {
+          const secs = Math.ceil((_hnLockUntil - Date.now()) / 1000);
+          if (secs <= 0) {
+            clearInterval(lockTimer);
+            document.getElementById('hn-pass-lockout').textContent = '';
+            document.getElementById('hn-pass-err').textContent = '';
+            btn.disabled = false; btn.textContent = '🔓 Xác nhận';
+          } else {
+            document.getElementById('hn-pass-lockout').textContent = '🔒 Khoá ' + secs + 's nữa mở';
+          }
+        }, 1000);
+      } else {
+        document.getElementById('hn-pass-err').textContent = '❌ Sai mật khẩu! Còn ' + remaining + ' lần thử.';
+        btn.disabled = false; btn.textContent = '🔓 Xác nhận';
+      }
+    }
+  } catch(e) {
+    document.getElementById('hn-pass-err').textContent = '❌ Lỗi. Thử lại.';
+    btn.disabled = false; btn.textContent = '🔓 Xác nhận';
+  }
+}
+
+// ── LOCK / UNLOCK PHIÊN — kept as stubs (replaced by login system) ──
+window._hnSessionUnlocked = false;
+function updateLockBtns() {}
+function toggleHNLock() {}
+function showLockToast(msg) {}
+
+// ── Click outside to close forgot modal ──
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('hn-forgot-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeForgotPass();
+  });
+});
 </script>
 </body>
 </html>
