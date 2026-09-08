@@ -8513,6 +8513,10 @@ populateCountries = function() {
         </select>
       </div>
       <div class="hn-field">
+        <label>Nước gửi</label>
+        <input type="text" id="hn-nuocgui" placeholder="VD: USA, Japan, UK..." />
+      </div>
+      <div class="hn-field">
         <label>Số kiện</label>
         <input type="number" id="hn-sokien" placeholder="0" min="1" />
       </div>
@@ -8631,7 +8635,7 @@ function openHangNhapForm() {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('hn-ngay-tao').value = today;
   document.getElementById('hn-ngay-pickup').value = today;
-  ['hn-awb','hn-khach','hn-ghichu'].forEach(id => document.getElementById(id).value = '');
+  ['hn-awb','hn-khach','hn-ghichu','hn-nuocgui'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('hn-dichvu').value = '';
   document.getElementById('hn-sokien').value = '';
   document.getElementById('hn-sokg').value = '';
@@ -8664,6 +8668,7 @@ async function saveHangNhap() {
   const sokg       = document.getElementById('hn-sokg').value;
   const giaban     = document.getElementById('hn-giaban').value;
   const ghichu     = document.getElementById('hn-ghichu').value.trim();
+  const nuocgui    = document.getElementById('hn-nuocgui').value.trim();
 
   if (!ngayTao || !awb || !khach || !dichvu || !sokien || !sokg) {
     showHNStatus('err', '⚠️ Vui lòng điền đầy đủ các trường bắt buộc (trừ Ghi chú).');
@@ -8683,7 +8688,7 @@ async function saveHangNhap() {
     action: 'save',
     ngayTao:    inputToVNDate(ngayTao),
     ngayPickup: inputToVNDate(ngayPickup),
-    awb, khach, dichvu,
+    awb, khach, dichvu, nuocgui,
     sokien: Number(sokien), sokg: Number(sokg), giaban: Number(giaban) || 0, ghichu,
     layhang
   };
@@ -8823,7 +8828,7 @@ function renderHNTable() {
   let rows = _hnAllData.filter(r => {
     if (_hnFilter === 'da'   && r.layhang !== 'da')   return false;
     if (_hnFilter === 'chua' && r.layhang === 'da')   return false;
-    if (q && ![ r.awb, r.khach, r.dichvu, r.ghichu ].join(' ').toLowerCase().includes(q)) return false;
+    if (q && ![ r.awb, r.khach, r.dichvu, r.nuocgui, r.ghichu ].join(' ').toLowerCase().includes(q)) return false;
     return true;
   });
 
@@ -8853,6 +8858,7 @@ function renderHNTable() {
       <td style="font-weight:700;">${r.awb || ''}</td>
       <td>${r.khach || ''}</td>
       <td>${r.dichvu || ''}</td>
+      <td>${r.nuocgui || ''}</td>
       <td style="text-align:center;">${r.sokien || ''}</td>
       <td style="text-align:center;">${r.sokg || ''}</td>
       <td style="text-align:right;font-weight:600;color:#059669;">${r.giaban ? Number(r.giaban).toLocaleString('vi-VN') + ' ₫' : ''}</td>
@@ -8883,6 +8889,7 @@ function startEditHNRow(rowIdx, r) {
     <td><input class="hn-inline-input" id="ei-awb"     type="text" value="${r.awb||''}" /></td>
     <td><input class="hn-inline-input" id="ei-khach"   type="text" value="${r.khach||''}" /></td>
     <td><select class="hn-inline-select" id="ei-dichvu">${dichvuOpts}</select></td>
+    <td><input class="hn-inline-input" id="ei-nuocgui" type="text" value="${r.nuocgui||''}" placeholder="VD: USA..." style="width:90px;" /></td>
     <td><input class="hn-inline-input" id="ei-sokien"  type="number" value="${r.sokien||''}" style="width:60px;" /></td>
     <td><input class="hn-inline-input" id="ei-sokg"    type="number" step="0.1" value="${r.sokg||''}" style="width:60px;" /></td>
     <td><input class="hn-inline-input" id="ei-giaban"  type="number" step="1000" value="${r.giaban||''}" placeholder="0" style="width:100px;" /></td>
@@ -8907,6 +8914,7 @@ async function saveEditHNRow(rowIdx) {
     awb:        document.getElementById('ei-awb').value.trim(),
     khach:      document.getElementById('ei-khach').value.trim(),
     dichvu:     document.getElementById('ei-dichvu').value,
+    nuocgui:    document.getElementById('ei-nuocgui').value.trim(),
     sokien:     Number(document.getElementById('ei-sokien').value),
     sokg:       Number(document.getElementById('ei-sokg').value),
     giaban:     Number(document.getElementById('ei-giaban').value) || 0,
@@ -8993,6 +9001,7 @@ document.addEventListener('keydown', function(e) {
             <th>AWB</th>
             <th>Khách hàng</th>
             <th>Dịch vụ</th>
+            <th>Nước gửi</th>
             <th>Kiện</th>
             <th>Kg</th>
             <th>Giá bán (VND)</th>
