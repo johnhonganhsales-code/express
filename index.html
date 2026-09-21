@@ -2688,12 +2688,15 @@ function parseOtherCharges(rows) {
     // ── Demand rows ─────────────────────────────────────────
     if (condL.includes('demand')) {
       // Col J (idx 9) = per_kg_export, Col K (idx 10) = per_kg_import
+      // Col L (idx 11) = valid_from (YYYY-MM-DD), Col M (idx 12) = valid_to (YYYY-MM-DD)
       const perKgExport = num(row[9]);  // J: per_kg_export
       const perKgImport = num(row[10]); // K: per_kg_import
+      const validFrom   = String(row[11]||'').trim(); // L: valid_from
+      const validTo     = String(row[12]||'').trim(); // M: valid_to
       // Bỏ qua row nếu cả hai đều = 0
       if (perKgExport <= 0 && perKgImport <= 0) continue;
       if (!demand[carrier]) demand[carrier] = [];
-      demand[carrier].push({ isoList, perKgExport, perKgImport });
+      demand[carrier].push({ isoList, perKgExport, perKgImport, validFrom, validTo });
       continue; // không push vào charges[]
     }
 
@@ -2720,24 +2723,40 @@ function parseOtherCharges(rows) {
   return { charges, demand };
 }
 
+// Kiểm tra một demand entry có còn hiệu lực tại ngày today không
+// valid_from: ngày bắt đầu (YYYY-MM-DD), để trống = không giới hạn từ đầu
+// valid_to:   ngày kết thúc (YYYY-MM-DD), để trống = còn hiệu lực vô thời hạn
+function isDemandValid(entry, today) {
+  if (!today) today = new Date();
+  // Normalize today về 00:00:00 để so sánh chỉ theo ngày
+  const todayStr = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
+  if (entry.validFrom && entry.validFrom > todayStr) return false; // chưa đến ngày áp dụng
+  if (entry.validTo   && entry.validTo   < todayStr) return false; // đã hết hạn
+  return true;
+}
+
 // Lookup demand VND/kg cho carrier + ISO quốc gia đến
 // isImport=true → dùng per_kg_import (col K), false → dùng per_kg_export (col J)
 // Ưu tiên: match ISO trước → fallback isoList rỗng (all-countries, dùng cho DHL)
+// Chỉ trả về entry còn hiệu lực theo valid_from / valid_to
 function getDemandPerKg(carrier, countryISO, isImport) {
   const entries = demandRates[carrier];
   if (!entries || !entries.length) return 0;
+  const today = new Date();
   const pickRate = (e) => isImport
     ? (e.perKgImport || 0)
     : (e.perKgExport || e.perKg || 0);
-  // 1) Tìm match ISO cụ thể trước
+  // 1) Tìm match ISO cụ thể trước (chỉ lấy entry còn hiệu lực)
   if (countryISO) {
     for (const e of entries) {
-      if (e.isoList.length > 0 && e.isoList.includes(countryISO)) return pickRate(e);
+      if (e.isoList.length > 0 && e.isoList.includes(countryISO) && isDemandValid(e, today)) {
+        return pickRate(e);
+      }
     }
   }
-  // 2) Fallback: entry không có ISO = áp dụng tất cả (DHL)
+  // 2) Fallback: entry không có ISO = áp dụng tất cả (DHL), vẫn cần check ngày
   for (const e of entries) {
-    if (e.isoList.length === 0) return pickRate(e);
+    if (e.isoList.length === 0 && isDemandValid(e, today)) return pickRate(e);
   }
   return 0;
 }
