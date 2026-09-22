@@ -1897,6 +1897,8 @@ const GIDS = {
   FedEx_IE_Exp_MDL: 1546893149,
   FedEx_IP_Imp_MDL: 1955230152,
   FedEx_IE_Imp_MDL: 1700376749,
+  UPS_Saver_MDL:    1558993258, // Cost_UPS_Saver_Exp_MDL
+  UPS_Exp_MDL:      1473441114, // Cost_UPS_Exp_Exp_MDL
 };
 
 // ============================================================
@@ -1936,6 +1938,9 @@ let fedexIPMDLRates = {}, fedexIEMDLRates = {};
 let fedexIPMDLPerKgKeys = [], fedexIEMDLPerKgKeys = [];
 let fedexIPImpMDLRates = {}, fedexIEImpMDLRates = {};
 let fedexIPImpMDLPerKgKeys = [], fedexIEImpMDLPerKgKeys = [];
+// UPS MDL rates (chỉ export)
+let upsSaverMDLDoc = {}, upsSaverMDLNonDoc = {}, upsSaverMDLSpecialDoc = {}, upsSaverMDLSpecialNonDoc = {}, upsSaverMDLZoneNumMap = {}, upsSaverMDLPerKgKeys = [];
+let upsExpMDLDoc   = {}, upsExpMDLNonDoc   = {}, upsExpMDLSpecialDoc   = {}, upsExpMDLSpecialNonDoc   = {}, upsExpMDLZoneNumMap   = {}, upsExpMDLPerKgKeys   = [];
 // FedEx zone letter → col index in rate array
 const FEDEX_ZONES = ['A','B','C','D','E','F','G','H','K','M','P','O','Q','R','S','T','U','V','W','X','Y','Z'];
 let currentType = 'document';
@@ -2116,6 +2121,8 @@ const DATA_KEYS = [
   ['Cost_DHL',      GIDS.Cost_DHL],
   ['UPS_Saver',     GIDS.Cost_UPS_Saver],
   ['UPS_Exp',       GIDS.Cost_UPS_Exp],
+  ['UPS_Saver_MDL', GIDS.UPS_Saver_MDL],
+  ['UPS_Exp_MDL',   GIDS.UPS_Exp_MDL],
   ['FedEx_IP',      GIDS.Cost_FedEx_IP],
   ['FedEx_IE',      GIDS.Cost_FedEx_IE],
   ['Other_Charges',   GIDS.Other_Charges],
@@ -2156,6 +2163,8 @@ async function fetchAllData(onProgress) {
     FedEx_IE_MDL:     raw['Cost_FedEx_IE_Exp_MDL']     || [],
     FedEx_IP_Imp_MDL: raw['Cost_FedEx_IP_Imp_MDL']     || [],
     FedEx_IE_Imp_MDL: raw['Cost_FedEx_IE_Imp_MDL']     || [],
+    UPS_Saver_MDL:    raw['Cost_UPS_Saver_Exp_MDL']    || [],
+    UPS_Exp_MDL:      raw['Cost_UPS_Exp_Exp_MDL']      || [],
     Other_Charges:    raw['Other_Charges']              || [],
     Cost_DHL_Imp:     raw['Cost_DHL_Imp']               || [],
   };
@@ -2850,16 +2859,15 @@ function getUPSRate(weight, zoneNum, docTable, nonDocTable, specialDoc, specialN
     }
   }
 
-  // 2) Zone > 10: bắt buộc nằm trong special col (zone array chỉ có 01-10)
-  if (zoneNum > 10 && spTable) {
-    // Nếu sheet không có section Document → ẩn khi người dùng chọn Document
+  // 2) Zone có entry trong zoneNumMap (kể cả zone <= 10) hoặc zone > 10 → lookup special col
+  const zoneSpecialKey = zoneNumMap && zoneNumMap[zoneNum] ? zoneNumMap[zoneNum] : null;
+  if ((zoneNum > 10 || zoneSpecialKey) && spTable) {
     const hasSpecialDocSection = Object.keys(specialDoc).length > 0;
     if (currentType === 'document' && !hasSpecialDocSection) return 0;
-    // Thử các dạng key: "zone 11", "11", hoặc tra zoneNumMap
     const candidates = [
+      zoneSpecialKey,
       `zone ${zoneNum}`,
       String(zoneNum),
-      zoneNumMap && zoneNumMap[zoneNum] ? zoneNumMap[zoneNum] : null,
     ].filter(Boolean);
     for (const spKey of candidates) {
       if (spTable[spKey]) {
@@ -2867,7 +2875,7 @@ function getUPSRate(weight, zoneNum, docTable, nonDocTable, specialDoc, specialN
         if (result !== null) return result;
       }
     }
-    return 0;
+    if (zoneNum > 10) return 0;
   }
 
   // 3) Fallback cuối: zone number array (Zone 01-10)
@@ -3314,6 +3322,77 @@ function getOtherCharges(carrier, weight, dims, country, type, isFreight=false, 
 // ============================================================
 // FEDEX NCC DROPDOWN – Viettel / MDL
 // ============================================================
+// ── UPS NCC Dropdown (Viettel / MDL) ────────────────────────────────────────
+function calcUPSTotal(base, fuelUPS, demand, ocList, vatPct) {
+  const fuel = base * fuelUPS / 100;
+  const oc   = (ocList||[]).reduce((s,c)=>s+(c.amt||0),0);
+  const sub  = base + fuel + demand + oc;
+  return Math.round(sub * (1 + vatPct/100));
+}
+
+function renderUPSNCCDropdown(cardId, baseVT, baseMDL, hasMDL, fuelUPS, vatPct, demand, ocList, billableWeight,
+    zone, ratesMDL, perKgMDL, ratesVT, perKgVT, weightLabel, typeLabel) {
+  const detailEl = document.getElementById(cardId+'-detail');
+  if (!detailEl) return;
+  // Xóa dropdown cũ nếu có
+  const old = detailEl.querySelector('.ncc-dropdown-wrap');
+  if (old) old.remove();
+  if (!hasMDL) return;
+
+  // Lấy tên NCC từ providerMap
+  const upsProviders = providerMap['UPS'] || [];
+  const mdlEntry = upsProviders.find(e => e.val && e.val.toUpperCase().includes('MDL'));
+  const vtEntry  = upsProviders.find(e => e.val && !e.val.toUpperCase().includes('MDL'));
+  const labelVT  = vtEntry?.val  || upsProviders[0]?.val || 'Viettel';
+  const labelMDL = mdlEntry?.val || 'MDL';
+
+  const totalVT  = calcUPSTotal(baseVT,  fuelUPS, demand, ocList, vatPct);
+  const totalMDL = calcUPSTotal(baseMDL, fuelUPS, demand, ocList, vatPct);
+  const isEqual  = totalVT === totalMDL;
+  const cheapestKey   = totalVT < totalMDL ? 'VT' : 'MDL';
+  const cheapestLabel = cheapestKey === 'VT' ? labelVT : labelMDL;
+  const cheapestBadge = isEqual
+    ? `⭐ Bằng nhau, ưu tiên ${labelMDL}`
+    : `⭐ ${cheapestLabel} rẻ hơn`;
+
+  const stateKey = '_ups_' + cardId.replace('-','_') + '_NCC';
+  const current  = window[stateKey] || cheapestKey;
+  window[stateKey] = current;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'ncc-dropdown-wrap fedex-ncc-wrap';
+  wrap.innerHTML = `
+    <span class="fedex-ncc-label">NCC</span>
+    <select class="fedex-ncc-select"
+      onchange="(function(sel){
+        window['${stateKey}']=sel.value;
+        document.getElementById('${cardId}-total').textContent=
+          (sel.value==='MDL'?${totalMDL}:${totalVT}).toLocaleString('vi-VN')+' ₫';
+        document.getElementById('${cardId}-grand').textContent=
+          (sel.value==='MDL'?${totalMDL}:${totalVT}).toLocaleString('vi-VN')+' ₫';
+        const baseShow=sel.value==='MDL'?${Math.round(baseMDL)}:${Math.round(baseVT)};
+        document.getElementById('${cardId}-base').textContent=baseShow.toLocaleString('vi-VN')+' ₫';
+        const fuelShow=Math.round(baseShow*${fuelUPS}/100);
+        document.getElementById('${cardId}-fuel').textContent=fuelShow.toLocaleString('vi-VN')+' ₫';
+        const pRow=document.getElementById('${cardId}-provider-row');
+        const pEl=document.getElementById('${cardId}-provider');
+        if(pEl&&pRow){pEl.textContent=sel.value==='MDL'?'${labelMDL}':'${labelVT}';pRow.style.display='flex';}
+      })(this)">
+      <option value="VT"  ${current==='VT' ?'selected':''}>${labelVT} — ${Math.round(baseVT).toLocaleString('vi-VN')} ₫</option>
+      <option value="MDL" ${current==='MDL'?'selected':''}>${labelMDL} — ${Math.round(baseMDL).toLocaleString('vi-VN')} ₫</option>
+    </select>
+    <span class="fedex-ncc-cheapest">${cheapestBadge}</span>`;
+  // Chèn sau provider-row
+  const provRow = detailEl.querySelector('.provider-row');
+  if (provRow) provRow.after(wrap);
+  else detailEl.prepend(wrap);
+
+  // Sync provider-row label
+  const pEl  = document.getElementById(cardId+'-provider');
+  const pRow = document.getElementById(cardId+'-provider-row');
+  if (pEl && pRow) { pEl.textContent = current==='MDL' ? labelMDL : labelVT; pRow.style.display='flex'; }
+}
+
 function calcFedExTotal(base, fuelFedEx, demand, ocList, vatPct) {
   const fuel    = base * fuelFedEx / 100;
   const subtotal = base + fuel + demand;
@@ -3639,8 +3718,18 @@ function calculate() {
   const usSaverSvcLabel  = useUPSFreight ? (isImport ? `Freight Imp · ${countryShort}` : `Freight Exp · ${countryShort}`) : `Express Saver · ${countryShort}`;
   document.getElementById('ups-saver-name').textContent = usSaverNameLabel;
   document.getElementById('ups-saver-service').textContent = usSaverSvcLabel;
-  renderCarrier('ups-saver',usBase,usFuel,fuelUPS,usDemand,usDemandPerKg,0,vatPct,
+  // MDL (chỉ export, không áp dụng khi import hoặc freight)
+  const usBaseMDL = (!isImport && !useUPSFreight && usSaverZone && (Object.keys(upsSaverMDLDoc).length > 0 || Object.keys(upsSaverMDLNonDoc).length > 0))
+    ? getUPSRate(roundedWeightUPS, usSaverZone, upsSaverMDLDoc, upsSaverMDLNonDoc, upsSaverMDLSpecialDoc, upsSaverMDLSpecialNonDoc, country, upsSaverMDLZoneNumMap, upsSaverMDLPerKgKeys)
+    : 0;
+  const usHasMDL = usBaseMDL > 0;
+  const usSaverKey = '_ups_ups_saver_NCC'; window[usSaverKey] = usHasMDL ? (window[usSaverKey] && window[usSaverKey] !== 'VT_AUTO' ? window[usSaverKey] : (usBaseMDL <= usBase ? 'MDL' : 'VT')) : 'VT';
+  // usHasMDL reset handled above
+  const usBaseShow = (window[usSaverKey] === 'MDL' && usHasMDL) ? usBaseMDL : usBase;
+  renderCarrier('ups-saver',usBaseShow,usBaseShow*fuelUPS/100,fuelUPS,usDemand,usDemandPerKg,0,vatPct,
     {zone:`UPS Zone ${upsZoneLabel(usSaverZone, isImport?upsSaverImpZoneNumMap:upsSaverZoneNumMap, country)}`,weight:upsWeightLabel,type:typeLabel},usOC,roundedWeightUPS);
+  renderUPSNCCDropdown('ups-saver', usBase, usBaseMDL, usHasMDL, fuelUPS, vatPct, usDemand, usOC, roundedWeightUPS,
+    usSaverZone, upsSaverMDLDoc, upsSaverMDLPerKgKeys, upsSaverDoc, upsSaverPerKgKeys, upsWeightLabel, typeLabel);
 
   // UPS Expedited (ẩn khi >70kg vì đã dùng Freight ở trên)
   // Ẩn khi chọn Document mà sheet UPS Expedited không có bảng giá Document riêng
@@ -3658,8 +3747,18 @@ function calculate() {
   const { amt: ueDemand, perKg: ueDemandPerKg } = calcDemand('UPS', fuelUPS);
   const ueOC=getOtherCharges('UPS',roundedWeightUPS,dims,country,effectiveType,false,wt);
   document.getElementById('ups-exp-service').textContent = isImport ? `Worldwide Expedited Imp · ${countryShort}` : `Worldwide Expedited · ${countryShort}`;
-  renderCarrier('ups-exp',ueBase,ueFuel,fuelUPS,ueDemand,ueDemandPerKg,0,vatPct,
+  // MDL (chỉ export, không áp dụng khi import)
+  const ueBaseMDL = (!isImport && !useUPSFreight && ueZone && (Object.keys(upsExpMDLDoc).length > 0 || Object.keys(upsExpMDLNonDoc).length > 0))
+    ? getUPSRate(roundedWeightUPS, ueZone, upsExpMDLDoc, upsExpMDLNonDoc, upsExpMDLSpecialDoc, upsExpMDLSpecialNonDoc, country, upsExpMDLZoneNumMap, upsExpMDLPerKgKeys)
+    : 0;
+  const ueHasMDL = ueBaseMDL > 0;
+  const ueExpKey = '_ups_ups_exp_NCC'; window[ueExpKey] = ueHasMDL ? (window[ueExpKey] && window[ueExpKey] !== 'VT_AUTO' ? window[ueExpKey] : (ueBaseMDL <= ueBase ? 'MDL' : 'VT')) : 'VT';
+  // ueHasMDL reset handled above
+  const ueBaseShow = (window[ueExpKey] === 'MDL' && ueHasMDL) ? ueBaseMDL : ueBase;
+  renderCarrier('ups-exp',ueBaseShow,ueBaseShow*fuelUPS/100,fuelUPS,ueDemand,ueDemandPerKg,0,vatPct,
     {zone:`UPS Zone ${upsZoneLabel(ueZone, isImport?upsExpImpZoneNumMap:upsExpZoneNumMap, country)}`,weight:upsWeightLabel,type:typeLabel},ueOC,roundedWeightUPS);
+  renderUPSNCCDropdown('ups-exp', ueBase, ueBaseMDL, ueHasMDL, fuelUPS, vatPct, ueDemand, ueOC, roundedWeightUPS,
+    ueZone, upsExpMDLDoc, upsExpMDLPerKgKeys, upsExpDoc, upsExpPerKgKeys, upsWeightLabel, typeLabel);
 
   // Restore currentType
   currentType = savedType;
@@ -3726,7 +3825,7 @@ async function fetchVersion() {
 // ============================================================
 // APPLY DATA
 // ============================================================
-function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFreightExp, demandData, dhlsin, upsSavImp, upsExpImp, upsFreightImp, fedexIPImp, fedexIEImp, dhlImp, fedexIPMDL, fedexIEMDL, fedexIPImpMDL, fedexIEImpMDL) {
+function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFreightExp, demandData, dhlsin, upsSavImp, upsExpImp, upsFreightImp, fedexIPImp, fedexIEImp, dhlImp, fedexIPMDL, fedexIEMDL, fedexIPImpMDL, fedexIEImpMDL, upsSavMDL, upsExpMDL) {
   if (Array.isArray(oc)) OTHER_CHARGES = oc;
   if (demandData && typeof demandData === 'object') demandRates = demandData;
   if (setting.providers && typeof setting.providers === 'object') providerMap = setting.providers;
@@ -3802,6 +3901,23 @@ function applyData(setting, cd, dhl, upsSav, upsExp, fedexIP, fedexIE, oc, upsFr
   fedexIEMDLRates      = fedexIEMDL  || {};
   fedexIPMDLPerKgKeys  = (fedexIPMDL  && fedexIPMDL.perKgKeys)  || [];
   fedexIEMDLPerKgKeys  = (fedexIEMDL  && fedexIEMDL.perKgKeys)  || [];
+  // UPS MDL (chỉ export)
+  if (upsSavMDL && upsSavMDL.doc) {
+    upsSaverMDLDoc           = upsSavMDL.doc          || {};
+    upsSaverMDLNonDoc        = upsSavMDL.nonDoc        || {};
+    upsSaverMDLSpecialDoc    = upsSavMDL.specialDoc    || {};
+    upsSaverMDLSpecialNonDoc = upsSavMDL.specialNonDoc || {};
+    upsSaverMDLZoneNumMap    = upsSavMDL.zoneNumMap    || {};
+    upsSaverMDLPerKgKeys     = upsSavMDL.perKgKeys     || [];
+  }
+  if (upsExpMDL && upsExpMDL.doc) {
+    upsExpMDLDoc           = upsExpMDL.doc          || {};
+    upsExpMDLNonDoc        = upsExpMDL.nonDoc        || {};
+    upsExpMDLSpecialDoc    = upsExpMDL.specialDoc    || {};
+    upsExpMDLSpecialNonDoc = upsExpMDL.specialNonDoc || {};
+    upsExpMDLZoneNumMap    = upsExpMDL.zoneNumMap    || {};
+    upsExpMDLPerKgKeys     = upsExpMDL.perKgKeys     || [];
+  }
   fedexIPImpMDLRates     = fedexIPImpMDL || {};
   fedexIEImpMDLRates     = fedexIEImpMDL || {};
   fedexIPImpMDLPerKgKeys = (fedexIPImpMDL && fedexIPImpMDL.perKgKeys) || [];
@@ -3865,7 +3981,7 @@ async function loadData(forceRefresh=false) {
   // ── BƯỚC 1: Load cache ngay → hiện giao diện trước ─────────
   const cachedFirst = loadCache();
   if (cachedFirst && !forceRefresh) {
-    applyData(cachedFirst.setting,cachedFirst.cd,cachedFirst.dhl,cachedFirst.upsSav,cachedFirst.upsExp,cachedFirst.fedexIP,cachedFirst.fedexIE,cachedFirst.oc,cachedFirst.upsFreightExp,cachedFirst.demandData,cachedFirst.dhlsin,cachedFirst.upsSavImp,cachedFirst.upsExpImp,cachedFirst.upsFreightImp,cachedFirst.fedexIPImp||null,cachedFirst.fedexIEImp||null,cachedFirst.dhlImp||null,cachedFirst.fedexIPMDL||null,cachedFirst.fedexIEMDL||null,cachedFirst.fedexIPImpMDL||null,cachedFirst.fedexIEImpMDL||null);
+    applyData(cachedFirst.setting,cachedFirst.cd,cachedFirst.dhl,cachedFirst.upsSav,cachedFirst.upsExp,cachedFirst.fedexIP,cachedFirst.fedexIE,cachedFirst.oc,cachedFirst.upsFreightExp,cachedFirst.demandData,cachedFirst.dhlsin,cachedFirst.upsSavImp,cachedFirst.upsExpImp,cachedFirst.upsFreightImp,cachedFirst.fedexIPImp||null,cachedFirst.fedexIEImp||null,cachedFirst.dhlImp||null,cachedFirst.fedexIPMDL||null,cachedFirst.fedexIEMDL||null,cachedFirst.fedexIPImpMDL||null,cachedFirst.fedexIEImpMDL||null,cachedFirst.upsSavMDL||null,cachedFirst.upsExpMDL||null);
     calcBtn.disabled = false;
     document.getElementById('import-btn').disabled = false;
     dot.className    = 'status-dot ok';
@@ -3903,7 +4019,7 @@ async function loadData(forceRefresh=false) {
   if (!forceRefresh && cached && cachedVersion && cachedVersion === remoteVersion) {
     pbDone();
     // Nếu cache cũ chưa có dhlsin → parse lại để cập nhật
-    applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE,cached.oc,cached.upsFreightExp,cached.demandData,cached.dhlsin||null,cached.upsSavImp,cached.upsExpImp,cached.upsFreightImp,cached.fedexIPImp||null,cached.fedexIEImp||null,cached.dhlImp||null,cached.fedexIPMDL||null,cached.fedexIEMDL||null,cached.fedexIPImpMDL||null,cached.fedexIEImpMDL||null);
+    applyData(cached.setting,cached.cd,cached.dhl,cached.upsSav,cached.upsExp,cached.fedexIP,cached.fedexIE,cached.oc,cached.upsFreightExp,cached.demandData,cached.dhlsin||null,cached.upsSavImp,cached.upsExpImp,cached.upsFreightImp,cached.fedexIPImp||null,cached.fedexIEImp||null,cached.dhlImp||null,cached.fedexIPMDL||null,cached.fedexIEMDL||null,cached.fedexIPImpMDL||null,cached.fedexIEImpMDL||null,cached.upsSavMDL||null,cached.upsExpMDL||null);
     calcBtn.disabled = false;
     document.getElementById('import-btn').disabled = false;
     dot.className = 'status-dot ok';
@@ -3960,9 +4076,11 @@ async function loadData(forceRefresh=false) {
     const fedexIEMDL    = parseCostFedEx(fetched.FedEx_IE_MDL    || []);
     const fedexIPImpMDL = parseCostFedEx(fetched.FedEx_IP_Imp_MDL || []);
     const fedexIEImpMDL = parseCostFedEx(fetched.FedEx_IE_Imp_MDL || []);
+    const upsSavMDL     = parseCostUPS(fetched.UPS_Saver_MDL || []);
+    const upsExpMDL     = parseCostUPS(fetched.UPS_Exp_MDL   || []);
 
-    applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp,fedexIPMDL,fedexIEMDL,fedexIPImpMDL,fedexIEImpMDL);
-    saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp,fedexIPMDL,fedexIEMDL,fedexIPImpMDL,fedexIEImpMDL }, remoteVersion);
+    applyData(setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp,fedexIPMDL,fedexIEMDL,fedexIPImpMDL,fedexIEImpMDL,upsSavMDL,upsExpMDL);
+    saveCache({ setting,cd,dhl,upsSav,upsExp,fedexIP,fedexIE,oc,upsFreightExp,demandData,dhlsin,upsSavImp,upsExpImp,upsFreightImp,fedexIPImp,fedexIEImp,dhlImp,fedexIPMDL,fedexIEMDL,fedexIPImpMDL,fedexIEImpMDL,upsSavMDL,upsExpMDL }, remoteVersion);
     pbShow(100);
     pbDone();
 
