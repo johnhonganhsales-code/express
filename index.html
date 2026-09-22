@@ -2782,8 +2782,6 @@ function getDHLRate(weight, zone) {
   };
   if (currentType==='document') return lookup(dhlDocRates);
   if (weight<=30) return lookup(dhlNonDocRates);
-  const base30=(dhlNonDocRates[30]||[])[zIdx]||0;
-  const extra=weight-30;
   let mult=0;
   for (const [key,vals] of Object.entries(dhlMultRates)) {
     const parts=key.replace('–','-').split('-');
@@ -2793,7 +2791,7 @@ function getDHLRate(weight, zone) {
     }
   }
   if (!mult){const lk=Object.keys(dhlMultRates).pop();if(lk)mult=(dhlMultRates[lk]||[])[zIdx]||0;}
-  return base30+extra*mult;
+  return mult*weight;
 }
 
 function getDHLImpRate(weight, zone) {
@@ -2805,8 +2803,6 @@ function getDHLImpRate(weight, zone) {
   };
   if (currentType === 'document') return lookup(dhlImpDocRates);
   if (weight <= 30) return lookup(dhlImpNonDocRates);
-  const base30 = (dhlImpNonDocRates[30] || [])[zIdx] || 0;
-  const extra = weight - 30;
   let mult = 0;
   for (const [key, vals] of Object.entries(dhlImpMultRates)) {
     const parts = key.replace('–','-').split('-');
@@ -2816,7 +2812,7 @@ function getDHLImpRate(weight, zone) {
     }
   }
   if (!mult) { const lk = Object.keys(dhlImpMultRates).pop(); if(lk) mult = (dhlImpMultRates[lk]||[])[zIdx]||0; }
-  return base30 + extra * mult;
+  return mult * weight;
 }
 
 function getUPSRate(weight, zoneNum, docTable, nonDocTable, specialDoc, specialNonDoc, countryName, zoneNumMap, perKgKeys) {
