@@ -2751,14 +2751,16 @@ function isDemandValid(entry, today) {
 function getDemandPerKg(carrier, countryISO, isImport) {
   const entries = demandRates[carrier];
   if (!entries || !entries.length) return 0;
+  // Normalize ISO: CNN→CN, CN-S→CN, etc.
+  const iso = (countryISO === 'CNN' || countryISO === 'CN-S' || /^CN[-_][A-Z0-9]+$/.test(countryISO||'')) ? 'CN' : (countryISO||'');
   const today = new Date();
   const pickRate = (e) => isImport
     ? (e.perKgImport || 0)
     : (e.perKgExport || e.perKg || 0);
   // 1) Tìm match ISO cụ thể trước (chỉ lấy entry còn hiệu lực)
-  if (countryISO) {
+  if (iso) {
     for (const e of entries) {
-      if (e.isoList.length > 0 && e.isoList.includes(countryISO) && isDemandValid(e, today)) {
+      if (e.isoList.length > 0 && e.isoList.includes(iso) && isDemandValid(e, today)) {
         return pickRate(e);
       }
     }
