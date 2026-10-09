@@ -1827,6 +1827,17 @@ function getProfitVND(cost) {
     </a>
   </div>
 
+  <!-- Chuyển đổi postcode card -->
+  <div class="sidebar-card">
+    <div class="sidebar-title"><span>🔁</span> Chuyển đổi Postcode</div>
+    <a class="notice-item" onclick="openPostcodeModal('kr')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+      <div class="idot dot-blue"></div><div>🇰🇷 Chuyển đổi code Korea</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
+    </a>
+    <a class="notice-item" onclick="openPostcodeModal('kh')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+      <div class="idot dot-yellow"></div><div>🇰🇭 Chuyển đổi code Cambodia</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
+    </a>
+  </div>
+
   <!-- Settings card -->
   <div class="sidebar-card" id="desktop-settings-card">
     <div class="sidebar-title"><span>⚙️</span> Cài đặt</div>
@@ -5522,6 +5533,17 @@ function closeHotlinePanel() {
       </a>
       <a class="notice-item" onclick="closeMobSidebar();openPdfModal('split')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
         <div class="idot dot-yellow"></div><div>✂️ Cắt PDF</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
+      </a>
+    </div>
+
+    <!-- Chuyển đổi postcode card -->
+    <div class="sidebar-card">
+      <div class="sidebar-title"><span>🔁</span> Chuyển đổi Postcode</div>
+      <a class="notice-item" onclick="closeMobSidebar();openPostcodeModal('kr')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+        <div class="idot dot-blue"></div><div>🇰🇷 Chuyển đổi code Korea</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
+      </a>
+      <a class="notice-item" onclick="closeMobSidebar();openPostcodeModal('kh')" style="text-decoration:none;color:inherit;cursor:pointer;background:#f8fafc;border-radius:8px;transition:background 0.15s;display:flex;align-items:center;gap:8px;padding:8px 6px;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+        <div class="idot dot-yellow"></div><div>🇰🇭 Chuyển đổi code Cambodia</div><span style="font-size:11px;color:#2563eb;margin-left:auto">↗</span>
       </a>
     </div>
 
@@ -9655,5 +9677,218 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+
+<!-- ══════════ POSTCODE CONVERTER (Korea / Cambodia) ══════════ -->
+<style>
+#pc-overlay { display:none; position:fixed; inset:0; z-index:999999; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); align-items:center; justify-content:center; padding:16px; }
+#pc-overlay.open { display:flex; }
+#pc-modal { background:#fff; border-radius:18px; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.25); animation:pdfModalIn 0.22s ease; }
+#pc-head { display:flex; align-items:center; gap:12px; padding:18px 20px 0; }
+#pc-title { font-size:16px; font-weight:700; color:#111827; flex:1; }
+#pc-close { width:32px; height:32px; border-radius:50%; border:1.5px solid #e2e8f0; background:#fff; font-size:18px; color:#6b7280; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+#pc-close:hover { background:#f1f5f9; border-color:#94a3b8; color:#111827; }
+#pc-body { padding:16px 20px 20px; }
+#pc-status { font-size:12px; color:#6b7280; margin-bottom:10px; min-height:16px; }
+#pc-status.err { color:#dc2626; }
+.pc-label { font-size:12px; font-weight:600; color:#374151; margin-bottom:6px; display:block; }
+.pc-row { display:flex; gap:8px; }
+#pc-input { flex:1; padding:11px 14px; font-size:18px; letter-spacing:0.08em; font-weight:600; border:1.5px solid #e2e8f0; border-radius:10px; font-family:inherit; outline:none; background:#fff; color:#111827; }
+#pc-input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.15); }
+#pc-btn { padding:0 18px; border:none; border-radius:10px; background:linear-gradient(135deg,#1d4ed8,#1e40af); color:#fff; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit; }
+#pc-btn:disabled { opacity:0.5; cursor:not-allowed; }
+#pc-hint { font-size:11.5px; color:#94a3b8; margin-top:6px; }
+#pc-result { margin-top:16px; }
+.pc-sum { font-size:12.5px; color:#374151; margin-bottom:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.pc-sum b { color:#1d4ed8; }
+.pc-copyall { margin-left:auto; font-size:11.5px; padding:4px 10px; border:1.5px solid #e2e8f0; border-radius:8px; background:#f8fafc; color:#374151; cursor:pointer; font-family:inherit; }
+.pc-copyall:hover { background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
+.pc-tbl-wrap { max-height:340px; overflow:auto; border:1.5px solid #e2e8f0; border-radius:10px; }
+.pc-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+.pc-tbl th { position:sticky; top:0; background:#f1f5f9; text-align:left; padding:8px 12px; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#64748b; }
+.pc-tbl td { padding:8px 12px; border-top:1px solid #f1f5f9; color:#111827; }
+.pc-code { font-weight:700; color:#1d4ed8; cursor:pointer; font-variant-numeric:tabular-nums; }
+.pc-code:hover { text-decoration:underline; }
+.pc-empty { padding:16px; text-align:center; color:#6b7280; font-size:13px; background:#f8fafc; border-radius:10px; }
+body.dark #pc-modal { background:#1e293b; }
+body.dark #pc-title { color:#f1f5f9; }
+body.dark #pc-close { background:#1e293b; border-color:#334155; color:#94a3b8; }
+body.dark #pc-input { background:#0f172a; border-color:#334155; color:#f1f5f9; }
+body.dark .pc-label, body.dark .pc-sum { color:#cbd5e1; }
+body.dark .pc-sum b, body.dark .pc-code { color:#60a5fa; }
+body.dark .pc-copyall { background:#0f172a; border-color:#334155; color:#cbd5e1; }
+body.dark .pc-tbl-wrap { border-color:#334155; }
+body.dark .pc-tbl th { background:#0f172a; color:#94a3b8; }
+body.dark .pc-tbl td { border-color:#334155; color:#e2e8f0; }
+body.dark .pc-empty { background:#0f172a; color:#94a3b8; }
+</style>
+
+<div id="pc-overlay" onclick="if(event.target===this)closePostcodeModal()">
+  <div id="pc-modal">
+    <div id="pc-head">
+      <span id="pc-flag" style="font-size:22px"></span>
+      <div id="pc-title"></div>
+      <button id="pc-close" onclick="closePostcodeModal()">✕</button>
+    </div>
+    <div id="pc-body">
+      <div id="pc-status"></div>
+      <label class="pc-label" for="pc-input">Nhập code</label>
+      <div class="pc-row">
+        <input id="pc-input" type="text" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="">
+        <button id="pc-btn" onclick="pcConvert(true)">Chuyển đổi</button>
+      </div>
+      <div id="pc-hint"></div>
+      <div id="pc-result"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const CFG = {
+    kr: {
+      gid: 509360016, flag: '🇰🇷', title: 'Chuyển đổi code Korea',
+      hint: 'Mã cũ 6 số, mã mới 5 số. Nhập code → ra code tương ứng (tìm chính xác theo số đã nhập).',
+      placeholder: '5 hoặc 6 số', minLen: 5, hasDistrict: false,
+      // cột: 0=6digit(cũ) 1=5digit(mới) 2=city
+      cols: { old: 0, nw: 1, city: 2, district: -1 }
+    },
+    kh: {
+      gid: 1779367695, flag: '🇰🇭', title: 'Chuyển đổi code Cambodia',
+      hint: 'Mã cũ 4–5 số, mã mới 5–6 số. Nhập code → ra code tương ứng (tìm chính xác theo số đã nhập, không tự thêm số 0).',
+      placeholder: '4, 5 hoặc 6 số', minLen: 4, hasDistrict: true,
+      // cột: 0=City 1=District 2=Old 3=New
+      cols: { old: 2, nw: 3, city: 0, district: 1 }
+    }
+  };
+  const DB = {};          // cache trong bộ nhớ: DB.kr / DB.kh = { byOld, byNew }
+  let cur = 'kr', loading = false;
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // Giữ nguyên đúng chuỗi số trong Sheet, KHÔNG thêm/bớt số 0
+  function normCode(v) {
+    const s = String(v == null ? '' : v).trim().replace(/\.0+$/, '');
+    return /^\d+$/.test(s) ? s : '';
+  }
+  function push(map, key, val) {
+    let arr = map.get(key);
+    if (!arr) { arr = []; map.set(key, arr); }
+    if (!arr.some(x => x.code === val.code && x.city === val.city && x.district === val.district)) arr.push(val);
+  }
+
+  function build(type, rows) {
+    const k = CFG[type].cols;
+    const byOld = new Map(), byNew = new Map();
+    for (const r of rows) {
+      const o = normCode(r[k.old]), n = normCode(r[k.nw]);
+      if (!o && !n) continue;                      // bỏ dòng tiêu đề / dòng trống
+      const city = String(r[k.city] == null ? '' : r[k.city]).trim();
+      const district = k.district >= 0 ? String(r[k.district] == null ? '' : r[k.district]).trim() : '';
+      if (o && n) {
+        push(byOld, o, { code: n, city, district });   // nhập mã cũ → trả mã mới
+        push(byNew, n, { code: o, city, district });   // nhập mã mới → trả mã cũ
+      } else if (n) {
+        push(byNew, n, { code: '', city, district });  // dòng thiếu mã cũ
+      } else {
+        push(byOld, o, { code: '', city, district });  // dòng thiếu mã mới
+      }
+    }
+    return { byOld, byNew };
+  }
+
+  async function ensureData(type) {
+    if (DB[type]) return DB[type];
+    const rows = await fetchSheet(CFG[type].gid);
+    if (!Array.isArray(rows)) throw new Error('Dữ liệu không hợp lệ');
+    DB[type] = build(type, rows);
+    return DB[type];
+  }
+
+  function setStatus(msg, isErr) { const s = $('pc-status'); s.textContent = msg || ''; s.className = isErr ? 'err' : ''; }
+
+  window.openPostcodeModal = async function (type) {
+    cur = type;
+    const c = CFG[type];
+    $('pc-flag').textContent = c.flag;
+    $('pc-title').textContent = c.title;
+    $('pc-hint').textContent = c.hint;
+    $('pc-input').placeholder = c.placeholder;
+    $('pc-input').value = '';
+    $('pc-result').innerHTML = '';
+    $('pc-overlay').classList.add('open');
+    setTimeout(() => $('pc-input').focus(), 50);
+    if (DB[type]) { setStatus(''); return; }
+    loading = true; $('pc-btn').disabled = true;
+    setStatus('⏳ Đang tải dữ liệu từ Google Sheet' + (type === 'kr' ? ' (lần đầu hơi lâu, ~75.000 dòng)' : '') + '...');
+    try {
+      await ensureData(type);
+      if (cur === type) setStatus('');
+    } catch (e) {
+      if (cur === type) setStatus('❌ Không tải được dữ liệu: ' + e.message + ' — đóng và mở lại để thử lần nữa.', true);
+    } finally { loading = false; $('pc-btn').disabled = false; }
+  };
+
+  window.closePostcodeModal = function () { $('pc-overlay').classList.remove('open'); };
+
+  window.pcCopy = function (text, el) {
+    const done = () => { if (!el) return; const o = el.textContent; el.textContent = '✓ Đã copy'; setTimeout(() => el.textContent = o, 900); };
+    try { navigator.clipboard.writeText(text).then(done, done); } catch (e) { done(); }
+  };
+
+  function section(c, raw, fromOld, list) {
+    const outLabel = fromOld ? 'Code mới' : 'Code cũ';
+    const codes = list.map(x => x.code).filter(Boolean);
+    let html = '<div class="pc-sum">' + (fromOld ? 'Code cũ' : 'Code mới') + ' <b>' + esc(raw) + '</b> → ' + list.length + ' kết quả' +
+      (codes.length ? '<button class="pc-copyall" onclick="pcCopy(' + "'" + codes.join(', ') + "'" + ', this)">Copy tất cả</button>' : '') + '</div>';
+    html += '<div class="pc-tbl-wrap" style="margin-bottom:14px"><table class="pc-tbl"><thead><tr><th>' + outLabel + '</th><th>' + (c.hasDistrict ? 'City' : 'Thành phố') + '</th>' +
+      (c.hasDistrict ? '<th>District</th>' : '') + '</tr></thead><tbody>';
+    for (const x of list.slice(0, 500)) {
+      html += '<tr><td>' + (x.code ? '<span class="pc-code" title="Bấm để copy" onclick="pcCopy(' + "'" + x.code + "'" + ', this)">' + esc(x.code) + '</span>' : '<span style="color:#94a3b8">—</span>') +
+        '</td><td>' + esc(x.city) + '</td>' + (c.hasDistrict ? '<td>' + esc(x.district) + '</td>' : '') + '</tr>';
+    }
+    return html + '</tbody></table></div>';
+  }
+
+  // manual = true khi bấm nút / Enter (mới báo "không tìm thấy"); gõ tới đâu tìm tới đó, chỉ hiện khi khớp
+  window.pcConvert = async function (manual) {
+    manual = manual !== false;
+    const c = CFG[cur];
+    const raw = $('pc-input').value.replace(/\D/g, '');
+    const out = $('pc-result');
+    if (!raw) { out.innerHTML = ''; return; }
+    if (raw.length < c.minLen) {
+      out.innerHTML = manual ? '<div class="pc-empty">Vui lòng nhập tối thiểu ' + c.minLen + ' số.</div>' : '';
+      return;
+    }
+    let db;
+    try { db = await ensureData(cur); }
+    catch (e) { setStatus('❌ Không tải được dữ liệu: ' + e.message, true); return; }
+    setStatus('');
+    if ($('pc-input').value.replace(/\D/g, '') !== raw) return;   // người dùng đã gõ tiếp trong lúc chờ
+    const asOld = db.byOld.get(raw) || [];
+    const asNew = db.byNew.get(raw) || [];
+    if (!asOld.length && !asNew.length) {
+      out.innerHTML = manual ? '<div class="pc-empty">Không tìm thấy mã <b>' + esc(raw) + '</b> trong dữ liệu.</div>' : '';
+      return;
+    }
+    // Mã trùng cả 2 chiều (vd Cambodia 5 số vừa là mã cũ vừa là mã mới) → hiện cả hai bảng
+    out.innerHTML = (asOld.length ? section(c, raw, true, asOld) : '') + (asNew.length ? section(c, raw, false, asNew) : '');
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const inp = $('pc-input');
+    if (!inp) return;
+    inp.addEventListener('input', function () {
+      this.value = this.value.replace(/\D/g, '');
+      if (!this.value) { $('pc-result').innerHTML = ''; return; }
+      if (!loading) pcConvert(false);
+    });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') pcConvert(true); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('pc-overlay').classList.contains('open')) closePostcodeModal(); });
+  });
+})();
+</script>
+
 </body>
 </html>
