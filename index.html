@@ -903,9 +903,9 @@ body.dark .hn-pass-cancel { background: #0f172a; border-color: #334155; color: #
 }
 #hn-view-box {
   background: white; border-radius: 20px;
-  padding: 26px 28px 22px;
-  max-width: 900px; width: calc(100% - 32px);
-  max-height: 90vh; overflow-y: auto;
+  padding: 22px 20px 18px;
+  max-width: 1600px; width: calc(100% - 24px);
+  max-height: 92vh; overflow-y: auto;
   box-shadow: 0 24px 64px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.1);
   animation: popupBounceIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
   position: relative;
@@ -952,15 +952,26 @@ table.hn-table {
   width: 100%; border-collapse: collapse; font-size: 12.5px;
 }
 table.hn-table th {
-  background: #f8fafc; padding: 9px 11px; text-align: left;
+  background: #f8fafc; padding: 9px 8px; text-align: left;
   font-size: 11px; font-weight: 700; color: #6b7280;
   text-transform: uppercase; letter-spacing: 0.05em;
   border-bottom: 1.5px solid #e2e8f0; white-space: nowrap;
 }
 table.hn-table td {
-  padding: 9px 11px; border-bottom: 1px solid #f1f5f9;
-  color: #374151; vertical-align: middle;
+  padding: 8px 8px; border-bottom: 1px solid #f1f5f9;
+  color: #374151; vertical-align: middle; white-space: nowrap;
 }
+table.hn-table td.hn-td-note { white-space: normal; min-width: 130px; max-width: 240px; }
+.hn-hoadon-input {
+  width: 120px; padding: 5px 8px; border: 1.5px solid #e2e8f0; border-radius: 7px;
+  font-size: 12px; font-family: inherit; outline: none; background: #fff;
+  color: #111827 !important; -webkit-text-fill-color: #111827 !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.hn-hoadon-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.12); }
+.hn-hoadon-input.saving { border-color: #f59e0b; }
+.hn-hoadon-input.saved  { border-color: #059669; box-shadow: 0 0 0 2px rgba(5,150,105,0.15); }
+.hn-hoadon-input.err    { border-color: #dc2626; }
 table.hn-table tr:last-child td { border-bottom: none; }
 table.hn-table tr:hover td { background: #f8fafc; }
 .hn-badge-yes { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #f0fdf4; color: #059669; border: 1px solid #86efac; }
@@ -8985,7 +8996,7 @@ function renderHNTable() {
   let rows = _hnAllData.filter(r => {
     if (_hnFilter === 'da'   && r.layhang !== 'da')   return false;
     if (_hnFilter === 'chua' && r.layhang === 'da')   return false;
-    if (q && ![ r.awb, r.khach, r.dichvu, r.nuocgui, r.ghichu ].join(' ').toLowerCase().includes(q)) return false;
+    if (q && ![ r.awb, r.khach, r.dichvu, r.nuocgui, r.ghichu, r.hoadon ].join(' ').toLowerCase().includes(q)) return false;
     return true;
   });
 
@@ -9020,13 +9031,45 @@ function renderHNTable() {
       <td style="text-align:center;">${r.sokg || ''}</td>
       <td style="text-align:right;font-weight:600;color:#059669;">${r.giaban ? Number(r.giaban).toLocaleString('vi-VN') + ' ₫' : ''}</td>
       <td>${badge}</td>
-      <td style="color:#9ca3af;font-style:italic;">${r.ghichu || ''}</td>
+      <td class="hn-td-note" style="color:#9ca3af;font-style:italic;">${r.ghichu || ''}</td>
+      <td><input class="hn-hoadon-input" type="text" id="hd-${r._row}" value="${escHNAttr(r.hoadon)}" placeholder="Nhập..."
+            onkeydown="if(event.key==='Enter')this.blur();" onchange="saveHoaDon(${r._row}, this)" /></td>
       <td>
         <button class="hn-edit-btn" onclick="startEditHNRow(${r._row}, ${JSON.stringify(r).replace(/"/g,'&quot;')})">✏️ Sửa</button>
         <button class="hn-del-btn" onclick="deleteHNRow(${r._row})">🗑</button>
       </td>
     </tr>`;
   }).join('');
+}
+
+// Escape giá trị để nhét an toàn vào thuộc tính value="..."
+function escHNAttr(v) {
+  return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Lưu ô Hóa đơn (cột M trong Google Sheet) ngay khi nhập xong (blur / Enter)
+async function saveHoaDon(rowIdx, inputEl) {
+  const val = inputEl.value.trim();
+  inputEl.value = val;
+  const rec = _hnAllData.find(r => r._row === rowIdx);
+  if (rec && String(rec.hoadon || '') === val) return; // không đổi → khỏi gửi
+  inputEl.classList.remove('saved','err');
+  inputEl.classList.add('saving');
+  try {
+    await fetch(HANGNHAP_SHEET_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'updateHoaDon', row: rowIdx, hoadon: val })
+    });
+    if (rec) rec.hoadon = val;
+    inputEl.classList.remove('saving');
+    inputEl.classList.add('saved');
+    setTimeout(() => inputEl.classList.remove('saved'), 1500);
+  } catch(e) {
+    inputEl.classList.remove('saving');
+    inputEl.classList.add('err');
+    alert('❌ Lỗi khi lưu Hóa đơn. Kiểm tra kết nối.');
+  }
 }
 
 function startEditHNRow(rowIdx, r) {
@@ -9055,6 +9098,7 @@ function startEditHNRow(rowIdx, r) {
           <option value="da"   ${lyY}>✅ Đã lấy</option>
         </select></td>
     <td><input class="hn-inline-input" id="ei-ghichu"  type="text" value="${r.ghichu||''}" /></td>
+    <td><input class="hn-inline-input" id="ei-hoadon"  type="text" value="${escHNAttr(r.hoadon)}" style="width:110px;" /></td>
     <td>
       <button class="hn-save-row-btn"   onclick="saveEditHNRow(${rowIdx})">💾 Lưu</button>
       <button class="hn-cancel-row-btn" onclick="renderHNTable()">Huỷ</button>
@@ -9077,6 +9121,7 @@ async function saveEditHNRow(rowIdx) {
     giaban:     Number(document.getElementById('ei-giaban').value) || 0,
     layhang:    document.getElementById('ei-layhang').value,
     ghichu:     document.getElementById('ei-ghichu').value.trim(),
+    hoadon:     document.getElementById('ei-hoadon').value.trim(),
   };
   try {
     await fetch(HANGNHAP_SHEET_URL, {
@@ -9164,6 +9209,7 @@ document.addEventListener('keydown', function(e) {
             <th>Giá bán (VND)</th>
             <th>Tình trạng</th>
             <th>Ghi chú</th>
+            <th>Hóa đơn</th>
             <th style="width:110px;">Thao tác</th>
           </tr>
         </thead>
