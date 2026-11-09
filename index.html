@@ -1670,7 +1670,7 @@ function getProfitVND(cost) {
       </div>
       <div class="carrier-detail">
         <div class="detail-row provider-row" id="dhl-sin-provider-row" style="display:none"><span>Nhà cung cấp</span><span id="dhl-sin-provider">—</span></div>
-        <div class="detail-row"><span>Cước cơ bản</span><span id="dhl-sin-base">—</span></div>
+        <div class="detail-row"><span id="dhl-sin-base-lbl">Cước cơ bản</span><span id="dhl-sin-base">—</span></div>
         <div class="detail-row"><span id="dhl-sin-fuel-lbl">Fuel Surcharge</span><span id="dhl-sin-fuel">—</span></div>
         <div class="detail-row" id="dhl-sin-demand-row" style="display:none"><span id="dhl-sin-demand-lbl">Demand</span><span id="dhl-sin-demand">—</span></div>
         <div class="detail-row"><span id="dhl-sin-vat-lbl">VAT</span><span id="dhl-sin-vat">—</span></div>
@@ -1899,6 +1899,11 @@ function getProfitVND(cost) {
 // ============================================================
 const PROXY = 'https://script.google.com/macros/s/AKfycbxdhRfqIi--qboVNnCL9HlNJEKPJH4gOAxzGBpaX0vVZJq3Ho6gG5cql0lOcTwBXjOBzw/exec';
 const GITHUB_RAW = 'https://raw.githubusercontent.com/johnhonganhsales-code/honganh-rates/main';
+// ── DHL SIN: nguồn bảng giá ─────────────────────────────────
+// 'TNL'    = dùng sheet Cost_DHLSIN_TNL (đang áp dụng)
+// 'VIETAN' = dùng sheet Cost_DHLSIN của Việt An (TẠM NGƯNG tính giá – đổi về 'VIETAN' để bật lại)
+const DHLSIN_SOURCE = 'TNL';
+const DHLSIN_PROVIDER_LABEL = { TNL: 'TNL' };   // nhãn "Nhà cung cấp" hiển thị trên thẻ DHL SIN
 const GIDS = {
   Setting:          618066130,
   Countries:        1582348584,
@@ -1941,6 +1946,12 @@ let dhlDocRates   = {}, dhlNonDocRates = {}, dhlMultRates = {};
 let dhlImpDocRates = {}, dhlImpNonDocRates = {}, dhlImpMultRates = {};
 // DHL SIN rates: keyed by col index (1-16), with special cols 3=BN, 5=PK
 let dhlsinDocRates = {}, dhlsinNonDocRates = {}, dhlsinMultRates = {};
+let dhlsinTnlZones = {};   // TNL: ISO -> Zone (1..14), đọc từ sheet Zone_DHLSIN_TNL
+function tnlIso(iso) { iso = String(iso||'').toUpperCase(); return (iso==='CNN' || iso==='CN-S' || /^CN[-_][A-Z0-9]+$/.test(iso)) ? 'CN' : iso; }
+function dhlsinZoneFor(d) {   // trả zone DHL SIN theo nguồn giá đang dùng
+  if (!d) return null;
+  return d.dhlsin || null;
+}
 // DHLSIN zone -> column index mapping
 // Zone1=1,Zone2=2,Zone3=4,Zone4=6,Zone5=7,Zone6=8,Zone7=10,Zone8A=11,Zone8B=12,Zone9=13,Zone10=14,Zone11=15,Zone12=16
 const DHLSIN_ZONE_COL = {1:1,2:2,3:4,4:6,5:7,6:8,7:10,'8A':11,'8B':12,9:13,10:14,11:15,12:16,'BN':3,'PK':5,'EU1':8,'EU2':9,'MY':1};
@@ -2064,7 +2075,10 @@ function updateZone() {
     const d = countryData[c];
     let parts = [];
     if (d.dhl)     parts.push(`DHL: Vùng ${d.dhl}`);
-    if (d.dhlsin || d.iso==='PK') {
+    if (DHLSIN_SOURCE === 'TNL') {
+      const tz = dhlsinZoneFor(d);
+      if (tz) parts.push(`DHL SIN: Zone ${tz}`);
+    } else if (d.dhlsin || d.iso==='PK') {
       const sinLabel = d.iso==='BN' ? 'BN (đặc biệt)'
         : d.iso==='PK' ? 'PK (đặc biệt)'
         : d.iso==='MY' ? 'Zone 1 (MY)'
@@ -2171,6 +2185,7 @@ async function fetchAllData(onProgress) {
     Countries:        raw['Countries']              || [],
     Cost_DHL:         raw['Cost_DHL']               || [],
     Cost_DHLSIN:      raw['Cost_DHLSIN']            || [],
+    Cost_DHLSIN_TNL:  raw['Cost_DHLSIN_TNL']        || [],
     UPS_Saver:        raw['Cost_UPS_Saver_Exp']     || [],
     UPS_Exp:          raw['Cost_UPS_EXPEDITED_Exp'] || [],
     UPS_Freight_Exp:  raw['Cost_UPS_Freight_Exp']   || [],
@@ -2203,6 +2218,7 @@ function parseCountries(rows) {
   const result = {};
   let dataStart = 3;
   let dhlsinColIdx = -1; // -1 = chưa tìm thấy
+  let tnlColIdx = -1;    // cột "Zone DHLSIN_TNL" (cột R)
   let hotlineDHLIdx = -1, hotlineFedExIdx = -1, hotlineUPSIdx = -1;
 
   // Quét toàn bộ rows đầu để tìm header, col DHL SIN và cols hotline
@@ -2213,12 +2229,16 @@ function parseCountries(rows) {
     const c0 = rowStr[0];
     if (c0.includes('qu') && c0.includes('gia')) { dataStart=i+1; }
     // Detect cột DHL SIN: tìm header có "dhl sin", "dhlsin", "sin" (standalone), hoặc "zone dhl sin"
+    if (tnlColIdx < 0) {
+      const idx = rowStr.findIndex(v => v.includes('tnl') && (v.includes('dhlsin') || v.includes('dhl sin') || v.includes('sin')));
+      if (idx > 0) { tnlColIdx = idx; console.log('[Countries] DHL SIN TNL col at index', idx, '| header:', rowStr[idx]); }
+    }
     if (dhlsinColIdx < 0) {
-      const idx = rowStr.findIndex(v =>
+      const idx = rowStr.findIndex(v => !v.includes('tnl') && (
         v === 'zone dhl sin' || v === 'dhl sin' || v === 'dhlsin' ||
         v.includes('dhl sin') || v.includes('dhlsin') ||
         v === 'zone sin' || v === 'sin zone'
-      );
+      ));
       if (idx > 0) { dhlsinColIdx = idx; console.log('[Countries] DHL SIN col at index', idx, '| header:', rowStr[idx]); }
     }
     // Detect cột hotline DHL
@@ -2242,6 +2262,11 @@ function parseCountries(rows) {
   // Biết chắc: col0=name,1=ISO,2=DHL,3=UPS Saver,4=UPS Exp,5=UPS Freight Export,
   // 6=UPS Saver Import,7=UPS Exp Import,8=UPS Freight Import,
   // 9=FedEx IP,10=FedEx IE,11=FedEx IPF,12=FedEx IEF → DHL SIN = 13
+  // Nguồn giá TNL: zone đọc từ cột "Zone DHLSIN_TNL" (mặc định cột R = index 17)
+  if (DHLSIN_SOURCE === 'TNL') {
+    if (tnlColIdx < 0) { tnlColIdx = 17; console.log('[Countries] TNL col defaulting to 17 (R)'); }
+    dhlsinColIdx = tnlColIdx;
+  }
   if (dhlsinColIdx < 0) {
     dhlsinColIdx = 13;
     console.log('[Countries] DHL SIN col defaulting to 13');
@@ -2354,6 +2379,14 @@ function parseCostDHL(rows) {
 // Trả về: { doc: {wt: [col1..col16]}, nonDoc: {wt: [...]}, mult: {range: [...]}, colMap }
 // colMap: zone key -> col index (BN=3, PK=5, zone numbers->col)
 // ============================================================
+function parseTnlZones(rows) {   // rows: [ISO, Country, Zone]
+  const m = {};
+  (rows||[]).forEach((r,i) => {
+    const iso = String(r[0]||'').trim().toUpperCase(), z = parseInt(r[2]);
+    if (i>0 && iso && z>0) m[iso] = z;
+  });
+  return m;
+}
 function parseCostDHLSIN(rows) {
   // rows là mảng 2D từ Google Sheet (mỗi phần tử là mảng các giá trị)
   const doc={}, nonDoc={}, mult={};
@@ -2386,7 +2419,7 @@ function parseCostDHLSIN(rows) {
       const rangeMatch=c0.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
       if (rangeMatch) {
         const key=`${rangeMatch[1]}-${rangeMatch[2]}`;
-        const vals=row.slice(1,17).map(v=>num(v));
+        const vals=row.slice(1,17).map(v=>Math.round(num(v)));
         if (vals.some(v=>v>0)) mult[key]=vals;
         console.log('[DHLSIN] mult range:', key, '| vals[0]:', vals[0], 'vals[2]:', vals[2]);
       }
@@ -2396,7 +2429,7 @@ function parseCostDHLSIN(rows) {
     // Weight data rows
     const wt=parseFloat(c0.replace(/[^0-9.]/g,''));
     if (isNaN(wt)||wt<=0) continue;
-    const prices=row.slice(1,17).map(v=>num(v));
+    const prices=row.slice(1,17).map(v=>Math.round(num(v)));
     if (!prices.some(v=>v>0)) continue;
     if (section==='doc') doc[wt]=prices;
     else if (section==='nondoc') nonDoc[wt]=prices;
@@ -2415,7 +2448,8 @@ function getDHLSINRate(weight, zone, countryISO) {
   // ISO override: BN và PK luôn dùng cột đặc biệt (Countries có thể ghi 'BN'/'PK' hoặc null)
   // MY được xử lý qua zone='MY' → DHLSIN_ZONE_COL['MY']=1
   let colIdx;
-  if (countryISO === 'BN') colIdx = 3;       // Brunei: cột đặc biệt (array idx 2)
+  if (DHLSIN_SOURCE === 'TNL') colIdx = ({MY:1, BN:2, PK:4})[zone] || parseInt(zone) || null;   // TNL: Zone N = cột N (1..14); MY/BN/PK cũ quy về zone 1/2/4   // TNL: Zone N = cột N (1..14), không có cột đặc biệt
+  else if (countryISO === 'BN') colIdx = 3;       // Brunei: cột đặc biệt (array idx 2)
   else if (countryISO === 'PK') colIdx = 5;  // Pakistan: cột đặc biệt (array idx 4)
   else colIdx = DHLSIN_ZONE_COL[zone] ?? null;
 
@@ -3057,6 +3091,7 @@ function renderCarrier(id, base, fuel, fuelPct, demand, demandPct, vat, vatPct, 
         if (match) providerVal = match.val;
       }
     }
+    if (id === 'dhl-sin' && DHLSIN_PROVIDER_LABEL[DHLSIN_SOURCE]) providerVal = DHLSIN_PROVIDER_LABEL[DHLSIN_SOURCE];
     if (providerVal) {
       providerEl.textContent = providerVal;
       providerRowEl.style.display = 'flex';
@@ -3579,13 +3614,15 @@ function calculate() {
     {zone:`DHL Vùng ${zones.dhl||'N/A'}`,weight:`${roundedWeightDHL} kg`,type:typeLabel},dhlOC,roundedWeightDHL);
 
   // DHL SIN — chỉ hiện khi hàng xuất (chưa có bảng giá nhập riêng)
+  // Zone DHL SIN lấy từ cột DHL SIN trong tab Countries (với TNL: số 1–14)
   const dhlsinZone = zones.dhlsin;
-  const dhlsinEligible = !isImport && !!(dhlsinZone || countryISO === 'PK');
+  const dhlsinEligible = !isImport && !!(dhlsinZone || (DHLSIN_SOURCE !== 'TNL' && countryISO === 'PK'));
   const dhlsinBase = dhlsinEligible ? getDHLSINRate(roundedWeightDHL, dhlsinZone, countryISO) : 0;
   const dhlsinFuel = dhlsinBase * fuelDHL / 100;
   const { amt: dhlsinDemand, perKg: dhlsinDemandPerKg } = calcDemand('DHL SIN', fuelDHL);
   const dhlsinOC = getOtherCharges('DHL SIN', roundedWeightDHL, dims, country, effectiveType, false, wt);
-  const dhlsinZoneLabel = countryISO === 'BN' ? 'BN (đặc biệt)'
+  const dhlsinZoneLabel = DHLSIN_SOURCE === 'TNL' ? `Zone ${dhlsinZone || 'N/A'}`
+    : countryISO === 'BN' ? 'BN (đặc biệt)'
     : countryISO === 'PK' ? 'PK (đặc biệt)'
     : countryISO === 'MY' ? 'Zone 1 (MY)'
     : (dhlsinZone === 'EU1' || dhlsinZone === 'EU2') ? dhlsinZone
@@ -3593,6 +3630,9 @@ function calculate() {
   document.getElementById('dhl-sin-service').textContent = `SIN Express · ${countryShort}`;
   renderCarrier('dhl-sin', dhlsinBase, dhlsinFuel, fuelDHL, dhlsinDemand, dhlsinDemandPerKg, 0, vatPct,
     {zone:`DHL SIN ${dhlsinZoneLabel}`, weight:`${roundedWeightDHL} kg`, type:typeLabel}, dhlsinOC, roundedWeightDHL);
+  // Ghi chú riêng cho DHL SIN TNL: tỉ giá quy đổi của bảng giá
+  const dhlsinBaseLbl = document.getElementById('dhl-sin-base-lbl');
+  if (dhlsinBaseLbl) dhlsinBaseLbl.textContent = DHLSIN_SOURCE === 'TNL' ? 'Cước cơ bản (tỉ giá 26.500vnd)' : 'Cước cơ bản';
 
   // FedEx: kiểm tra có phải dùng Freight (IPF/IEF) không
   const fedexFreightWeightThresh = parseFloat(document.getElementById('fedex-freight-weight').value) || 70;
@@ -3812,7 +3852,7 @@ function deserializeFromCache(p) {
 
 function saveCache(p, version) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(serializeForCache({ ts: Date.now(), ...p })));
+    localStorage.setItem(CACHE_KEY, JSON.stringify(serializeForCache({ ts: Date.now(), dhlsinSrc: DHLSIN_SOURCE, ...p })));
     if (version !== undefined) localStorage.setItem(CACHE_VER_KEY, String(version));
   } catch(e) {}
 }
@@ -3821,7 +3861,10 @@ function loadCache() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    return deserializeFromCache(JSON.parse(raw));
+    const obj = deserializeFromCache(JSON.parse(raw));
+    // Cache cũ lưu giá DHL SIN từ nguồn khác (Việt An) → bỏ để tải lại
+    if (obj && obj.dhlsinSrc !== DHLSIN_SOURCE) return null;
+    return obj;
   } catch(e) { return null; }
 }
 
@@ -4085,7 +4128,7 @@ async function loadData(forceRefresh=false) {
     const fedexIE = parseCostFedEx(fetched.FedEx_IE);
     const { charges: oc, demand: demandData } = parseOtherCharges(fetched.Other_Charges || []);
     const upsFreightExp = parseCostUPS(fetched.UPS_Freight_Exp || []);
-    const dhlsin  = parseCostDHLSIN(fetched.Cost_DHLSIN || []);
+    const dhlsin  = parseCostDHLSIN((DHLSIN_SOURCE === 'TNL' ? fetched.Cost_DHLSIN_TNL : fetched.Cost_DHLSIN) || []);
     const upsSavImp     = parseCostUPS(fetched.UPS_Saver_Imp   || []);
     const upsExpImp     = parseCostUPS(fetched.UPS_Exp_Imp     || []);
     const upsFreightImp = parseCostUPS(fetched.UPS_Freight_Imp || []);
