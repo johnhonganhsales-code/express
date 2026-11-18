@@ -2,6 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
+<script>try{localStorage.setItem("clickMode","off");localStorage.setItem("glitterBgOn","0");}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1021,6 +1022,15 @@ table.hn-table tr:hover td { background: #f8fafc; }
 .hn-cancel-row-btn:hover { background: #f8fafc; }
 
 </style>
+
+<style id="lite-mode">
+/* LITE MODE: tắt hiệu ứng lặp để giảm CPU/GPU/RAM */
+.type-btn.active{animation:none !important}
+.status-dot.loading{animation:none !important}
+.vsvx-badge-loading{animation:none !important}
+*{scroll-behavior:auto !important}
+#glitter-bg-canvas,.water-fx-canvas{display:none !important}
+</style>
 </head>
 <body>
 
@@ -1089,6 +1099,7 @@ table.hn-table tr:hover td { background: #f8fafc; }
   }
   waitGsap(function(){
     showText(texts[0],false);
+    return; /* LITE: tắt xoay chữ */
     setInterval(function(){
       var chars=Array.from(cont.querySelectorAll('.rchar'));
       gsap.to(chars,{yPercent:-120,opacity:0,duration:0.3,ease:'power2.in',
@@ -7497,7 +7508,7 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
   window.spToggleGlitterBG = function(on) {
     localStorage.setItem('glitterBgOn', on ? '1' : '0');
     document.querySelectorAll('.glitterbg-toggle').forEach(chk => { chk.checked = on; });
-    if (typeof window._setGlitterBG === 'function') window._setGlitterBG(on);
+    /* LITE: glitter disabled */
   };
 
   // ── Hiệu ứng chuột: On/Off + box cấu hình kiểu hiệu ứng ──
@@ -7953,7 +7964,7 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
     targets.forEach(function(t){
       var el = document.querySelector(t.sel);
       if (el && !el._waterFx) {
-        el._waterFx = new WaterButtonFX(el, { waterColor: t.color, waterAmount: 58, columns: 26 });
+        /* LITE: tắt hiệu ứng sóng nước */
       }
     });
     // Lúc init: btn-doc active (xanh đậm), btn-nondoc inactive (xanh nhạt)
@@ -8248,7 +8259,8 @@ body.dark .sp-effect-btn.active { background: linear-gradient(135deg,#1d4ed8,#7c
   function initGlitterBG(){
     var canvas = document.getElementById('glitter-bg-canvas');
     if (canvas && !canvas._glitterFx) {
-      canvas._glitterFx = new GlitterWrapBG(canvas, {});
+      canvas.style.display='none'; canvas.remove(); /* LITE: tắt nền lấp lánh */
+      return;
       window._setGlitterBG = function(on){
         if (canvas._glitterFx) canvas._glitterFx.setEnabled(on);
       };
@@ -8427,54 +8439,22 @@ import * as THREE from 'three';
   globeGroup.rotation.y = -106.6 * Math.PI / 180;
   globeGroup.rotation.x = -10.8 * Math.PI / 180;
 
-  // Drag interaction
-  let isDragging = false, lastX = 0, lastY = 0;
-  let velX = 0, velY = 0;
-  renderer.domElement.addEventListener('mousedown', e => {
-    isDragging = true; lastX = e.clientX; lastY = e.clientY; velX = 0; velY = 0;
+  // LITE: render 1 lần, chuyển thành ảnh tĩnh, giải phóng WebGL/GPU/RAM
+  renderer.render(scene, camera);
+  try {
+    const img = new Image();
+    img.src = renderer.domElement.toDataURL('image/png');
+    img.style.cssText = 'display:block;width:100%;height:auto;';
+    img.draggable = false;
+    img.alt = 'globe';
+    container.replaceChild(img, renderer.domElement);
+  } catch (e) { console.warn('[Globe] snapshot failed', e); }
+  scene.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) { Array.isArray(o.material) ? o.material.forEach(m => m.dispose()) : o.material.dispose(); }
   });
-  document.addEventListener('mousemove', e => {
-    if (!isDragging) return;
-    const dx = e.clientX - lastX, dy = e.clientY - lastY;
-    globeGroup.rotation.y += dx * 0.005;
-    globeGroup.rotation.x += dy * 0.005;
-    globeGroup.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, globeGroup.rotation.x));
-    velX = dx * 0.005; velY = dy * 0.005;
-    lastX = e.clientX; lastY = e.clientY;
-  });
-  document.addEventListener('mouseup', () => { isDragging = false; });
-
-  // Animate
-  let hovered = false;
-  renderer.domElement.addEventListener('mouseenter', () => hovered = true);
-  renderer.domElement.addEventListener('mouseleave', () => hovered = false);
-
-  let pulseT = 0;
-  function animate() {
-    requestAnimationFrame(animate);
-    if (!isDragging) {
-      if (!hovered) globeGroup.rotation.y += 0.003;
-      velX *= 0.92; velY *= 0.92;
-      globeGroup.rotation.y += velX;
-      globeGroup.rotation.x += velY;
-    }
-    // Pulse ring
-    pulseT += 0.04;
-    const ringMesh = globeGroup.children.find(c => c.geometry && c.geometry.type === 'RingGeometry');
-    if (ringMesh) {
-      const s = 1 + 0.35 * Math.sin(pulseT);
-      ringMesh.scale.set(s, s, s);
-      ringMesh.material.opacity = 0.6 - 0.4 * Math.abs(Math.sin(pulseT));
-    }
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  // Resize observer
-  new ResizeObserver(() => {
-    const w = container.offsetWidth;
-    renderer.setSize(w, w);
-  }).observe(container);
+  renderer.dispose();
+  try { renderer.forceContextLoss(); } catch (e) {}
 
 })();
 </script>
